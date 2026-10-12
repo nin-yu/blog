@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 43 — 编排与可观测性：Temporal、LangSmith、LangFuse</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture05 · Lesson 43</span>
+  <h1>编排与可观测性：让长跑的 agent 不崩、可查</h1>
+  <div class="meta">第 43 课（Lecture05 第 5 课）· 来源：lecture05.pdf p90-122 · 本课成果：理解为什么 agent 需要编排/遥测，掌握 Temporal 的执行模型（Activity/Workflow/重试/持久状态）与三种可观测性工具（MLflow / LangSmith / LangFuse）</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+Agent 会<strong>长时间运行</strong>（p92-93 引 METR 的 time-horizons），支撑它的基础设施必须<strong>可靠</strong>，且需要<strong>日志/可观测性</strong>来排障。两块拼图：<br>
+<strong>① 编排 Orchestration（Temporal）</strong>——用"持久执行（durable execution）"把可能失败的动作变成<strong>可重试、可恢复、有历史状态</strong>的 work；<br>
+<strong>② 可观测性 Observability</strong>——MLflow / LangSmith / LangFuse 用来追踪与监控。<br><br>
+一句话：<strong>把软件工程的可靠性实践搬进 agent 工程，正是"搭 agent"和"工程化 agent"的分水岭</strong>（p122）。
+</div>
+
+<h2>为什么需要编排/遥测（p92-93）</h2>
+<ul>
+  <li>Agent <strong>运行时间长</strong>（METR 的 time-horizons 图说明任务时长在变长），支撑基础设施必须可靠。</li>
+  <li>需要<strong>日志与可观测性工具</strong>来调试与监控。</li>
+</ul>
+
+<h2>Temporal 执行模型（p95-98）</h2>
+<pre class="loop">Your Code (Client)
+   │  调用
+   ▼
+[ Server ]
+   ├─ Activities（可失败的功能单元）   ← Activity Workers 执行
+   ├─ Workflows（把 activities 串起来） ← Workflow Workers 执行
+   ├─ Execution History & State        ← 持久化的执行历史与状态
+   └─ Activity Queue / Workflow Queue / Task Queue  ← 队列与调度
+   Storage（存储）</pre>
+<table>
+  <tr><th>概念</th><th>含义</th></tr>
+  <tr><td><strong>Activity</strong></td><td>"可以失败的功能单元"——把每一步做成独立可重试的单元</td></tr>
+  <tr><td><strong>Workflow</strong></td><td>把 activities 连接起来（定义编排逻辑）</td></tr>
+  <tr><td><strong>Execution History &amp; State</strong></td><td>持久化的执行历史与状态——崩溃后能恢复到哪一步</td></tr>
+  <tr><td><strong>Workers / Queues</strong></td><td>Activity Workers、Workflow Workers 从队列取任务执行</td></tr>
+</table>
+<p>核心价值：<strong>Durable Workflows（持久工作流）</strong>——p100-106 演示如何把 workflow 做成"durable"（Activities / Workflow / Worker / Run it）。</p>
+
+<h3>重试（p107-111）</h3>
+<p>"Retrying Flaky Activities"——对那些"时好时坏（flaky）"的 activity 自动重试。这正是把 Week4 第 38 课"多步链不会退避"这个失败模式用基础设施解决。</p>
+
+<h3>服务端编排（p112-117）</h3>
+<p>"Server Based Orchestration / Server Based Timing"——把编排与计时放到服务端，让长时间任务不依赖某个客户端进程活着。</p>
+
+<h2>可观测性工具（p118-121）</h2>
+<table>
+  <tr><th>工具</th><th>定位</th></tr>
+  <tr><td><strong>MLflow</strong></td><td>实验/模型追踪（Databricks 生态）</td></tr>
+  <tr><td><strong>LangSmith</strong></td><td>LangChain 出品，链路追踪与调试</td></tr>
+  <tr><td><strong>LangFuse</strong></td><td>开源可观测性平台</td></tr>
+</table>
+
+<h2>小结（p122 原文）</h2>
+<blockquote>
+• 编排让 agent 可靠；<br>
+• 可观测性支持调试与监控；<br>
+• 把软件工程的最佳实践与工具搬过来，会同样适用于 agent 工程；<br>
+• <strong>搭好 evals、监控、持久执行等，正是"搭 agent"与"工程化 agent"的分水岭。</strong>
+</blockquote>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>排查/标定流程用 durable execution</strong>：长流程某步失败能重试并从断点恢复，而不是从头再来——这是"能跑几小时不崩"的工程保障（呼应 Week2 第 21 课长程任务）。</li>
+  <li><strong>可观测性是排障的前提</strong>：agent 出问题时，得有 trace 能看"每次模型调用/工具调用/状态变化"（对应 p125 的"让失败可观察可恢复"）。</li>
+  <li><strong>重试要有策略</strong>：flaky 步骤自动重试，但要有上限与退避——别陷入"重复同一个失败调用"（Week4 失败模式）。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 为什么 agent 特别需要编排/遥测？</p>
+  <details><summary>展开答案</summary><p>因为 agent 运行时间长（METR time-horizons），支撑基础设施必须可靠，且需要日志/可观测性来排障。</p></details>
+  <p>Q2. Temporal 里 Activity 和 Workflow 分别是什么？"Execution History"解决什么？</p>
+  <details><summary>展开答案</summary><p>Activity 是可失败的功能单元（可重试）；Workflow 把 activities 连接起来定义编排逻辑；Execution History & State 持久化执行历史与状态，使崩溃后可恢复。</p></details>
+  <p>Q3. "Retrying Flaky Activities"和 Week4 哪个失败模式对应？</p>
+  <details><summary>展开答案</summary><p>对应多步链里的"Recovery 不会恢复"——重复同一个失败调用而不退避。Temporal 用基础设施层自动重试 flaky activity（配上限/退避）来解决。</p></details>
+  <p>Q4. 你能说出三种可观测性工具吗？对你的意义是什么？</p>
+  <details><summary>展开答案</summary><p>MLflow / LangSmith / LangFuse。意义：agent 出问题时能追踪每次模型调用、工具调用、状态变化与错误，让失败"可观察、可诊断、可恢复"。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture05 · 段四 编排与遥测</span><br>
+  ← 上一课 <a href="lecture05-0042-agent-harnesses.html">0042 · 开源 Agent Harness</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture05-0044-best-practices.html">0044 · 工程最佳实践与挑战（Lecture05 收官）</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture05 课件（源文件夹 week3-10.7）p90-122（Orchestration &amp; Telemetry: Temporal Execution Model / Durable Workflows / Retries / Observability: MLflow, LangSmith, LangFuse）。<br>
+Lesson 43 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

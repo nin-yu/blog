@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 23 — 为什么需要检索：RAG 的管线与两个部件</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week3 · Lecture03 · Lesson 23</span>
+  <h1>为什么要 RAG：把"背下来"换成"现查现用"</h1>
+  <div class="meta">第 23 课（Week3 第 1 课）· 来源：lecture03.pdf p10-21 + RAG 原始论文（Lewis et al., 2021）· 本课成果：讲清 RAG 的动机、retriever-reader 框架，以及 RAG 论文里 RAG-Sequence 与 RAG-Token 两种形态</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+Week1 第 8 课讲了 RAG 的"概念三步"（检索→增强→生成），Week3 把它拆成工程细节。一句结论：<strong>别让模型把世界背进参数里，而是在回答时"即时给它相关资料"</strong>（just-in-time）。理由有三：知识可<strong>动态更新</strong>（改文档即改知识，不用重训）、可<strong>溯源</strong>（指出出处）、可<strong>降幻觉</strong>（答案有据可依）。<br><br>
+工程含义：RAG = <strong>检索器 p(z|x) + 生成器 p(y|x,z)</strong> 的复合系统。你的 SGRT 资料（错误码表、处置 SOP、标定规范）天然适合 RAG——它们是"事实型、会更新、需要溯源"的内容。
+</div>
+
+<h2>为什么需要检索（p10-11）</h2>
+<p>课件开场例子：问"本周哪个答疑时段最不挤？"</p>
+<ul>
+  <li><strong>仅 LLM</strong>：答"周三下午吧，周中人少"——凭印象猜。</li>
+  <li><strong>LLM + 检索</strong>：先检索到真实排队记录（"Tue 4pm 平均 14 人等；Thu 9am 只有 3 人"），再答"周四 9 点，约 3 人"。</li>
+</ul>
+<p>动机（p11）：与其让模型"记住一切"，不如在需要时给它<strong>相关且有用的内容</strong>。检索的机制优势：<strong>动态</strong>——加/改文档很容易，比重新训练便宜几个数量级。</p>
+
+<h2>Retriever-Reader 框架（p12-13）</h2>
+<p>开放域问答的标准两段式：</p>
+<pre class="loop">输入: 文档集合 D = {D1 … DN} 与问题 Q        (N 可达百万级)
+输出: 答案字符串 A
+Retriever: f(D, Q) → P1 … PK     （先粗筛出 K 篇，K 常取 100）
+Reader:    g(Q, {P1 … PK}) → A   （在 K 篇里读出答案）</pre>
+<p>早期 retriever 常用 <strong>TF-IDF</strong> 这类词频统计（DrQA, Chen et al. 2017, 83 万篇维基）。</p>
+
+<h2>RAG：把"检索"和"生成"焊在一起（p14-19）</h2>
+<p>RAG 论文的洞见：不分成两段，而是让 <strong>retriever 与 generator 联合（jointly）训练</strong>。两个部件（p16）：</p>
+<table>
+  <tr><th>部件</th><th>作用</th><th>论文里的具体实现</th></tr>
+  <tr><td>Retriever p(z|x)</td><td>给定 query，返回 top-K 段落</td><td>DPR：<code>p(z|x) ∝ exp(d(z)ᵀ q(x))</code>，d=BERT_d(z)、q=BERT_q(x)</td></tr>
+  <tr><td>Generator p(y|x,z)</td><td>给定 query + 检索到的段落，逐 token 写答案</td><td>BART（任意 encoder-decoder 都行），x 与 z 拼接后生成</td></tr>
+</table>
+<p>答案的概率（p16）：<code>p(y|x) ≈ Σ_{z∈top-K} p(z|x)·p(y|x,z)</code>——<strong>用检索器给每篇段落的答案加权</strong>。</p>
+
+<h3>两种形态：RAG-Sequence vs RAG-Token（p16）</h3>
+<table>
+  <tr><th>形态</th><th>做法</th><th>直觉</th></tr>
+  <tr><td>RAG-Sequence</td><td>选一篇段落，用<strong>同一篇</strong>生成整段答案</td><td>一篇资料答到底</td></tr>
+  <tr><td>RAG-Token</td><td><strong>每生成一个 token 都可重选段落</strong></td><td>每个词都能参考不同资料</td></tr>
+</table>
+
+<h3>训练（p17）</h3>
+<p>联合训练 retriever 与 generator，最小化<strong>负边际对数似然</strong>——即让"正确答案"在 top-K 段落加权后的概率尽量高。</p>
+
+<h2>效果（p20）</h2>
+<p>RAG 在 Natural Questions (NQ)、TriviaQA (TQA)、WebQuestions (WQ)、CuratedTrec (CT) 上，用 Exact Match 计分，超过纯参数 seq2seq 与任务专用的 retrieve-and-extract 架构；生成任务的语言更具体、多样、符合事实（论文摘要结论）。</p>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>哪些资料该 RAG 化</strong>：错误码表、故障处置 SOP、标定规范——事实型、需溯源、会修订。</li>
+  <li><strong>不该 RAG 的</strong>：需要"背下来内化"的技能（如配准算法的取舍经验）更像后训练/微调的事，不是检索。</li>
+  <li><strong>溯源是刚需</strong>：医疗场景答案必须能指出"依据哪份 SOP 哪一条"，这正是 RAG 相对纯生成的核心价值。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. RAG 相对"让模型记住一切"的三个核心好处？</p>
+  <details><summary>展开答案</summary><p>(1) 知识可动态更新（改文档即改知识，不必重训）；(2) 可溯源（能指出出处）；(3) 降幻觉（答案有据可依）。</p></details>
+  <p>Q2. Retriever-Reader 框架里，K（top-K）是什么？</p>
+  <details><summary>展开答案</summary><p>Retriever 先粗筛出的段落数（常取 100），Reader 只在这 K 篇里找答案。K 是预先设定的。</p></details>
+  <p>Q3. RAG-Sequence 和 RAG-Token 的区别？</p>
+  <details><summary>展开答案</summary><p>RAG-Sequence：整段答案用同一篇检索段落生成；RAG-Token：每生成一个 token 都可重新选择段落，一个词也能参考不同资料。</p></details>
+  <p>Q4. 你的 SGRT 场景里，哪类资料最该做 RAG？为什么？</p>
+  <details><summary>展开答案</summary><p>错误码表、处置 SOP、标定规范这类事实型、需溯源、会修订的资料。因为 RAG 的三大好处（动态更新/溯源/降幻觉）正对口，且医疗场景要求答案可指出来源。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week3 · Lecture03 · 段一 为什么 RAG</span><br>
+  ← 上一课 <a href="lecture02-0022-building-effective-agents.html">0022 · 构建高效 agent（Week2 毕业）</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture03-0024-indexing-chunking.html">0024 · 索引与分块：检索的基本单位怎么切</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件（源文件夹 week2-9.30） p10-21（Why RAG / Retriever-Reader / RAG pipeline）+ RAG 原始论文《Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks》(Lewis et al., 2021)。<br>
+Lesson 23 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 3 — LLM 是大脑，不是执行者（三座桥）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lesson 3</span>
+  <h1>LLM 是大脑，不是执行者：三个天生缺口，三座桥</h1>
+  <div class="meta">第 3 课（共 13 课）· 重建 v3 · 本课成果：能说出 LLM 作为“执行者”时的三个死穴，以及每个死穴对应哪一类补件 · 对应你 MISSION 第 3 条</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+LLM 只会一件事：<strong>根据上下文生成文本</strong>。它天生缺三样——<strong>没手、没档案、没世界</strong>。补上它们的三座桥分别是：<strong>工具（Tools）、记忆（Memory）、环境/检索（Environment &amp; Retrieval）</strong>。整套 agent 工程，本质就是给这颗大脑配齐手、档案和世界。
+</div>
+
+<h2>三个缺口 → 三座桥（本课核心表）</h2>
+<table>
+  <tr><th>缺口</th><th>具体表现</th><th>补件（桥）</th><th>学在</th></tr>
+  <tr><td>没手<br>（不能行动）</td><td>不能真去读文件、跑代码、查数据库、发请求；只能“说”它想做什么</td><td><strong>工具 Tools</strong>：把行动写成可调用的函数，让模型调用</td><td>第 9 课</td></tr>
+  <tr><td>没档案<br>（不能长期记住）</td><td>上下文窗口装不下所有历史；关掉会话就忘光</td><td><strong>记忆 Memory</strong>：把经历/知识/技能存到外部再取回</td><td>第 7 课</td></tr>
+  <tr><td>没世界<br>（没有实感/不知道实时事实）</td><td>知识冻结在训练时；会一本正经地幻觉；不知道你现场发生了什么</td><td><strong>环境 + 检索</strong>：读现场状态（Obs），用 RAG 接外部知识</td><td>第 5、8 课</td></tr>
+</table>
+
+<h2>为什么会这样（原理，别跳）</h2>
+<ol>
+  <li><strong>模型的输出模态只有文本。</strong>它能生成“我建议重启服务”，但不会真的重启服务——除非你把“重启服务”包装成一个工具交给它调用。</li>
+  <li><strong>模型是无状态的。</strong>每次调用都是全新的，除了你塞进上下文的东西，它什么都不记得。所谓“记住”，是系统帮你把历史重新拼回上下文。</li>
+  <li><strong>模型的“知道”是统计拟合，不是事实查证。</strong>它容易<strong>幻觉（hallucination）</strong>：说得像真的、其实不对。唯一的解药是让它“以观察到的真实结果为准”——这正是第 5 课 loop 里 Obs 的作用，也是 RAG 的作用。</li>
+</ol>
+<blockquote>一句话记住三者关系：<strong>工具给行动力，记忆给连续性，环境给真实感</strong>。缺任何一样，agent 都只是“会聊天的模型”。</blockquote>
+
+<h2>对照你熟悉的东西（工程桥）</h2>
+<p>把 LLM 想成一个<strong>只读过全部理论、但从没上过机的新操作工</strong>：</p>
+<ul>
+  <li>他知道“标定板要摆正”，但<strong>手没接上设备</strong>——得给他工具：拍照、读残差、调参数（≠ 让他自己想象结果）。</li>
+  <li>他记不住昨天那台机器的偏差——得给他<strong>档案（记忆）</strong>：历史标定记录、常见错误码。</li>
+  <li>他不知道此刻病房里是什么情况——得给他<strong>世界（环境 / 检索）</strong>：实时日志、设备手册的即时检索。</li>
+</ul>
+<p>你平时搭测试台时做的事（接接口、存档案、读实时状态），和这里要给 LLM 配的“三座桥”是同一件事。</p>
+
+<h2>自测</h2>
+<div class="quiz">
+  <p>Q1. 为什么说“LLM 会幻觉，唯一解药是观察真实结果”？</p>
+  <details><summary>展开答案</summary><p>因为幻觉来自“凭统计拟合生成”，光靠在文本里自我反省治不了。只有当系统把<strong>真实的 Obs（工具返回、检索到的原文、现场状态）</strong>喂回去，模型才有“以事实为准”的锚点。这就是 ReAct 缓解幻觉、RAG 提升可信度的共同原理。</p></details>
+  <p>Q2. “模型是无状态的”这句，直接推出了哪座桥的必要性？</p>
+  <details><summary>展开答案</summary><p>记忆（Memory）。因为每次调用都是全新的，想让 agent 连着上一次继续干，必须由系统把历史/知识重新拼回上下文——这就是记忆的职责（第 7 课）。</p></details>
+  <p>Q3. 把“帮我重启服务”变成 agent 能做的一件事，缺的是哪座桥？</p>
+  <details><summary>展开答案</summary><p>工具（没手）。要有一个可调用的工具（如 <code>restart_service()</code>）供模型调用，模型负责“决定调用它 + 填参数”，真正的执行在系统侧。</p></details>
+  <p>Q4. 三座桥里，哪座最直接决定“这套系统答案可不可信”？为什么？</p>
+  <details><summary>展开答案</summary><p>环境 + 检索（世界）。因为它决定了 agent 的答案能不能“落在真实事实上”（现场状态、权威文档）。医疗场景尤其如此：没有证据链的自信回答是负债。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">第一段 · 打地基</span><br>
+  ← 上一课 <a href="lecture01-0002-system-beats-scale.html">0002 · 改系统 &gt; 换模型</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture01-0004-history-of-agents.html">0004 · 智能体从哪来（历史脉络）</a>
+</div>
+
+<p class="foot">一手来源：Lilian Weng《LLM Powered Autonomous Agents》(2023) + CS329Z 课件（源文件夹 week1-9.23）“Anatomy of an Agent”。<br>
+Lesson 3 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0014 — "走迷宫"比喻补入 L1-06 + 精选题 05</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>0014 — &quot;走迷宫&quot;比喻补入 L1-06 + 精选题 05</h1>
+<p>用户看不懂 L1 第 6 课的&quot;苹果遥控器&quot;案例（CoT vs ReAct）。答疑中用&quot;走迷宫&quot;比喻
+（用户提出：像精妙迷宫，每走一步观测下一步怎么走，而非一条路走到底/都走右边）讲通。
+经确认：① 补进 L1-06；② 收进开放题库。</p>
+<h2>A. 补入课程</h2>
+<ul>
+<li>文件：<code>lessons/lecture01-0006-reasoning-methods.html</code></li>
+<li>新增小节&quot;更好懂的比喻：走迷宫（一步一探，而非一条路走到底）&quot;，位于&quot;工程桥&quot;之后、&quot;自测&quot;之前。</li>
+<li>要点：CoT=凭脑子地图一次性画路线（在回忆迷宫，非走迷宫）；ReAct=每岔路口伸脚探一下
+（Observation=探路的脚，硬事实）；没它 ReAct 退化成 CoT；探路也要限步数（防鬼打墙→MaxToolRounds）。</li>
+<li>新增自测 Q5（迷宫比喻 + 为何限步数）。</li>
+<li>一句话：CoT=开环推理，ReAct=闭环推理，Observation=传感器。</li>
+</ul>
+<h2>B. 精选题 05</h2>
+<ul>
+<li>文件：<code>综合题/开放题库/精选05-走迷宫CoT与ReAct.md</code>（★★）</li>
+<li>题面：用走迷宫比喻说清 CoT/ReAct 本质差别 + 为何限步数 + 控制论概括。</li>
+<li>来源节注明：比喻来自用户答疑，已补入 L1-06。</li>
+</ul>
+<h2>主题簇（五题）</h2>
+<p>精选01 记忆从哪来 / 02 策略从哪来 / 03 可信度从哪来 / 04 推理从哪来·值不值 /
+05 推理为什么要闭环（Observation=事实接口）。</p>
+<h2>同步更新</h2>
+<ul>
+<li><code>综合题/开放题库/README.md</code>：目录 + 一览表 + 主题簇（四→五题）。</li>
+<li><code>综合题/README.md</code>：精选题表新增精选05。</li>
+<li><code>lessons/lecture01-0006-*.html</code>：新增迷宫小节 + Q5。</li>
+<li>本记录。</li>
+</ul>
+<h2>Status</h2>
+<p>active</p>
+
+  </div>
+</div>
+</body>
+</html>

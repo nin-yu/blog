@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0010 — 新增"开放题库"体系 + 精选题 01（"模型无状态"推出哪座桥）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>0010 — 新增&quot;开放题库&quot;体系 + 精选题 01（&quot;模型无状态&quot;推出哪座桥）</h1>
+<p>用户提出一道<strong>概念串联题</strong>，随后要求：<strong>单独拎出来，建一个开放题库，作为精选题收录</strong>。
+故本记录取代最初的&quot;并入 Lecture01 专项题&quot;方案。</p>
+<h2>最终结构（新增独立体系）</h2>
+<pre><code>综合题/
+├─ README.md
+├─ 开放题库/                      ← 新建：跨讲·跨主题的精选深挖题
+│   ├─ README.md                  （定位/收题标准/命名规则/精选题一览）
+│   └─ 精选01-无状态推出哪座桥.md  （★ ★ ★ 首道精选题）
+├─ Lecture01/
+│   └─ 07-无状态推出哪座桥.md      ← 改为**入口占位**，指向开放题库精选01（不再维护正文）
+└─ Lecture02…05/
+</code></pre>
+<h2>精选题 01 内容要点</h2>
+<ul>
+<li>只给<strong>一个事实</strong>（&quot;大模型本身无状态&quot;），要求倒推一根架构承重柱。</li>
+<li>根：<strong>上下文管理（外部状态重放）</strong>。</li>
+<li>墩（缺口→机制→项目对应）：不记上轮→会话历史缓冲；工具结果会丢→tool 回填；
+不记进度→外部持久化；重启即忘→磁盘证据重建（<code>Pose_*.bmp</code> 推断）；跨会话无记忆→长期记忆/RAG；
+附：上下文有限→token 裁剪。</li>
+<li>追问：为什么每轮发<strong>全量</strong>历史（模型看不到上一轮）→ 逼出上下文窗口约束 / context engineering。</li>
+<li>加分：本质 = &quot;<strong>无状态计算 + 外部状态存储 = 有状态行为</strong>&quot;；先例 = HTTP 无状态+session / REST / 函数式编程显式 state。</li>
+<li>附「延伸关联网」：把题目能牵出的 L1/L2/L4/RAG 画成树。</li>
+</ul>
+<h2>为什么单独拎出（用户意图）</h2>
+<ul>
+<li>这题<strong>跨讲、承重、可回味、有工程落点</strong>，性质是&quot;精选题&quot;而非&quot;某讲专项题&quot;。</li>
+<li>开放题库与&quot;按讲结业考试&quot;分工：后者考&quot;这讲学会没&quot;，前者考&quot;能不能把几讲串成网&quot;。</li>
+</ul>
+<h2>同步更新</h2>
+<ul>
+<li>新建 <code>综合题/开放题库/README.md</code>、<code>综合题/开放题库/精选01-无状态推出哪座桥.md</code>。</li>
+<li><code>综合题/Lecture01/07-无状态推出哪座桥.md</code> → 改为入口占位（防两处重复维护）。</li>
+<li><code>综合题/README.md</code> → 目录结构加开放题库；Lecture01 表第 7 行标注&quot;已迁移&quot;；新增&quot;三、开放题库·精选题&quot;一节。</li>
+</ul>
+<h2>命名约定（后续收题）</h2>
+<ul>
+<li>精选题文件名：<code>精选NN-短标题.md</code>，放 <code>综合题/开放题库/</code>。</li>
+<li>够格标准（README 内已写）：承重性 / 串联性(≥3讲) / 可回味 / 有工程落点。</li>
+</ul>
+<h2>Status</h2>
+<p>active</p>
+
+  </div>
+</div>
+</body>
+</html>

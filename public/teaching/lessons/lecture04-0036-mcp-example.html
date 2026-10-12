@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 36 — MCP 实战：把 REST 包装成 MCP 工具</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week4 · Lecture04 · Lesson 36</span>
+  <h1>MCP 实战：REST 路由 → MCP 工具，只要一个 OpenAPI 规范</h1>
+  <div class="meta">第 36 课（Lecture04 第 6 课）· 来源：lecture04.pdf p55-56（FastMCP + OpenAPI）+ MCP 规范 · 本课成果：看懂"用 OpenAPI 自动生成 MCP 工具"，以及"入站/出站双令牌"的鉴权写法（据课件原码）</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+你不需要手写每个 MCP 工具：<strong>把后端的 OpenAPI 规范喂给 FastMCP，它会按 REST 路由自动生成对应的 MCP 工具</strong>（p55）。<br><br>
+鉴权要点：<strong>入站（agent→MCP server）与出站（MCP server→后端 REST API）是两套令牌</strong>，分开配置（p56）。这套模式可直接搬到你的 SGRT 设备 API：先有 OpenAPI，再一键变 MCP。
+</div>
+
+<h2>模式：REST 路由 → MCP 工具（p55）</h2>
+<table>
+  <tr><th>REST route</th><th>MCP tool</th></tr>
+  <tr><td>GET /assignments</td><td><code>list_assignments</code></td></tr>
+  <tr><td>GET /submissions</td><td><code>get_submissions</code></td></tr>
+  <tr><td>POST /grade</td><td><code>post_grade</code></td></tr>
+</table>
+<p>生成代码（课件原码）：</p>
+<pre class="loop">from fastmcp import FastMCP
+import httpx
+
+api = httpx.AsyncClient(
+    base_url="https://lms.stanford.edu/api/v1")
+
+spec = (await api.get("/openapi.json")).json()
+
+mcp = FastMCP.from_openapi(
+    openapi_spec=spec,
+    client=api,
+    name="Course MCP",
+)
+
+# → list_assignments, get_submissions, post_grade
+# 参考: https://gofastmcp.com/integrations/openapi</pre>
+<blockquote>关键：<code>FastMCP.from_openapi(...)</code> 自动把 OpenAPI 里的每个 endpoint 变成一个具名工具。你只要维护好后端的 OpenAPI，工具清单就自动跟进。</blockquote>
+
+<h2>鉴权：入站 vs 出站（p56）</h2>
+<pre class="loop">Agent --inbound · AGENT_TOKEN--> Course MCP server --outbound · LMS_TOKEN--> LMS REST API</pre>
+<pre class="loop">import os, httpx
+from fastmcp import FastMCP
+from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
+
+# outbound: server → LMS
+api = httpx.AsyncClient(
+    base_url="https://lms.stanford.edu/api/v1",
+    headers={"Authorization":
+             f"Bearer {os.environ['LMS_TOKEN']}"})
+
+# inbound: agent → server
+who_may_call = StaticTokenVerifier(tokens={
+    os.environ["AGENT_TOKEN"]: {"client_id": "ta-agent"}})
+
+mcp = FastMCP.from_openapi(openapi_spec=spec, client=api,
+                           name="Course MCP", auth=who_may_call)
+mcp.run(transport="http", port=8001)
+# 参考: https://gofastmcp.com/servers/auth/token-verification</pre>
+<p>两处分权：</p>
+<ul>
+  <li><strong>outbound（LMS_TOKEN）</strong>：MCP server 访问后端 REST API 的凭证——决定"server 能对被包装的服务做什么"。</li>
+  <li><strong>inbound（AGENT_TOKEN + StaticTokenVerifier）</strong>：谁能调用这个 MCP server——决定"哪些 agent 能调工具"。</li>
+</ul>
+
+<h2>三个工程要点</h2>
+<ol>
+  <li><strong>OpenAPI 是单一事实源</strong>：后端 API 变了，重新拉 openapi.json 即可，工具自动同步，无需手改工具定义。</li>
+  <li><strong>两层令牌分开</strong>：别用一个令牌打通全链路——越权风险高。入站身份（谁调）和出站身份（能操作什么）要能独立撤销。</li>
+  <li><strong>transport 可选</strong>：课件示例用 <code>transport="http"</code>, port=8001；本地也可用 stdio（子进程方式，见规范 lifecycle）。</li>
+</ol>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>设备 API 包 MCP 的捷径</strong>：如果你的标定/日志查询服务已有 OpenAPI，直接 <code>from_openapi</code> 生成工具，省去手写。</li>
+  <li><strong>权限分级</strong>：只读查询用一套只读令牌（outbound），写操作（触发标定）用另一套高权限令牌，且强制人审。</li>
+  <li><strong>审计</strong>：inbound 的 client_id（如 "qa-agent" / "troubleshoot-agent"）可用于记录"谁调了什么工具"，满足医疗合规。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. FastMCP.from_openapi 帮你省了什么？OpenAPI 在这里的角色是什么？</p>
+  <details><summary>展开答案</summary><p>省去手写每个 MCP 工具——它按 OpenAPI 的每个 endpoint 自动生成具名工具。OpenAPI 成为"单一事实源"，后端 API 更新后重新拉取即可同步工具。</p></details>
+  <p>Q2. 入站和出站令牌分别管什么？为什么必须分开？</p>
+  <details><summary>展开答案</summary><p>入站（AGENT_TOKEN）管"谁能调用 MCP server"；出站（LMS_TOKEN）管"MCP server 能对被包装的后端 API 做什么"。分开是为了最小权限与独立撤销，避免一个令牌打通全链路造成越权。</p></details>
+  <p>Q3. 课件里 MCP server 用什么 transport？还有别的选择吗？</p>
+  <details><summary>展开答案</summary><p>示例用 http（port=8001）。也可用 stdio（子进程方式），见 MCP 规范的 lifecycle/transports。</p></details>
+  <p>Q4. 你的写操作工具（触发标定），鉴权和流程该怎么设计？</p>
+  <details><summary>展开答案</summary><p>用单独的写权限令牌（outbound），inbound 强制人类确认（human-in-the-loop），记录 client_id 做审计；与只读工具隔离在不同 server/凭证，降低被误用或越权风险。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture04 · 段三 标准接口</span><br>
+  ← 上一课 <a href="lecture04-0035-mcp-deep-dive.html">0035 · MCP 深入</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture04-0037-evaluating-tool-use.html">0037 · 评估工具使用：BFCL / ToolBench / τ-bench</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture04 课件（源文件夹 week3-10.5） p55-56（FastMCP from_openapi + 入站/出站鉴权原码，参考 gofastmcp.com）+ MCP 规范 2025-06-18。<br>
+Lesson 36 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

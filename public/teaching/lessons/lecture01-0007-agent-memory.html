@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 7 — 记忆三类：情景 / 语义 / 程序</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lesson 7</span>
+  <h1>记忆三类：情景 / 语义 / 程序——区分点是“怎么写进去的”</h1>
+  <div class="meta">第 7 课（共 13 课）· 重建 v3 · 本课成果：能用“写入方式”一刀切开三类记忆，并给每类配一个 SGRT 例子 · 对应第 3 课“没档案”那座桥</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+上下文窗口装不下全部事件流；就算装得下，也很难聚焦相关事件——所以需要<strong>外部记忆</strong>。按<strong>内容</strong>分三类（借鉴人的长期记忆）：<br>
+<strong>情景记忆</strong>存经历、<strong>语义记忆</strong>存知识、<strong>程序记忆</strong>存技能。<br>最关键的区分点不是“存什么”，而是<strong>“怎么写进去”</strong>。
+</div>
+
+<h2>为什么要外挂记忆（原理）</h2>
+<p>模型是无状态的（第 3 课）。一个长任务会不断产生新事件，全塞进上下文有两个死结：<strong>① 装不下</strong>（超窗口被截断）；<strong>② 难聚焦</strong>（相关内容淹没在噪声里，注意力被稀释）。记忆系统的作用，就是“把该记的存到外面，需要时按相关性取回来”。</p>
+
+<h2>三类记忆（本课核心表）</h2>
+<table>
+  <tr><th>类型</th><th>存什么</th><th>写入方式（区分关键）</th><th>读取方式</th><th>代表</th></tr>
+  <tr><td><strong>情景记忆</strong><br>Episodic</td><td>经历过的经验（事件流）</td><td>追加式（append-only）事件流</td><td>启发式打分检索</td><td>Generative Agents（Park 2023）</td></tr>
+  <tr><td><strong>语义记忆</strong><br>Semantic</td><td>知识（结论、事实）</td><td>LLM 对事件<strong>推理后</strong>再写入</td><td>检索</td><td>—</td></tr>
+  <tr><td><strong>程序记忆</strong><br>Procedural</td><td>技能（会做某事的代码）</td><td>写成代码技能</td><td>向量嵌入检索</td><td>Voyager（Wang 2023）</td></tr>
+</table>
+<blockquote>一句话分辨三者的写入口径：<strong>情景=原样记发生的事；语义=想一遍后记结论；程序=把“怎么做”固化成可执行技能。</strong></blockquote>
+
+<h2>三类怎么选（工程判断）</h2>
+<ol>
+  <li><strong>要“还原当时现场”</strong>（谁在什么时候做了什么、日志顺序）→ 情景记忆，追加式保真。</li>
+  <li><strong>要“提炼规律/结论”</strong>（“这台机器连续三次标定都偏左 1mm，像是床板问题”）→ 语义记忆，先由 LLM 推理成知识再存。</li>
+  <li><strong>要“下次自动会做”</strong>（“遇到这种错误码就走这套处置流程”）→ 程序记忆，固化成可复用的代码/技能。</li>
+</ol>
+
+<h2>对照你熟悉的东西（工程桥）</h2>
+<ul>
+  <li>情景记忆 ≈ <strong>原始日志与时间戳轨迹</strong>（保真、可按时间回放）。</li>
+  <li>语义记忆 ≈ <strong>你写的故障复盘结论 / 偏差规律总结</strong>（人/模型加工后的知识）。</li>
+  <li>程序记忆 ≈ <strong>封装好的标定量测脚本、SOP 自动化</strong>（能直接调用的技能）。</li>
+</ul>
+<p>你现在的做法（日志全存 + 手工复盘 + 脚本沉淀），本质就是同时在维护这三种记忆——只是还没有一个 agent 自动帮你写、自动帮你取。</p>
+
+<h2>自测</h2>
+<div class="quiz">
+  <p>Q1. 三类记忆的<strong>区分点</strong>是什么？（提示：不是内容）</p>
+  <details><summary>展开答案</summary><p>写入方式。情景=追加式事件流；语义=LLM 推理后写入；程序=写成代码技能。内容会重叠，写入机制才是分类依据。</p></details>
+  <p>Q2. “上次标定时残差图右下角有一片异常高，后来确认是遮挡”——这更像哪类记忆？如果要变成“下次自动规避”呢？</p>
+  <details><summary>展开答案</summary><p>第一句是情景记忆（一次具体经历）。要“下次自动规避”，得把它加工成<strong>程序记忆</strong>——固化成一条可执行的检查/处置技能（LLM 先做语义提炼，再写成技能）。</p></details>
+  <p>Q3. 为什么“上下文窗口够大”并不能替代外挂记忆？</p>
+  <details><summary>展开答案</summary><p>因为除了容量，还有“聚焦”问题：相关事件会被大量无关内容稀释，注意力下降、成本飙升。外挂记忆是按相关性<strong>选择性</strong>取回，而非全量塞入。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">第二段 · 智能体本体</span><br>
+  ← 上一课 <a href="lecture01-0006-reasoning-methods.html">0006 · 推理方法</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture01-0008-rag.html">0008 · RAG：先查“你们的资料”再作答</a>
+</div>
+
+<p class="foot">一手来源：CS329Z 课件（源文件夹 week1-9.23） p44-50 + Generative Agents (Park 2023) / Voyager (Wang 2023)。<br>
+Lesson 7 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

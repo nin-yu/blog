@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0007 — 教学空间新增 Lecture05（Frameworks &amp; Orchestration）+ 全部课页脚加"来源文件夹"标注</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>0007 — 教学空间新增 Lecture05（Frameworks &amp; Orchestration）+ 全部课页脚加&quot;来源文件夹&quot;标注</h1>
+<p>用户要求：根据 <code>C:\Users\nin\Desktop\hermes\agent\week3-10.7</code> 生成 lecture5 讲课内容；并按&quot;每个 lecture 的文件夹名（如 week3-10.7）&quot;更新前缀。</p>
+<h2>前缀的处理（用户明确选择）</h2>
+<p>用户在选项中选择：<strong>保持 lecture01..lecture05 前缀不变，改为在每课页内标注&quot;来源文件夹&quot;</strong>（不重命名文件）。</p>
+<ul>
+<li>已给全部 44 课页脚加&quot;来源文件夹：weekX-Y.Z&quot;（lecture01–05 各对应见下）。</li>
+<li>文件名保持稳定（index 与课间链接零改动）。</li>
+</ul>
+<h3>来源文件夹映射（关键发现）</h3>
+<p><code>week1/ week2/ week3/</code> 三个旧文件夹<strong>现在是空的</strong>，PDF 都在带日期的文件夹里：</p>
+<table>
+<thead>
+<tr>
+<th>前缀</th>
+<th>源文件夹</th>
+<th>课件</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>lecture01</td>
+<td>week1-9.23/slides/</td>
+<td>lecture01.pdf</td>
+</tr>
+<tr>
+<td>lecture02</td>
+<td>week2-9.28/</td>
+<td>lecture02.pdf</td>
+</tr>
+<tr>
+<td>lecture03</td>
+<td>week2-9.30/</td>
+<td>lecture03.pdf</td>
+</tr>
+<tr>
+<td>lecture04</td>
+<td>week3-10.5/</td>
+<td>lecture04.pdf</td>
+</tr>
+<tr>
+<td>lecture05</td>
+<td>week3-10.7/</td>
+<td>lecture05.pdf</td>
+</tr>
+<tr>
+<td>注：此前把 lecture03 归为&quot;week3&quot;是错的，实际是 week2-9.30（RAG 那讲）。本次已按真实文件夹名全部改正。</td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<h2>输入材料</h2>
+<ul>
+<li>week3-10.7/lecture05.pdf（132 页，CS329Z &quot;Frameworks &amp; Orchestration&quot;）：三支柱 Data/System/Eval → 框架谱系 → DSPy → LangGraph → 开源 harness → 编排与遥测（Temporal）→ 最佳实践。</li>
+<li>week3-10.7/DSPy 论文（Khattab et al., 32 页）。</li>
+</ul>
+<h2>做了什么</h2>
+<p>新增 <strong>lecture05 6 课</strong>（编号 0039–0044，<code>lecture05-</code> 前缀）：</p>
+<ul>
+<li>0039 什么叫&quot;工程化&quot;Agent：三支柱与框架谱系（p4-18）</li>
+<li>0040 DSPy：签名/模块/优化器（p21-51 + DSPy 论文）</li>
+<li>0041 LangGraph：State/Node/Edge（p52-77）</li>
+<li>0042 开源 Agent Harness 对比（p78-89）</li>
+<li>0043 编排与可观测性：Temporal / LangSmith / LangFuse（p90-122）</li>
+<li>0044 工程最佳实践与挑战（p123-132，Lecture05 收官）</li>
+</ul>
+<p>同步更新：index.html（Lecture05 路线表 + 6 条课时 + 标题/meta）、RESOURCES.md（Lecture05 一节）、glossary.md（Lecture05 术语 20 条）、NOTES.md（含来源文件夹映射）、本学习记录。</p>
+<h2>关于 lecture05 的 PDF 图表</h2>
+<p>lecture05 大量是<strong>代码演示位图</strong>（Signatures/Modules/Optimizers/Graph 的截图）。内容基于<strong>文字页</strong>（p21-22 DSPy 三件套、p51 DSPy Summary、p76 LangGraph Summary、p13/p122/p125/p129/p130 等）与 DSPy 论文摘要；代码细节未臆造。</p>
+<h2>Evidence</h2>
+<p>用户原话：&quot;根据C:\Users\nin\Desktop\hermes\agent\week3-10.7里的内容生成下lecture5的讲课内容，然后根据每个lecture的文件夹名也就是week3-10.7这样的格式更新下前缀&quot;。随后在澄清问题中选择&quot;保持 lecture01..lecture05 前缀不变，只在每个 lesson 页内标注&#39;来源文件夹&#39;&quot;。模型：本会话默认 deepseek-chat（provider: deepseek）。</p>
+<h2>Implications</h2>
+<ul>
+<li>教学空间现共 44 课，覆盖 CS329Z Lecture 1–5。</li>
+<li>以后新增课：文件名前缀仍用 lectureNN；页脚加&quot;来源文件夹&quot;标注（先 find lectureNN.pdf 定位文件夹）。</li>
+<li>下一步仍可推进 MISSION 毕业考核（综合题 .md 作答 → 评卷）。</li>
+</ul>
+<h2>Status</h2>
+<p>active（Lecture05 6 课已交付 + 全 44 课来源标注；链接校验 + 浏览器冒烟通过）</p>
+
+  </div>
+</div>
+</body>
+</html>

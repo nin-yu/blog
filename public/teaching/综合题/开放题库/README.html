@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>开放题库 · 精选题</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>开放题库 · 精选题</h1>
+<blockquote>
+<p>定位：<strong>跨讲、跨主题</strong>的开放题库，独立于按讲分的 <code>综合题/Lecture01…05/</code>。
+这里收的是——打通多讲概念、能反复回味、一题牵出一片知识网的<strong>精选式深挖题</strong>。
+规则：题目 + 「我的作答」区（你自己写）+ 「参考解析」（评卷用）+ 「延伸关联网」（这题能牵出哪些课）。
+与结业考试的区别：结业考试考&quot;这一讲你学会了吗&quot;；精选题考&quot;你能不能把几讲串成一张网&quot;。</p>
+</blockquote>
+<h2>目录结构</h2>
+<pre><code>综合题/开放题库/
+├─ README.md            ← 本文件（题库总览）
+├─ 精选01-无状态推出哪座桥.md
+├─ 精选02-LLM时代vsRL时代.md
+├─ 精选03-大厨比喻与护栏必然性.md
+├─ 精选04-推理是解药还是帮凶.md
+├─ 精选05-走迷宫CoT与ReAct.md
+└─ …（后续精选题按 精选NN-短标题.md 命名）
+</code></pre>
+<h2>精选题一览</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>题目</th>
+<th>牵出哪些讲</th>
+<th>难度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>精选01</td>
+<td><a href="%E7%B2%BE%E9%80%8901-%E6%97%A0%E7%8A%B6%E6%80%81%E6%8E%A8%E5%87%BA%E5%93%AA%E5%BA%A7%E6%A1%A5.html">从&quot;模型无状态&quot;倒推：必须架起哪座桥？</a></td>
+<td>L1 agent loop/memory · L2 context engineering · L4 工具回填</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>精选02</td>
+<td><a href="%E7%B2%BE%E9%80%8902-LLM%E6%97%B6%E4%BB%A3vsRL%E6%97%B6%E4%BB%A3.html">&quot;LLM 时代&quot;相比&quot;RL 时代&quot;，给 agent 带来的最本质变化是什么？</a></td>
+<td>L1 agent 定义 · L2 训练三阶段/in-context · L5 工程化</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>精选03</td>
+<td><a href="%E7%B2%BE%E9%80%8903-%E5%A4%A7%E5%8E%A8%E6%AF%94%E5%96%BB%E4%B8%8E%E6%8A%A4%E6%A0%8F%E5%BF%85%E7%84%B6%E6%80%A7.html">如果 LLM 是&quot;会写菜谱却没下过厨&quot;的大厨，为什么必须配工具和确认闸门？</a></td>
+<td>L1 agent 组成 · L4 工具层/失败 · L5 可靠性安全</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>精选04</td>
+<td><a href="%E7%B2%BE%E9%80%8904-%E6%8E%A8%E7%90%86%E6%98%AF%E8%A7%A3%E8%8D%AF%E8%BF%98%E6%98%AF%E5%B8%AE%E5%87%B6.html">推理能力是治幻觉的解药，还是帮凶？</a></td>
+<td>L1 reasoning/ReAct · L2 inference-time scaling · L4 工具vs自推理</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>精选05</td>
+<td><a href="%E7%B2%BE%E9%80%8905-%E8%B5%B0%E8%BF%B7%E5%AE%ABCoT%E4%B8%8EReAct.html">为什么&quot;走迷宫&quot;比&quot;一条路走到底&quot;更接近 agent 的真相？（CoT vs ReAct）</a></td>
+<td>L1 reasoning/agent loop · L4 工具=探路的脚 · L5 可靠性</td>
+<td>★★</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>主题簇</strong>：五题同根——<strong>能力从哪来、存在哪、为什么不可全信、值不值、为什么要闭环</strong>。
+精选01 记忆从哪来 · 精选02 策略从哪来 · 精选03 可信度从哪来（工具+护栏）·
+精选04 推理从哪来/值不值（能力放大器，非事实来源）· 精选05 推理为什么要闭环（Observation=事实接口）。</p>
+</blockquote>
+<h2>收题标准（什么样的题够格进&quot;精选&quot;）</h2>
+<ol>
+<li><strong>承重性</strong>：它考的是一个&quot;架构根&quot;，不是某个名词定义。答对了，你就理解了半个 agent 设计。</li>
+<li><strong>串联性</strong>：一题能牵出 3 讲以上的概念，迫使你把孤立知识点连成网。</li>
+<li><strong>可回味</strong>：不是一次性事实题，隔一段时间重答会有新理解。</li>
+<li><strong>有工程落点</strong>：能对到你自己的项目（BPS Copilot / Trio-Track）上，不是纯纸上谈兵。</li>
+</ol>
+<h2>作答与评卷</h2>
+<ul>
+<li>每题一个 .md，「我的作答」区留给你直接编辑。</li>
+<li>答完（哪怕只答一题）说&quot;评卷&quot;，我按每题末尾「参考解析」+「评判关注点」逐条对。</li>
+<li>铁律不变：<strong>覆盖 ≠ 领会</strong>，写下来的才算证据。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

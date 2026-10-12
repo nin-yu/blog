@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NOTES.md</title>
+<link rel="stylesheet" href="assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>NOTES.md</h1>
+<p>教学偏好（从用户画像与历次对话整理，供教学设计参考）：</p>
+<ul>
+<li>语言：中文讲解。</li>
+<li>结构：先概念/原理，再细节，直接给结论；默认不用类比（明确要求&quot;费曼方式&quot;时才用直觉类比+逐层因果链）。工程桥（用用户熟悉的 ICP/门控/标定做对应）不算类比，是他偏好的锚点。</li>
+<li>指标/数值要求：大白话解释含义 + 对工程的实质影响（精度/速度/成本），给具体数字。</li>
+<li>自测形式：判断/选择均可，附答案与解析；<strong>答案默认折叠</strong>（HTML <code>&lt;details&gt;</code>），逼&quot;先答后看&quot;。</li>
+<li>学习铁律：<strong>覆盖≠领会</strong>（学习记录 0001）。用户写过完整笔记 ≠ 概念吃透；领会证据 = 他自己的作答。所以 v2 重建把&quot;workflow vs agent 判定&quot;从第 1 课移到第 12 课毕业位，概念课全部前置。</li>
+<li>综合题用 <strong>Markdown 作答制</strong>：每题一个 .md，作答区就在题目下（用户明确要求，方便记录与复盘）。评卷时我按每题末尾&quot;评判关注点&quot;逐条对。</li>
+<li>用户背景：机器人/工业视觉/结构光/医学图像工程师（SGRT 放疗表面追踪），工程实现导向；agent 设计零基础。</li>
+<li>教学空间：/mnt/c/Users/nin/Desktop/hermes/agent/teaching/（2026-10-09 用 deepseek-flash=DeepSeek-V4.1-Flash 重生成 v3；旧版存档 lessons-glm53-old/ 与 lessons-v4-old/ 保留）。</li>
+<li>Week2（2026-10-09 新增）：课程来源=lecture02.pdf（CS329Z &quot;LLMs for Builders&quot;）+ Anthropic《Building effective agents》《Effective context engineering》。文件名前缀标来源：lecture01-<em>=第1讲、lecture02-</em>=第2讲；Week1 旧 13 课已改名加 lecture01- 前缀（备份 lessons-preprename-backup/）。改名前务必备份、改后务必同步 index+课间链接。</li>
+<li>阅读 PDF 图表：本机 aux 视觉模型常不可用（404）。lecture02 约 77 页为原生矢量图（文本层+坐标可精确读），约 79 页为导入位图（需视觉/OCR）。引用图内容前先判类型，勿臆造位图。</li>
+<li>Week3（2026-10-09 新增）：课程来源=lecture03.pdf（CS329Z &quot;RAG + Agents&quot;）+ RAG 原始论文 + ColBERT 论文。新增 lesson 0023-0030（<code>lecture03-*</code> 前缀）。lecture03 绝大多数页是导入位图（63 页中 33 raster / 26 mixed / 仅 4 native），内容全部基于文本层+公式页，位图只引标题未臆造。</li>
+<li>Week4（2026-10-09 新增）：课程来源=week3-10.5/lecture04.pdf（CS329Z &quot;Tool Use&quot;）+ MCP 规范 2025-06-18。新增 lesson 0031-0038（<code>lecture04-*</code> 前缀）。lecture04 同样以位图为主（68 页中 39 raster / 24 mixed / 5 native），内容基于文本层+代码页（含 p55-56 的 FastMCP 原码）。MCP 细节取自规范子页（architecture/tools/lifecycle）。</li>
+<li>Lecture05（2026-10-09 新增）：课程来源=week3-10.7/lecture05.pdf（CS329Z &quot;Frameworks &amp; Orchestration&quot;）+ DSPy 论文。新增 lesson 0039-0044（<code>lecture05-*</code> 前缀）。lecture05 多为位图（代码演示页），内容基于文本层+p21-22/p51/p76 等文字页。</li>
+<li><strong>来源文件夹映射（重要）</strong>：lecture01=week1-9.23/slides、lecture02=week2-9.28、lecture03=week2-9.30、lecture04=week3-10.5、lecture05=week3-10.7。用户要求：lesson 前缀保持 lectureNN 不变，改为<strong>在每课页脚标注&quot;来源文件夹&quot;</strong>（已全部 44 课加注）。注意 week1/week2/week3 三个旧文件夹已空，PDF 都在带日期的文件夹里。以后新增课：先 find 定位 lectureNN.pdf 所在文件夹，再把文件夹名写进页脚。</li>
+<li><strong>综合结业考试题（每讲一道，2026-10-09 新增）</strong>：<code>综合题/结业考试-LectureNN-*.md</code>（5 道），各讲最后一课底部有入口块；格式=题目+「我的作答」+「评判关注点」。Lecture01 另保留早期 6 道专项题。以后新增讲：同法补一道结业考试 + 在最后一课加入口块 + 更新 综合题/README 与 index。</li>
+<li><strong>综合题目录结构（2026-10-09 重组）</strong>：按讲分子文件夹 <code>综合题/Lecture01/ … Lecture05/</code>。每讲放 1 道结业考试；Lecture01 的 6 道早期专项题也归入 <code>Lecture01/</code>。新增讲：在对应 <code>LectureNN/</code> 放结业考试，并同步该讲最后一课入口块 + index + README。注意：<code>lessons-preprename-backup/</code> 是改名前的冻结归档，其内部链接已失效且<strong>不维护</strong>（用户要求保留存档）。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>结业考试 · Lecture04（Tool Use + MCP）★★★</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>结业考试 · Lecture04（Tool Use + MCP）★★★</h1>
+<blockquote>
+<p>对齐 CS329Z Lecture 04 · 教学空间 lesson lecture04-0031 ~ 0038 · 源文件夹 week3-10.5
+这是 Lecture04 的<strong>综合结业考试题</strong>：把工具层设计与 MCP 落地做完整。
+作答方式：在下面「我的作答」区写。答完告诉我&quot;评卷&quot;。</p>
+</blockquote>
+<hr>
+<h2>题目</h2>
+<p><strong>为 SGRT 设备做一套工具层 + MCP 服务设计。</strong></p>
+<p>场景：你有一批设备能力要暴露给 agent：读标定日志、查错误码、读床板 QA 数值、触发一次标定（写操作）。请设计：</p>
+<ol>
+<li><strong>工具定义</strong>：从 Lecture04 的&quot;工具 = LM 生成调用的外部函数&quot;出发，写出你会给&quot;读标定日志&quot;这个工具定义的 name / description / inputSchema 要点（参数名怎么起、要防哪些错）。</li>
+<li><strong>标准接口选型</strong>：REST / 函数调用 / MCP，这套设备工具该用哪一代？为什么？如果你希望同一套工具被 IDE、聊天界面、自研 agent 共用，结论变不变？</li>
+<li><strong>MCP 落地</strong>：画 MCP 的 Host/Client/Server 关系，说明 tools/list 与 tools/call 各做什么。你的&quot;触发标定&quot;工具该放在哪个 Server、要不要人审？</li>
+<li><strong>鉴权</strong>：说出&quot;入站 vs 出站&quot;双令牌分别管什么，并说明为什么写操作要用单独凭据。</li>
+<li><strong>失败设计</strong>：从&quot;单次 / 多步链 / 对话&quot;三层各挑一个你最可能踩的失败（如幻觉工具、顺序错、该问却猜），写具体对策。</li>
+<li><strong>验收</strong>：怎么用 Pass^k 思路验收&quot;触发标定&quot;这条链路的可靠性？</li>
+</ol>
+<hr>
+<h2>我的作答</h2>
+<h3>1. 工具定义</h3>
+<p>（你的回答）</p>
+<h3>2. 标准接口选型</h3>
+<p>（你的回答）</p>
+<h3>3. MCP 落地</h3>
+<p>（你的回答）</p>
+<h3>4. 鉴权</h3>
+<p>（你的回答）</p>
+<h3>5. 失败设计</h3>
+<p>（你的回答）</p>
+<h3>6. 验收</h3>
+<p>（你的回答）</p>
+<hr>
+<h2>评判关注点（评卷时用）</h2>
+<ul>
+<li>第 1 题：name 清晰、description 说清用途+边界、inputSchema 用 json schema 约束类型/必填；参数防呆（如强制完整设备 ID，别用模糊简称）。</li>
+<li>第 2 题：函数调用式 schema 已够；若要跨多宿主复用 → MCP。理由要落到&quot;复用/运行时发现&quot;。</li>
+<li>第 3 题：Host 管生命周期/权限/同意、Client 1:1 连 Server、Server 提供能力；tools/list 发现、tools/call 执行；写操作强人审（human-in-the-loop）。</li>
+<li>第 4 题：入站=agent→server（谁能调），出站=server→设备 API（能做什么）；写操作用单独凭据以最小权限+独立撤销。</li>
+<li>第 5 题：单次（幻觉工具→白名单校验 / 参数错→schema 校验）、多步链（顺序错→写前置条件）、对话（该问却猜→elicitation/澄清路径），对策具体。</li>
+<li>第 6 题：连续 k 次都成功（Pass^k），而非&quot;试一次成功&quot;；要求固定温度、可复现。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

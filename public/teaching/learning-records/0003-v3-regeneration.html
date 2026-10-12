@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0003 — 教学空间 v3：用 deepseek-flash（DeepSeek-V4.1-Flash）重生成 13 课</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>0003 — 教学空间 v3：用 deepseek-flash（DeepSeek-V4.1-Flash）重生成 13 课</h1>
+<p>用户要求“用当前模型重写全部 13 课，旧版另存备份”。本次为 v3 再生成，课程结构与教学法不变（概念先行、判定课殿后、折叠式自测、综合题 Markdown 作答制），仅更换生成模型并重写正文。</p>
+<h2>做了什么</h2>
+<ol>
+<li>归档旧版：<code>lessons - glm53</code> → <code>lessons-glm53-old/</code>（与生成前的 lessons/ 逐字节相同）。加上既有 <code>lessons-v4-old/</code>，现有两份存档。</li>
+<li>用第 5 课教学空间重写全部 13 课（0001–0013），保持同名文件与内部链接不变，故 index.html 无需改链接。</li>
+<li>每课统一：结论先行（takeaway）、原理、SGRT 工程桥、折叠式自测（<code>&lt;details&gt;&lt;summary&gt;</code> 先答后看）、课间导航（footnav）。</li>
+<li>index.html meta 标注 “重建版 v3（DeepSeek-V4.1-Flash 重生成）”，footer 列出两份存档。</li>
+<li>校验：14 个 HTML 的内部 href/src 全部存在（0 缺失）；浏览器冒烟通过（lesson.css 加载、body 底色 #f5f6f8、summary 为强调蓝 #1a73e8、details 默认折叠可展开）。</li>
+</ol>
+<h2>Evidence</h2>
+<p>用户原话：“更新下 C:\Users\nin\Desktop\hermes\agent\teaching 中的教学空间的课程”，并在选项中选择“用当前模型(deepseek-flash/V4.1)重写全部13课，旧版另存备份”。模型：本会话默认 deepseek-flash（provider: deepseek 官方）。</p>
+<h2>Implications</h2>
+<ul>
+<li>下一步仍是 MISSION 的毕业考核：用户在 <code>综合题/</code>（6 道 .md）用 Markdown 作答 → 我按每题“评判关注点”评卷 → 结论写入新的 learning-record 作为“领会证据”。</li>
+<li>通过后进入 MISSION Success 2：从“日常 QA workflow”起步，亲手搭最小可评估版本。</li>
+<li>三份课版可作 diff 材料，对比同一结构在不同模型下的讲法差异（后续若要研究“模型对教学效果的影响”可用）。</li>
+</ul>
+<h2>Status</h2>
+<p>active（v3 已交付并校验通过；等待用户作答综合题）</p>
+
+  </div>
+</div>
+</body>
+</html>

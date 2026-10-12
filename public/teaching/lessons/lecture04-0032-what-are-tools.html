@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 32 — 什么是工具 + Toolformer</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week4 · Lecture04 · Lesson 32</span>
+  <h1>工具的定义 + 让模型"自学"调用工具：Toolformer</h1>
+  <div class="meta">第 32 课（Lecture04 第 2 课）· 来源：lecture04.pdf p18-20, p22-31 · 本课成果：记住工具的准确定义，理解 Toolformer 用"自监督 + 损失过滤"教会模型何时调用 API、传什么参数</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+工具的准确定义（p18）：<strong>一个"运行在 LM 外部"的计算机程序的函数接口，由 LM 生成函数调用和输入参数来使用它</strong>。关键在"LM 生成调用"——不是人写死。<br><br>
+Toolformer（Schick et al., 2023）回答"怎么让模型学会用工具"：<strong>自监督 + 损失过滤</strong>。给每个 API 几条示范，让模型自己采样"哪里该插 API 调用"，执行后<strong>只保留"能降低后续 token 预测损失"的调用</strong>，用这批数据微调。
+</div>
+
+<h2>工具的定义与场景（p18-20）</h2>
+<p>定义原文（Wang et al., 2024, "What are tools anyway? A survey from the LM perspective"）：</p>
+<blockquote>An LM-used tool is a function interface to a computer program that runs <strong>externally</strong> to the LM, where the <strong>LM generates the function calls and input arguments</strong> in order to use the tool.</blockquote>
+<p>基本例子（p20）："17,423 × 892 = ?" → 模型输出 <code>calculate(17423 × 892)</code>（调用工具）→ 工具返回 <code>15,541,316</code>（返回结果）。</p>
+
+<h2>Toolformer 的核心主张（p22）</h2>
+<p>标题就点题："LLMs can teach <strong>themselves</strong> to use tools"。Toolformer 训练 LM 去决定：</p>
+<ol>
+  <li><strong>which APIs</strong> to call（调哪个）</li>
+  <li><strong>when</strong> to call them（何时调）</li>
+  <li><strong>what arguments</strong> to pass（传什么参）</li>
+  <li><strong>how to incorporate</strong> the results（怎么用结果）</li>
+</ol>
+<p>方法：自监督学习 + 每个 API 少量示范。</p>
+
+<h2>候选工具（p23）</h2>
+<p>Q&amp;A 系统、计算器、搜索引擎、翻译系统、日历。</p>
+
+<h2>Toolformer 三步法（p24-29）</h2>
+<pre class="loop">① Sample API Calls（采样候选调用）
+   对输入 x，选出概率 p_i > τ_s 的位置 i，采样出若干候选调用 c_i^1 … c_i^m
+
+② Execute API Calls（执行并过滤）
+   真正执行这些调用；只保留"能降低下一个 token 预测损失 L_i"的调用
+
+③ Filter API Calls（按有用性过滤）
+   比较两种损失差：
+     有 API 调用+执行输出   vs   无 API 调用（或调用但不给输出）
+   只保留差值大于阈值 τ_f 的调用</pre>
+<p>最终：创建一个"带 API 调用标注"的新数据集（p24），用它微调 GPT-J (6B)。</p>
+
+<h3>损失过滤的直觉</h3>
+<p>核心思想：<strong>如果这次工具调用让模型对后续文字预测得更准，就说明这次调用"有用"</strong>——用它当自监督信号，不用人工标注"哪里该调工具"。</p>
+<p>例（p26）："What other name is Pittsburgh known by? [QA(...) → The Steel City] Pittsburgh is known as…" 因为插入了 QA 调用的结果，模型预测"The Steel City"更准 → 保留。</p>
+
+<h2>效果（p30-31）</h2>
+<p>p30 表格：Toolformer (6B) 在事实补全、问答、数学、时间、多语言等任务上显著优于 GPT-J (6B)，并与 <strong>GPT-3 (175B)</strong> 相比有竞争力——<strong>一个小模型靠工具，能追平大几十倍的纯参数模型</strong>。</p>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>"工具 = LM 生成调用"是设计前提</strong>：你给的每个工具都要能被模型"看懂并生成正确调用"，工具描述的质量直接决定成败（呼应 Week2 ACI）。</li>
+  <li><strong>Toolformer 的"有用性过滤"是个好心智模型</strong>：一个工具值不值得给模型，可以问"它能不能让下游预测更准/更可靠"。</li>
+  <li><strong>小模型 + 工具的思路</strong>：你不必为了排查任务上最大的模型——配好工具，小模型也能干很多活（省成本）。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 工具的准确定义里，最关键的一句话是什么？</p>
+  <details><summary>展开答案</summary><p>"由 LM 生成函数调用和输入参数"——工具运行在 LM 外部，但调用与参数是模型生成的，不是人写死。</p></details>
+  <p>Q2. Toolformer 要模型学会决定哪四件事？</p>
+  <details><summary>展开答案</summary><p>调哪个 API、何时调、传什么参数、怎么用返回结果。</p></details>
+  <p>Q3. Toolformer 的"损失过滤"直觉是什么？为什么是自监督？</p>
+  <details><summary>展开答案</summary><p>如果一次工具调用能让模型对后续 token 的预测损失下降，就说明这次调用有用——保留这样的调用。因为不用人工标注"哪里该调工具"，用损失变化当信号，所以是自监督。</p></details>
+  <p>Q4. Toolformer (6B) 与 GPT-3 (175B) 的对比说明了什么？对你的选型有何启示？</p>
+  <details><summary>展开答案</summary><p>小模型靠工具能追平大几十倍的纯参数模型。启示：配好工具比盲目上大模型更划算，尤其对成本敏感的本地部署。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture04 · 段二 学习调用工具</span><br>
+  ← 上一课 <a href="lecture04-0031-rag-wrapup-why-tools.html">0031 · RAG 收尾 + 为什么工具</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture04-0033-gorilla-llm-toolllm.html">0033 · 规模化用工具：Gorilla / ToolLLM / ToolkenGPT</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture04 课件（源文件夹 week3-10.5） p18-20, p22-31（What Are Tools? / Toolformer, Schick et al. 2023）+ Wang et al. 2024 "What are tools anyway?"。<br>
+Lesson 32 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 28 — 混合检索、RRF 与检索指标</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week3 · Lecture03 · Lesson 28</span>
+  <h1>怎么把两个检索器合起来 + 怎么给检索打分</h1>
+  <div class="meta">第 28 课（Week3 第 6 课）· 来源：lecture03.pdf p45-46, p49 + DPR 论文 · 本课成果：掌握 RRF 融合公式，以及 Hit@k / Failed@k / nDCG@k / MRR@k / Recall@k 五个指标在衡量什么</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+混合检索的融合别用"原始分数相加"——BM25 和向量分数量纲不同。<strong>RRF（倒数排名融合）</strong>只看"排名位置"，公式 <code>RRF(d)=Σ 1/(k+rank_r(d))</code>（k=60），无需按语料调参、支持任意多个检索器。<br><br>
+评估检索用五个指标：<strong>Hit@k</strong>（前 k 里有没有相关）、<strong>Failed@k</strong>（=1−Hit@k）、<strong>Recall@k</strong>（找回了多少相关）、<strong>MRR@k</strong>（第一个相关的排名倒数的平均）、<strong>nDCG@k</strong>（相关性的位置加权归一）。<strong>这些是你 RAG 上线前必须能在自建集上算出来的数。</strong>
+</div>
+
+<h2>混合检索与 RRF（p49）</h2>
+<p>动机：两类检索器<strong>失败方式不同</strong>——BM25 漏改写，稠密漏罕见字面量（错误码、产品 ID）。做法：两个都跑，融合两份排名列表。</p>
+<p><strong>RRF：融合"位置"而非"原始分数"</strong>——绕开量纲不同、无需按语料调参：</p>
+<pre class="loop">RRF(d) = Σ_{r∈R}  1 / ( k + rank_r(d) )        k = 60
+
+d = 某文档；R = 检索器集合；rank_r(d) = 文档 d 在检索器 r 结果里的名次
+例：某段在 BM25 排第 2、在向量检索排第 5
+   RRF = 1/(60+2) + 1/(60+5) = 0.01613 + 0.01538 = 0.03151</pre>
+<p>优点（p49 原文）：无需 per-corpus 调参、可接任意数量检索器。</p>
+
+<h2>五个检索指标（p45-46）</h2>
+<p>设 Q=查询集，R_q=该查询的相关段落集合，Top_k(q)=检索返回的前 k。</p>
+<table>
+  <tr><th>指标</th><th>公式（简化）</th><th>在问什么</th></tr>
+  <tr><td><strong>Hit@k</strong></td><td>1/|Q| Σ 𝟙[R_q ∩ Top_k(q) ≠ ∅]</td><td>前 k 里<strong>有没有</strong>命中（有=1，无=0）。位置不管</td></tr>
+  <tr><td><strong>Failed@k</strong></td><td>= 1 − Hit@k</td><td>前 k 里<strong>一个相关都没有</strong>的比例</td></tr>
+  <tr><td><strong>Recall@k</strong></td><td>1/|Q| Σ |R_q ∩ Top_k| / |R_q|</td><td>所有相关段落里<strong>找回了多少</strong>（没进 top k 算 0）</td></tr>
+  <tr><td><strong>MRR@k</strong></td><td>1/|Q| Σ 1/rank_q</td><td><strong>第一个</strong>相关段的排名倒数的平均</td></tr>
+  <tr><td><strong>nDCG@k</strong></td><td>1/|Q| Σ DCG_q@k / IDCG_q@k</td><td>相关段的<strong>位置</strong>加权（越靠前越有价值），按理想排序归一</td></tr>
+</table>
+<p>DCG 细节（p45）：<code>DCG_q@k = Σ_{i=1..k} rel_{q,i} / log2(i+1)</code>——把第 i 位的相关性 rel 按位次折扣（越靠后折扣越大），再除以理想排序的 DCG（IDCG）归一。</p>
+
+<h3>怎么选指标（大白话）</h3>
+<ul>
+  <li><strong>Hit@k / Failed@k</strong>：只要"有没有找到"——适合"证据只要一条就够"的场景。</li>
+  <li><strong>Recall@k</strong>：需要"尽量全"——适合多证据聚合。</li>
+  <li><strong>MRR@k</strong>：在意"第一个相关的多快出现"。</li>
+  <li><strong>nDCG@k</strong>：既在意找到、又在意排序质量——最综合。</li>
+</ul>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>上线前自建小评测集</strong>：拿 50–100 条真实排查问题 + 正确 SOP 段落，算 Hit@5 / nDCG@10，作为"改分块/换检索器"的判据（呼应 Week1 第 10 课"评估先于建设"）。</li>
+  <li><strong>RRF 直接抄</strong>：别自己发明分数融合，用 RRF(k=60) 就能稳定工作。</li>
+  <li><strong>指标要和任务对齐</strong>：排查"找对那一条错误码处置"看 Hit@k；"汇总该故障的所有相关规范"看 Recall@k。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. RRF 为什么融合"排名"而不是"原始分数"？</p>
+  <details><summary>展开答案</summary><p>因为不同检索器的分数分数量纲不同、不可直接相加。用排名位置消除了量纲问题，且无需按语料调参、支持任意多个检索器（k=60）。</p></details>
+  <p>Q2. Hit@k 和 Recall@k 的区别？各适合什么场景？</p>
+  <details><summary>展开答案</summary><p>Hit@k 只问"前 k 里有没有相关"（有=1）；Recall@k 问"所有相关里找回了多少"。证据一条就够的场景看 Hit@k，需多证据聚合的场景看 Recall@k。</p></details>
+  <p>Q3. nDCG 里的"位置折扣"是什么意思？</p>
+  <details><summary>展开答案</summary><p>把第 i 位的相关性按 1/log2(i+1) 折扣——同样相关但排得越靠后贡献越小，再除以理想排序的 DCG 归一。它同时衡量"找没找到"和"排序好不好"。</p></details>
+  <p>Q4. 你要评估自己的 SGRT 检索，具体怎么落地？</p>
+  <details><summary>展开答案</summary><p>建 50–100 条真实问题+正确段落的小评测集，算 Hit@5/nDCG@10 等；每次改分块/换检索器就重跑，用数字判断改动是好是坏，而不是凭感觉。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week3 · Lecture03 · 段三 检索</span><br>
+  ← 上一课 <a href="lecture03-0027-colbert-late-interaction.html">0027 · ColBERT</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture03-0029-agentic-rag.html">0029 · Agentic RAG：把检索放进循环</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件（源文件夹 week2-9.30） p45-46（Hit@k / Failed@k / nDCG@k / MRR@k / Recall@k）、p49（Hybrid Search + RRF）+ DPR 论文。<br>
+Lesson 28 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

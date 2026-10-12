@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 15 — 线性注意力：把 O(n²) 压成 O(n) 的代价</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week2 · Lecture02 · Lesson 15</span>
+  <h1>线性注意力：省到极致，丢了什么？</h1>
+  <div class="meta">第 15 课（Week2 第 2 课）· 来源：lecture02.pdf p63-90（p87 对比表为矢量图，可精确读）· 本课成果：说清线性 attention 用"压缩状态"换掉 n×n 表，为什么快、为什么长上下文变弱，以及为什么现实里是"混合"</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+上一课那张 n×n 注意力表是 O(n²) 的病根。线性注意力的做法：<strong>把 Softmax 去掉，利用矩阵乘法结合律把 K、V 先乘成一个固定大小的"状态表示" S，再让新 token 与 S 交互</strong>——复杂度降到 O(n)，内存变成常数。代价：<strong>所有历史被压进一个固定大小的状态里，长上下文会丢细节</strong>（p84 那张 RULER 图就是证据）。<br><br>
+工程含义：这解释了为什么现实模型（如 p90 的 Kimi K3）是用<strong>混合架构</strong>——大部分层用便宜的线性注意力，少数层保留全 softmax 注意力兜住"精确回看"。
+</div>
+
+<h2>怎么把 O(n²) 压成 O(n)（p64-83）</h2>
+<p>标准 attention：<code>Softmax(Q·Kᵀ)·V</code>。线性注意力一步步做减法：</p>
+<ol>
+  <li><strong>"Drop Softmax"</strong>（p66）：去掉 softmax，只剩 <code>Q·Kᵀ·V</code>。</li>
+  <li><strong>改结合律</strong>（p67）：矩阵乘法可重排，先算 <code>Kᵀ·V</code>。右上角那步本来是 n×n，现在变成"维度×维度"的固定大小矩阵。</li>
+  <li><strong>得到状态 S</strong>（p69-83）：<code>S = Kᵀ·V</code> 就是一个<strong>固定大小的记忆状态</strong>。每来一个新 token，用它的 Q 去乘 S 得到输出，再把新 K、V 累加进 S（p72 "Update Rule"、"Save the state"、"Clear Unimportant Memory"）。</li>
+</ol>
+<blockquote>直觉：全 softmax 是"每次回答都翻遍所有历史"；线性是"边走边把历史压成一页笔记，之后只看这页笔记 + 新问题"。笔记固定一页，所以快；但一页装不下所有细节，所以长文会忘。</blockquote>
+
+<h2>对比表（p87 原文，逐行读）</h2>
+<table>
+  <tr><th>维度</th><th>Full Softmax Attention</th><th>Linear Attention</th></tr>
+  <tr><td>上下文复杂度</td><td>O(n²)</td><td><strong>O(n)</strong></td></tr>
+  <tr><td>回看能力</td><td>所有 token 都能回看所有前文</td><td>新 token 只与<strong>压缩状态表示</strong>交互</td></tr>
+  <tr><td>长上下文</td><td>擅长（Helps long context）</td><td>更吃力（Harder for long context）</td></tr>
+  <tr><td>内存</td><td>KV Cache 随 n 线性增长（O(n)）</td><td>状态表示<strong>常量内存</strong></td></tr>
+</table>
+<p>再对照 p83、p84 两张图：线性 attention 明显更快、内存更友好；但 RULER 基准显示它<strong>在长上下文任务上掉得更快</strong>。</p>
+
+<h2>现实是混合（p88-90）</h2>
+<p>p88-89 两页标题都叫"In practice people mix global and linear attention"。p90 的 Kimi K3 架构图（矢量图，可精确读）从上到下是：</p>
+<pre class="loop">Feed Forward
+Multi-Head (Latent) Attention   ← 全/潜在注意力层，负责精确回看
+Feed Forward
+Linear Attention                ← 线性层，负责便宜地扛长序列
+…</pre>
+<p>即：<strong>少数"全局注意力"层保证精确性，多数"线性注意力"层保证吞吐</strong>。这也是当前长上下文模型的通行打法。</p>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>选型看任务长度分布</strong>：短交互（一次标定报告生成）全 softmax 足够；要长期啃几万行设备日志，混合/线性架构的模型在成本上有优势，但你要验证它对关键行的召回是否够准。</li>
+  <li><strong>别把"上下文窗口大"当"它能记住"</strong>：线性/混合架构的"大窗口"是压缩换来的，关键细节仍要靠检索喂到近处。</li>
+  <li><strong>KV Cache 是显存账本</strong>：全注意力下 KV Cache 随对话变长而膨胀（下层课），这是你评估"能否本地跑/能否常驻"的硬约束。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 线性注意力靠哪两招把 O(n²) 降到 O(n)？</p>
+  <details><summary>展开答案</summary><p>(1) 去掉 Softmax；(2) 用矩阵乘法结合律，把 <code>Q·(Kᵀ·V)</code> 改成先算 <code>Kᵀ·V</code>，得到一个固定大小的状态 S。之后只维护 S，复杂度随 n 线性、内存恒定。</p></details>
+  <p>Q2. 线性注意力换来的代价是什么？有基准证据吗？</p>
+  <details><summary>展开答案</summary><p>所有历史被压进固定大小的状态，长上下文会丢细节、召回变弱。证据是 p84 的 RULER 基准图：线性 attention 在长上下文任务上比全 softmax 掉得更快。</p></details>
+  <p>Q3. 为什么现实模型用"混合注意力"？</p>
+  <details><summary>展开答案</summary><p>少数全局（含潜在）注意力层负责精确回看关键信息，多数线性注意力层负责便宜地扛长序列吞吐——兼顾精度与成本。Kimi K3（p90）就是这种堆叠。</p></details>
+  <p>Q4. 全注意力下，随着对话变长，什么会线性膨胀？对你意味着什么？</p>
+  <details><summary>展开答案</summary><p>KV Cache（键值缓存）随已生成 token 数线性增长。意味着显存占用和成本随对话变长而涨，是"能否本地常驻运行"的硬约束（下层课详讲 KV Cache）。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week2 · Lecture02 · 段一 拆开模型</span><br>
+  ← 上一课 <a href="lecture02-0014-transformer-attention.html">0014 · Transformer 与注意力</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture02-0016-training-three-stages.html">0016 · 训练三阶段：预训练 / 中训练 / 后训练</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件（源文件夹 week2-9.28） p63-90（Linear Attention / DeltaNet / Kimi K3 架构）+ RULER 基准。p87 四行对比表、p90 Kimi K3 堆叠为矢量图，可精确读取。<br>
+Lesson 15 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

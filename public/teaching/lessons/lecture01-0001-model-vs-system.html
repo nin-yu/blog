@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 1 — 模型与系统：结果来自“整机”，不是“零件”</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lesson 1</span>
+  <h1>模型与系统：结果来自“整机”，不是“零件”</h1>
+  <div class="meta">第 1 课（共 13 课）· 重建 v3 · 本课成果：能说清“模型”和“系统”的边界，并讲出顶尖结果为什么越来越多来自系统 · 对应你 MISSION 的第 1 条</div>
+</header>
+
+<h2>先给结论（背这一句就够）</h2>
+<div class="takeaway">
+顶尖 AI 结果越来越多地来自<strong>“多个组件组合成的系统”</strong>，而不是单个大模型。领先效果可以通过聪明的<strong>系统工程</strong>拿到，而不只是靠堆算力去训练更大的模型。—— BAIR《The Shift from Models to Compound AI Systems》（本课一手来源）
+</div>
+<p>对你的工程含义一句话：<strong>你训不动 GPT，但你完全能设计系统。</strong>这正是你 MISSION 的立足点——把 agent 设计方法落到 SGRT 的标定引导、故障排查、日常 QA 上。</p>
+
+<h2>两个定义（务必分清，后面所有课都建在它上面）</h2>
+<table>
+  <tr><th>概念</th><th>定义</th><th>例子</th></tr>
+  <tr><td>AI 模型</td><td>一个统计模型（比如预测下一个 token 的 Transformer）</td><td>GPT-4、Gemini、你用的 deepseek-flash</td></tr>
+  <tr><td>复合 AI 系统<br>（compound AI system）</td><td>用多个相互作用组件解决任务的系统：多次调用模型 + 检索器 + 外部工具等</td><td>RAG、AlphaCode、AutoGPT、ReAct 智能体</td></tr>
+</table>
+<p>关系：<strong>模型是“零件”，系统是“零件组装成的整机”。</strong>智能体（agent）本质上就是一种“由 LLM 决定步骤”的复合 AI 系统——这是第 12 课判定法则的地基。</p>
+
+<h2>为什么系统会长期占优（四大理由，一一对应 BAIR）</h2>
+<ol>
+  <li><strong>有些任务，改系统比加大模型更划算。</strong>最强 LLM 解编程竞赛题成功率约 30%，训练预算翻 3 倍也才 ~35%；而系统思路（多次采样 + 自动测试筛选，如 AlphaCode）能提到约 80%。<strong>而且迭代系统设计通常比等一轮模型训练快得多</strong>——对排期就是“小时~天” vs “月”。</li>
+  <li><strong>系统是动态的，模型是静态的。</strong>模型知识冻结在训练那一刻；要注入实时数据或受限数据（“只按用户有权访问的文件回答”），只能靠检索等外部组件。→ 对 SGRT：设备手册、现场日志、你的标定 SOP，全都不在模型训练数据里。</li>
+  <li><strong>系统更容易控制和建立信任。</strong>模型几乎不可能靠训练“保证”不出现某种行为，但系统可以对输出做过滤；“LLM + 检索 + 引用/事实校验”能显著提升可信度。→ 医疗设备场景下，这条就是“可审计”的来源。</li>
+  <li><strong>性能目标可灵活调配。</strong>最贵的模型在有些应用反而太贵（GitHub Copilot 用调校过的小模型 + 检索启发式），在另一些反而太便宜（一份法律意见用户愿付几美元，而 GPT-4 只花几分钱）。</li>
+</ol>
+<blockquote>佐证（记这两个数）：Databricks 统计约 <strong>60%</strong> 的 LLM 应用用了某种 RAG，<strong>30%</strong> 用了多步链。<br>
+大白话：十份落地的 LLM 项目里，六份在“先查再答”，三份在“多步串联”——“组合”早就不是加分项，而是默认配置。</blockquote>
+
+<h2>对照你熟悉的东西（工程桥）</h2>
+<p>你天天在做的 <strong>ICP 配准管线</strong>就是同构的：单步点云匹配算法（模型）≠ 整条管线（ROI 裁剪 → 呼吸门控 → Point-to-Plane ICP → Tukey 权重 → 残差评估）。精度和鲁棒性的大头提升，从来不在“更玄的单步算法”，而在<strong>管线设计</strong>——预滤波（门控置 end-exhalation）+ 鲁棒核函数 + 失败拒判。<br>LLM 世界一模一样：单模型是零件，agent / workflow 是管线。你已经在“设计系统”这门手艺上有十年功力，只是换了个零件类型。</p>
+
+<h2>一句话自测（先答，再展开）</h2>
+<div class="quiz">
+  <p>Q1. AlphaCode 用“生成上百万候选解→过滤打分”把竞赛编程从约 30% 提到约 80%。这是“模型变强”还是“系统设计”的功劳？</p>
+  <details><summary>展开答案</summary><p>系统设计。模型单次采样水平没变，变的是<strong>采样-筛选这条管线</strong>。这是“改系统 &gt; 加大模型”最硬的证据之一。</p></details>
+  <p>Q2. “GPT-4 的知识冻结在训练时”——要把你的 SGRT 设备手册塞给它，只能靠什么？</p>
+  <details><summary>展开答案</summary><p>系统组件（检索 / RAG），不是模型本身。RAG 就是干这个的（第 8 课）。</p></details>
+  <p>Q3. Databricks 的 60% / 30% 分别落在哪两件事上？</p>
+  <details><summary>展开答案</summary><p>60% 的 LLM 应用用了 RAG（先检索再生成）；30% 用了多步链（多步串联调用）。说明“组合”已是落地标配。</p></details>
+  <p>Q4. 用一句话说：为什么“你没法训 GPT，但能设计系统”对你特别重要？</p>
+  <details><summary>展开答案</summary><p>因为系统的提升空间不依赖算力和标注团队，只依赖设计能力——而这正是你已有的工程能力（管线/鲁棒化/评估），可以立刻用在标定 QA、故障排查上。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">第一段 · 打地基</span><br>
+  ← 起点 · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture01-0002-system-beats-scale.html">0002 · 改系统 &gt; 换更大模型：迭代到底值多少钱</a>
+</div>
+
+<p class="foot">对任何没讲透的地方，随时问我（我是你的老师，不是资料复读机）。<br>
+来源文件夹：week1-9.23<br>
+Lesson 1 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

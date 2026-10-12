@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 37 — 评估工具使用：BFCL / ToolBench / τ-bench</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week4 · Lecture04 · Lesson 37</span>
+  <h1>怎么衡量"工具调用"好不好：三大基准 + Pass^k</h1>
+  <div class="meta">第 37 课（Lecture04 第 7 课）· 来源：lecture04.pdf p58-66 · 本课成果：认识 BFCL / ToolBench / τ-bench 三个基准各自测什么，理解 Pass^k 为什么要衡量"可靠性/一致性"而不只是"能过一次"</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+工具调用要看三件事：<strong>选对工具+填对参数</strong>（BFCL）、<strong>在真实海量 API 上完成任务</strong>（ToolBench）、<strong>多轮对话中遵守规则并与用户协同</strong>（τ-bench）。<br><br>
+最关键的是 τ-bench 提出的 <strong>Pass^k</strong>：不是"试一次能过"，而是<strong>"连续 k 次都成功"</strong>的概率——衡量<strong>可靠性/一致性</strong>。这正对上你 SGRT 场景的诉求：排查助手要"每次都稳"，不是"偶尔灵"。
+</div>
+
+<h2>基准 1：BFCL（Berkeley Function-Calling Leaderboard, p58-60）</h2>
+<ul>
+  <li>BFCL 是评估 LLM <strong>调用函数（工具调用）能力</strong>的综合框架（Patil et al., 2025）。</li>
+  <li>评估方式：<strong>基于 AST（抽象语法树）的离线评估</strong> + <strong>真实执行函数</strong>做真实世界评估。</li>
+</ul>
+<p>p60 例子展示它测什么：</p>
+<table>
+  <tr><th>类别</th><th>例子</th></tr>
+  <tr><td>Multiple Functions（多选一）</td><td>"2+3=?" 给定 add/mult → 应调 <code>add(a=2,b=3)</code></td></tr>
+  <tr><td>Parallel Functions（并行）</td><td>"(2+3) 和 (4+5)? " → 应调 <code>add(2,3), add(4,5)</code></td></tr>
+  <tr><td>Relevance Detection（该不该调）</td><td>没有相关工具时应<strong>不调用</strong></td></tr>
+</table>
+
+<h2>基准 2：ToolBench / ToolLLM（p61-62）</h2>
+<p>Qin et al., 2023：从 RapidAPI 爬 <strong>6000+ 真实 API</strong>，整理真实人类指令，覆盖 <strong>16k+ API</strong>，测"在真实海量 API 上完成多步任务"。</p>
+
+<h2>基准 3：τ-bench（p63-64）</h2>
+<p>Yao et al., 2024：<strong>Tool-Agent-User 交互</strong>基准——测多轮对话里工具、agent、用户三方的协同（不只是单次调用）。</p>
+
+<h3>核心贡献：Pass^k（p64）</h3>
+<pre class="loop">Pass^k = P(连续 k 次采样试验都成功 | 已知 n 次里有 c 次成功)
+
+对比  Pass@k = P(k 次里至少成功 1 次 | 已知 n 次里有 c 次成功)</pre>
+<p>区别（本课要点）：</p>
+<ul>
+  <li><strong>Pass@k</strong>：至少成功一次就行——衡量"能力上限"。</li>
+  <li><strong>Pass^k</strong>：连续 k 次都成功——衡量"<strong>可靠性/一致性</strong>"。</li>
+</ul>
+<blockquote>为什么重要：agent 要上线，不能看"偶尔能过一次"。p64 把"可靠且一致"显式做成指标——这就是你 Week1 第 10 课学的"能力≠可靠性"在工具调用上的具体化。</blockquote>
+
+<h2>三个基准对照</h2>
+<table>
+  <tr><th>基准</th><th>测什么</th><th>关键点</th></tr>
+  <tr><td>BFCL</td><td>选对工具 + 填对参数（AST + 真实执行）</td><td>多函数/并行/该不该调</td></tr>
+  <tr><td>ToolBench/ToolLLM</td><td>16k 真实 API 上的多步任务</td><td>规模化 + API 检索</td></tr>
+  <tr><td>τ-bench</td><td>工具-agent-用户 多轮协同</td><td>Pass^k 衡量可靠性/一致性</td></tr>
+</table>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>用 Pass^k 验收你的排查助手</strong>：同一故障问 5 次，要求"5 次都对"（或至少给出可复现的稳定行为），而不是"试一次成功就算过"。</li>
+  <li><strong>建自己的小型 BFCL</strong>：拿 20–30 条真实指令 + 应调工具，测"选对工具+填对参数+该不该调"。</li>
+  <li><strong>别忽略"该不该调"</strong>：BFCL 的 Relevance Detection 提醒——模型在不该用工具时硬调，也是失败（对应本讲最后的 failure modes）。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. BFCL 用什么方式评估？测哪几类情形？</p>
+  <details><summary>展开答案</summary><p>AST 离线评估 + 真实执行函数。测多函数选择、并行调用、相关性检测（该不该调）等。</p></details>
+  <p>Q2. Pass^k 和 Pass@k 的关键区别？各衡量什么？</p>
+  <details><summary>展开答案</summary><p>Pass@k：k 次里至少成功一次（衡量能力上限）；Pass^k：连续 k 次都成功（衡量可靠性/一致性）。上线看 Pass^k。</p></details>
+  <p>Q3. 为什么"可靠性"对 agent 比"能不能过"更关键？</p>
+  <details><summary>展开答案</summary><p>因为 agent 要反复上线运行，偶尔成功无法依赖；连续多次稳定成功才可部署（呼应 Week1 能力≠可靠性）。τ-bench 把这一点显式量化成 Pass^k。</p></details>
+  <p>Q4. 你要验收 SGRT 排查助手，具体怎么测？</p>
+  <details><summary>展开答案</summary><p>建小型评测集（20–30 条真实指令+应调工具），测选工具/填参数/该不该调；并对同一故障重复 5 次看 Pass^5（要求稳定），而非只看单次成功。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture04 · 段四 评估与失败</span><br>
+  ← 上一课 <a href="lecture04-0036-mcp-example.html">0036 · MCP 实战</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture04-0038-tool-failure-modes.html">0038 · 工具调用的失败模式（Lecture04 收官）</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture04 课件（源文件夹 week3-10.5） p58-66（BFCL, Patil et al. 2025 / ToolBench, Qin et al. 2023 / τ-bench, Yao et al. 2024 / Pass^k）。<br>
+Lesson 37 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RL 是预制菜，大模型是"会写菜谱却没下过厨"的大厨</title>
+<link rel="stylesheet" href="assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>RL 是预制菜，大模型是&quot;会写菜谱却没下过厨&quot;的大厨</h1>
+<blockquote>
+<p>一个比喻，讲清 LLM 和强化学习到底差在哪，以及为什么给大模型做应用，一半的功夫都花在&quot;给它配工具和方向盘&quot;上。</p>
+</blockquote>
+<hr>
+<h2>一、两道菜，两个时代</h2>
+<p>先摆一个我最近想通的比喻。</p>
+<p><strong>强化学习（RL）像预制菜。</strong> 有一条产线，反复调校，火候、配比、克数都被打磨到最精准。出品极其稳定，同一道菜每次端上来都一模一样。但<strong>它只会做这一道菜</strong>——想换菜，就得重开一条产线，重新调、重新试。</p>
+<p><strong>大模型（LLM）像一个能立刻接单、按需现做的大厨。</strong> 你跟他说&quot;少盐、少辣、多点辣味层次&quot;，他现场给你配一份，独一无二，还会根据你今天的心情换个做法。灵活得离谱，但<strong>从没真正下过厨</strong>。</p>
+<p>区别在哪？用一句工程语言概括：</p>
+<blockquote>
+<p><strong>RL 时代，&quot;学会&quot; = 更新参数（训练出来）；LLM 时代，&quot;学会&quot; = 改上下文（描述出来）。</strong></p>
+</blockquote>
+<p>这不是时间先后，是<strong>范式</strong>的分野。传统 RL 里，你要造一个会做某事的智能体，得<strong>训练</strong>它——用奖励信号反复塑形，直到权重里长出那个策略。而 LLM 时代，你<strong>用嘴描述</strong>就行：策略不在参数里，在提示词、工具、上下文的装配里。</p>
+<p>这把&quot;定义智能体&quot;的权力，从训练工程师的手里，交给了&quot;写提示的人&quot;。</p>
+<p>（顺带纠正一个常见误读：LLM 时代并没有淘汰 RL——DeepSeek-R1 本身就是用 RL 训出来的。准确说法是：<strong>RL 从&quot;智能体的构造手段&quot;退位成了&quot;模型的训练手段&quot;</strong>。它没消失，是位置变了。）</p>
+<hr>
+<h2>二、大厨的核心秘密：他不是在&quot;做菜&quot;，是在&quot;写菜谱&quot;</h2>
+<p>这是我今天最想讲透的一点，也是所有工程决策的源头。</p>
+<p>你可能默认：大厨懂烹饪，你说少盐，他真的少盐——他<strong>按你的需求做出了结果</strong>。</p>
+<p>但 LLM 不是这样的。它的底层机制只有一个动作：<strong>预测下一个词</strong>。</p>
+<p>它收到你说的&quot;少盐少辣&quot;，做的不是&quot;理解你的意图然后执行&quot;，而是——</p>
+<blockquote>
+<p><strong>在一段&quot;有人说要少盐少辣&quot;的文本后面，人类通常接着会写什么？</strong></p>
+</blockquote>
+<p>然后它续写出那个东西。而那个东西，<strong>通常</strong>看起来像一份&quot;少盐少辣&quot;的菜。注意这个&quot;通常&quot;——它保证的是&quot;像&quot;，不是&quot;对&quot;。</p>
+<p>所以更精确的说法是：</p>
+<blockquote>
+<p><strong>他不是&quot;会做菜&quot;的大厨，是&quot;会写菜谱、且能把菜谱写得像真做过&quot;的大厨。</strong>
+他产出的是<strong>文本</strong>，不是<strong>验证过的结果</strong>；他在<strong>模仿</strong>，不是<strong>理解</strong>。</p>
+</blockquote>
+<p>打个具体的比方你就懂了：</p>
+<ul>
+<li>你说&quot;少盐&quot;，他没尝过盐，他是<strong>照着菜谱里&quot;少盐版&quot;的写法模仿</strong>；</li>
+<li>你点一道<strong>菜谱里没有的菜</strong>，他不会说&quot;我不会&quot;，会<strong>用最像的几道菜拼一个</strong>，端给你还自信满满；</li>
+<li>你问&quot;这道菜多少卡路里&quot;，他<strong>张口就报一个数</strong>，其实是编的——因为他没有秤，只有&quot;卡路里数字通常怎么写&quot;的记忆。</li>
+</ul>
+<p>这三条，就是工程上天天要打交道的三个坑：</p>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>专业叫法</th>
+<th>根因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>没见过的硬拼一个</td>
+<td>泛化 / 幻觉</td>
+<td>库存驱动：只有见过的才能拼，没有的拿最像的凑</td>
+</tr>
+<tr>
+<td>张口报假的数</td>
+<td>幻觉</td>
+<td>产出是文本，不是验证过的事实</td>
+</tr>
+<tr>
+<td>端错了还不自知</td>
+<td>不可靠 / 无自我纠正</td>
+<td>他在&quot;写&quot;，不在&quot;验&quot;</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>三、为什么&quot;给大模型做应用&quot;，一半功夫花在配工具和方向盘上</h2>
+<p>现在你能自己推出结论了。</p>
+<p>假设大厨<strong>真的可信</strong>——懂烹饪、完全理解你、永不出错——那你什么都不用加，他做完直接上桌就行。</p>
+<p><strong>但正因为他&quot;会写菜谱却没下过厨、还不自知&quot;，护栏才是必需的。</strong> 而且——</p>
+<blockquote>
+<p><strong>护栏的数量，正好等于他不可信的程度。</strong></p>
+</blockquote>
+<p>每一条我们习以为常的&quot;最佳实践&quot;，其实都锚定着一个具体的&quot;不可信&quot;。我给你一一对应上：</p>
+<table>
+<thead>
+<tr>
+<th>大厨的毛病</th>
+<th>对应的护栏</th>
+<th>补了什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>会报假的卡路里</td>
+<td>给他<strong>秤和计算器</strong>（把算数外包给工具）</td>
+<td>用确定性的东西替代&quot;像不像&quot;</td>
+</tr>
+<tr>
+<td>端错菜还以为对</td>
+<td><strong>让人试菜</strong>（确认闸门，人复核）</td>
+<td>引入外部校验者</td>
+</tr>
+<tr>
+<td>只懂&quot;像菜谱&quot;不懂你的口味</td>
+<td><strong>结构化点单</strong>（格式约束、示例）</td>
+<td>收窄歧义</td>
+</tr>
+<tr>
+<td>会为了&quot;显得完成了&quot;乱改配方</td>
+<td><strong>权限白名单</strong>（不许碰的东西就是不许碰）</td>
+<td>限制可作恶面</td>
+</tr>
+</tbody></table>
+<p>这就是为什么每一个正经的 LLM 应用，都在反复强调这几件事：</p>
+<ul>
+<li><strong>&quot;只引用工具返回的数据，禁止编造数值&quot;</strong> —— 治幻觉（他会编卡路里）</li>
+<li><strong>&quot;读不到就查，查不到就说&#39;信息不足&#39;&quot;</strong> —— 治&quot;硬拼一个&quot;</li>
+<li><strong>关键动作必须人工确认</strong> —— 治&quot;端错了还不自知&quot;</li>
+<li><strong>不新增写盘路径、不自动重试</strong> —— 治&quot;为了交差乱来&quot;</li>
+</ul>
+<p>一句话收口：</p>
+<blockquote>
+<p><strong>工具管&quot;能不能做对&quot;，闸门管&quot;允不允许做&quot;。</strong>
+前者补能力，后者补授权——这两件事，加再多的工具也代替不了彼此。</p>
+</blockquote>
+<hr>
+<h2>四、落到真实场景：一个医疗设备的 AI 助手</h2>
+<p>我最近在做的一件事，正好是这个比喻的活教材。</p>
+<p>背景：一台单目结构光三维扫描设备（用于放疗中的表面追踪），现场工程师要反复做标定、排查故障。我们给它配了个 AI 助手，让工程师用（中）自然语言对话——&quot;重建怎么没出点云&quot;&quot;标定文件过期了吗&quot;&quot;下一步该转到哪个角度&quot;。</p>
+<p>如果 LLM 是一位<strong>可信</strong>的大厨，这个助手应该做得无所不能、说啥干啥。</p>
+<p>但正因为它是&quot;会写菜谱没下过厨&quot;的大厨，我们给它定了一整套规矩：</p>
+<ol>
+<li><strong>它不许凭记忆报数</strong>，任何设备状态、标定误差、日志错误码，都必须<strong>调工具去查</strong>——数据由工具给，它只负责解读。这就是给它配&quot;秤&quot;。</li>
+<li><strong>它不能自己动手</strong>。所有会触发设备动作的操作（采图、测光、标定计算），必须先弹一条确认——工程师点&quot;执行&quot;才真的跑。这就是让它&quot;先给人尝一口&quot;。</li>
+<li><strong>它不许乱写</strong>。标定结果只由原有代码写入原有目录，AI 不新增任何写盘路径——防止它&quot;为了交差&quot;改坏东西。</li>
+</ol>
+<p>你看，这三条规矩，一条都不是拍脑袋来的，<strong>每一条都能从&quot;它产出的是文本而非验证过的结果&quot;这个本质，反推出来。</strong></p>
+<p>甚至有更细的：我们给它的每一条工具输出都做了裁剪（控制在约 2000 token 以内）。为什么？因为大模型的&quot;记性&quot;是外挂的、不可靠的——上下文塞得越多越糊。与其让它&quot;记住&quot;，不如让它每次去&quot;查&quot;。这也是同源的一条。</p>
+<hr>
+<h2>五、一个判断，可以用来评估任何 AI 应用</h2>
+<p>把上面的逻辑收成一句，你可以拿它当尺子，去衡量任何一个大模型应用是否靠谱：</p>
+<blockquote>
+<p><strong>看清楚它把&quot;精确性&quot;交给了谁。</strong></p>
+<p>如果一个系统的关键数值、关键动作，都指望大模型自己&quot;想&quot;出来——
+那它就是在让一位没下过厨的大厨，凭记忆给你报卡路里。</p>
+<p>一个成熟的设计，一定是：<strong>大模型负责&quot;决定做什么&quot;，工具负责&quot;精确地做&quot;，人负责&quot;最终拍板&quot;。</strong></p>
+</blockquote>
+<p>RL 是预制菜，稳定、可复现、但只有一道菜——适合流程明确、要求每次都一样的环节。
+LLM 是现做大厨，灵活、按需、独一无二——但得配齐<strong>试菜的人、衡器、食材库</strong>，才敢让他上临床的桌。</p>
+<p>前者赢在稳定，后者赢在灵活。而真正的工程，是知道<strong>哪个环节该用预制菜，哪个环节该请大厨</strong>。</p>
+<hr>
+<p><em>（本文的比喻来自一次对话里的即兴发挥，越用越觉得贴切，遂整理成文。）</em></p>
+
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 25 — 上下文检索：给每个 chunk 补背景</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week3 · Lecture03 · Lesson 25</span>
+  <h1>上下文检索：孤立的一块，检索一定查不准</h1>
+  <div class="meta">第 25 课（Week3 第 3 课）· 来源：lecture03.pdf p26-35（含 Anthropic Contextual Retrieval）+ 论文 RAPTOR/GraphRAG · 本课成果：掌握"给 chunk 补背景"的三种做法（Contextual Retrieval / Late Chunking / RAPTOR 树）及其成本</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+一个孤立 chunk 常缺少"它属于谁、在什么背景下"的信息，检索就查不准。三种补法：<strong>上下文检索</strong>（用 LLM 给每块生成一句背景，拼进去，Anthropic 提出）、<strong>Late Chunking</strong>（先整篇编码、再按块池化，背景藏在向量里，不用 LLM 调用）、<strong>RAPTOR</strong>（自底向上建摘要树，跨文档的"主题型"问题能命中上层节点）。<br><br>
+工程含义：这三种针对的是"<strong>孤立块语义不全</strong>"这个检索失败根因。你的 SOP/规范文档层级分明，Late Chunking 或 RAPTOR 能显著减少"查不到"。
+</div>
+
+<h2>问题：孤立块的语义缺口（p26 例子）</h2>
+<pre class="loop">原始 chunk:
+  "The company's revenue grew by 3% over the previous quarter."
+查询: "What was the revenue growth for ACME Corp in Q2 2023?"
+→ 这块没说是哪家公司、哪个季度，向量匹配可能失败
+
+补背景后:
+  "From ACME Corp's Q2 2023 SEC filing; Q1 2023 revenue was $314M.
+   The company's revenue grew by 3% over the previous quarter."
+→ 现在"ACME Corp""Q2 2023"都在块里，能匹配上</pre>
+
+<h2>做法 1：上下文检索 Contextual Retrieval（p27-29）</h2>
+<p>Anthropic 的方法：<strong>用 LLM 给每个 chunk 生成一句"定位它"的简短上下文</strong>，拼到 chunk 前面再嵌入。提示词模板（p28 原文）：</p>
+<pre class="loop">&lt;document&gt;{{WHOLE_DOCUMENT}}&lt;/document&gt;
+Here is the chunk we want to situate within the whole document
+&lt;chunk&gt;{{CHUNK_CONTENT}}&lt;/chunk&gt;
+Please give a short succinct context to situate this chunk within the overall
+document for the purposes of improving search retrieval of the chunk.
+Answer only with the succinct context and nothing else.</pre>
+<p>并配合<strong>混合检索</strong>（p27）：embedding 抓语义、TF-IDF/BM25 抓精确词，结果合并。</p>
+<p>效果（p29）：contextual embeddings 显著降低检索失败率。</p>
+
+<h2>做法 2：Late Chunking（p30-31）</h2>
+<p>不调 LLM，改成<strong>先整篇编码（长上下文编码器），再把每块跨度内的 token 向量做 mean-pooling</strong>得到块向量。</p>
+<table>
+  <tr><th></th><th>Contextual Retrieval</th><th>Late Chunking</th></tr>
+  <tr><td>要 LLM 调用？</td><td>要（每块一次）</td><td><strong>不要</strong></td></tr>
+  <tr><td>每块加 token？</td><td>加（背景文本）</td><td>不加</td></tr>
+  <tr><td>背景存在哪</td><td>文本里</td><td><strong>向量里</strong>（编码时已看见整篇）</td></tr>
+</table>
+<p>代价：需要长上下文编码器，且编码时要按整篇跑。</p>
+
+<h2>做法 3：层次/树状索引 RAPTOR（p32-33）</h2>
+<p>针对"答案散落在整篇文档里"的问题——单纯一块一块的表示帮不上忙。RAPTOR 自底向上建树：</p>
+<pre class="loop">embed chunks → cluster 它们 → 用 LLM 给每个簇写摘要 → embed 摘要 → 重复
+最终得到一棵树：叶子=细节块，上层节点=主题摘要
+检索时跨层匹配：细节问题命中叶子，主题问题命中上层节点</pre>
+<p>p33 的 Cinderella 例子：Q1"故事的中心主题？"、Q2"她如何得到圆满结局？"——RAPTOR 选中的上下文通常已包含 DPR 命中的叶子（直接或在其摘要里）。</p>
+
+<h2>延伸：GraphRAG（p34-35）</h2>
+<p>用 LLM 构建知识图谱，再做"面向查询"的图社区检索（Edge et al., 2024）。适合关系型、跨实体的查询。</p>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>先诊断是不是"孤立块"问题</strong>：如果检索查不到，先看是不是块缺上下文（如"残差 2.1mm"没说是什么设备什么工况），再决定补法。</li>
+  <li><strong>Late Chunking 省成本</strong>：不想为每个 chunk 付一次 LLM 调用，就用它（背景压在向量里）。</li>
+  <li><strong>RAPTOR 适合规范类文档</strong>：标定规范有"总则→章节→条目"层级，主题型问题（"标定的总体要求是什么"）命中上层摘要，细节问题命中叶子。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 孤立 chunk 为什么检索不准？举一个例子。</p>
+  <details><summary>展开答案</summary><p>块里缺少"它属于谁/什么背景"的信息，查询里的关键实体匹配不上。例："revenue grew 3%"这块没说是哪家公司哪个季度，查询问"ACME Corp Q2 2023 的营收增长"就可能检索失败。</p></details>
+  <p>Q2. Contextual Retrieval 和 Late Chunking 的关键区别？</p>
+  <details><summary>展开答案</summary><p>Contextual Retrieval 用 LLM 为每块生成背景文本、拼进 chunk 再嵌入（有 LLM 调用、加 token）；Late Chunking 先整篇编码再按块池化，背景压在向量里（无 LLM 调用、不加 token）。</p></details>
+  <p>Q3. RAPTOR 解决哪类问题？怎么建树？</p>
+  <details><summary>展开答案</summary><p>解决"答案散落整篇、单块表示帮不上"的问题。自底向上：embed 块→聚类→LLM 摘要→embed 摘要→重复，形成树；检索跨层匹配，细节问题命中叶子、主题问题命中上层节点。</p></details>
+  <p>Q4. 你的标定规范用哪种补法更合适？为什么？</p>
+  <details><summary>展开答案</summary><p>层级分明的规范适合 RAPTOR（主题型问题命中上层摘要，细节命中叶子）；若不想每个块付 LLM 调用，也可用 Late Chunking。两者都针对"块语义不全"这个根因。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week3 · Lecture03 · 段二 索引</span><br>
+  ← 上一课 <a href="lecture03-0024-indexing-chunking.html">0024 · 索引与分块</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture03-0026-retrieval-bm25-dpr.html">0026 · 检索器：BM25 与 DPR</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件（源文件夹 week2-9.30） p26-35（Contextual Retrieval / Late Chunking, Günther et al. 2024 / RAPTOR, Sarthi et al. 2025 / GraphRAG, Edge et al. 2024）+ Anthropic《Contextual Retrieval》。<br>
+Lesson 25 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

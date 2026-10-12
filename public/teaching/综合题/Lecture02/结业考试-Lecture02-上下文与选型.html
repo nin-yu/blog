@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>结业考试 · Lecture02（模型内部：注意力/训练/推理/上下文工程）★★★</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>结业考试 · Lecture02（模型内部：注意力/训练/推理/上下文工程）★★★</h1>
+<blockquote>
+<p>对齐 CS329Z Lecture 02 · 教学空间 lesson lecture02-0014 ~ 0022 · 源文件夹 week2-9.28
+这是 Lecture02 的<strong>综合结业考试题</strong>：从&quot;模型怎么工作&quot;出发，反推你的工程决策。
+作答方式：在下面「我的作答」区写，用你自己的话、给具体数值。答完告诉我&quot;评卷&quot;。</p>
+</blockquote>
+<hr>
+<h2>题目</h2>
+<p><strong>围绕&quot;上下文成本与模型选型&quot;做一次工程决策。</strong></p>
+<p>场景：你的设备日志排查助手要改成&quot;啃几万行日志&quot;。团队有人说&quot;直接上 1M 上下文模型把日志全塞进去&quot;，有人说&quot;要小步检索&quot;。请用 Lecture02 的原理判断：</p>
+<ol>
+<li><strong>为什么&quot;全塞进去&quot;贵</strong>？用 attention 的复杂度和 Prefill/Decode 说明——哪个阶段会炸，影响的是什么指标（首字延迟 TTFT？吐字 TPS？钱？）。</li>
+<li><strong>&quot;上下文长≠记得住&quot;</strong>：解释 context rot 的根因，并说明为什么&quot;线性注意力/混合架构的大窗口&quot;也不能直接解决你的召回问题。</li>
+<li><strong>KV Cache 的账</strong>：如果本地跑一个常驻的长对话助手，KV Cache 随对话变长的代价是什么？你会怎么控制它（提示词放哪、工具定义放哪）？</li>
+<li><strong>训练三阶段对照选型</strong>：如果排查助手偶尔&quot;一本正经瞎编处置步骤&quot;，问题更可能出在预训练/中训练/后训练哪一段？对策是什么？</li>
+<li><strong>上下文工程设计</strong>：给这个&quot;长日志排查&quot;任务列出你会用的 2–3 招（检索/压缩/笔记/子智能体），并说明为什么选它。</li>
+<li><strong>一句话</strong>：为什么你说服团队&quot;不要全塞&quot;？</li>
+</ol>
+<hr>
+<h2>我的作答</h2>
+<h3>1. 为什么全塞进去贵</h3>
+<p>（你的回答）</p>
+<h3>2. 长≠记得住</h3>
+<p>（你的回答）</p>
+<h3>3. KV Cache 的账</h3>
+<p>（你的回答）</p>
+<h3>4. 训练三阶段对照</h3>
+<p>（你的回答）</p>
+<h3>5. 上下文工程招数</h3>
+<p>（你的回答）</p>
+<h3>6. 一句话</h3>
+<p>（你的回答）</p>
+<hr>
+<h2>评判关注点（评卷时用）</h2>
+<ul>
+<li>第 1 题：应指出 attention 是 O(n²)（n×n 注意力表）+ Prefill 是算力受限、影响 TTFT 且成本陡增；提到&quot;不是线性变贵&quot;。</li>
+<li>第 2 题：context rot 根因是长上下文中注意力被摊薄（n² 两两关系）；线性注意力是&quot;压缩状态换 O(n)&quot;、长文召回更弱——所以仍需检索而非硬塞。</li>
+<li>第 3 题：KV Cache 省算力但吃显存、随对话线性增长、与前缀绑定；控制手段=系统提示/工具定义放固定位置、只追加（避免缓存失效）。</li>
+<li>第 4 题：应落到<strong>后训练</strong>（对齐/是否老实），对策=接检索约束事实 + 用更强调可验证奖励的模型。</li>
+<li>第 5 题：招数要具体对应任务（如检索取关键行、压缩历史、子智能体分头查），并给出选它的理由。</li>
+<li>第 6 题：能说出&quot;成本/延迟 + 召回准确率&quot;两条理由。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

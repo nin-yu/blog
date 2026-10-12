@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 14 — Transformer 与注意力：上下文为什么是 O(n²)</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week2 · Lecture02 · Lesson 14</span>
+  <h1>Transformer 与注意力：为什么上下文越长，代价越贵？</h1>
+  <div class="meta">第 14 课（Week2 第 1 课）· 来源：lecture02.pdf p24-63、p85-91 · 本课成果：讲清 attention 在算什么、为什么复杂度是 O(n²)，以及它对你 SGRT 系统选型的三个直接后果</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+我们把 Week1 当成"黑盒大脑"的 LLM，这周把它拆开。一句结论：<strong>Transformer 的每一层都在做"让每个 token 回头看所有前文 token"的加权求和</strong>。因为这个"人人看人人"的动作，n 个 token 要算 n² 对关系——这就是上下文昂贵、且存在"context rot"的根因。<br><br>
+对你的工程含义：<strong>上下文长度是钱和延迟</strong>。把 10 万 token 的日志塞给模型，比塞 1 万 token 慢约一个量级起（见第 17 课 prefill），且召回准确率会掉——所以 Week1 学的"检索/压缩/子智能体"不是锦上添花，是被架构逼出来的必需。
+</div>
+
+<h2>一句话回顾：语言模型在算什么</h2>
+<p>模型做的事是给一句 token 序列打分：<code>P(下一个 token | 前面的 token)</code>。采样（greedy / top-k / nucleus / 温度）只是"按分挑词"的策略。要点：</p>
+<ul>
+  <li>它是<strong>生成模型</strong>（学数据分布、可采样），不是判别模型（只分 0/1）。</li>
+  <li>训练就是让"数据里真实出现的下一个词"的预测概率越来越高——损失是交叉熵 <code>-log P(正确词)</code>。这一课 p93-100 的推导把"训练"翻译成了"抬高正确词的 log 概率"。</li>
+</ul>
+
+<h2>注意力在算什么（本课核心）</h2>
+<p>每个 token 的向量，乘三个权重矩阵，得到三组向量：</p>
+<table>
+  <tr><th>记号</th><th>含义（大白话）</th><th>在结构图里的位置（p35-39）</th></tr>
+  <tr><td>Q (Query)</td><td>"我这个 token 想找什么信息"</td><td>三路并行最上层，x≈635</td></tr>
+  <tr><td>K (Key)</td><td>"我这个 token 能提供什么信息"</td><td>中间，x≈896</td></tr>
+  <tr><td>V (Value)</td><td>"若被选中，我实际交出的内容"</td><td>x≈1137</td></tr>
+</table>
+<p>计算式：<code>Attention = Softmax( (Q·Kᵀ) / √dk ) · V</code>。逐项拆：</p>
+<ol>
+  <li><code>Q·Kᵀ</code>：每个 token 的 Query 和所有 token 的 Key 做点积 → 得到一张 <strong>n×n 的"谁该关注谁"分数表</strong>。</li>
+  <li><code>/√dk</code>：除以维度平方根，防止数值过大导致 softmax 梯度消失（归一化尺度）。</li>
+  <li><code>Softmax</code>：每行归一化成概率（该 token 对全场的注意力分配）。</li>
+  <li><code>·V</code>：按权重把各 token 的 Value 加权求和，得到该 token 的新表示。</li>
+</ol>
+<blockquote>工程直觉：<strong>那张 n×n 的分数表就是 O(n²) 的来源</strong>。序列翻倍，这张表变 4 倍。p61 那张对比表也点明：Transformer 相比 RNN 换来 O(1) 的串行操作（GPU 能并行训练，这是它崛起的根本），代价是 O(n²) 的序列复杂度。</blockquote>
+
+<h2>一个 Transformer block 长什么样（p49-60）</h2>
+<pre class="loop">输入 token 向量（+位置编码）
+      │
+   ┌──┴───────────────────────┐
+   │ Multi-Head, Causal         │  ← 多头=并行几组 attention；Causal=只能看左边（掩码）
+   │ Self-Attention Layer       │
+   └──┬───────────────────────┘
+      │ + 残差(residual)          ← 把输入加回来，防梯度问题、保信息
+   Layer Norm
+      │
+   Feed Forward（逐位置的两层 MLP）
+      │ + 残差
+   Layer Norm
+      └──► [ Transformer Block ] × N 个       ← 重复 N 层
+              │
+           LM Head → Softmax → 下一个 token 概率</pre>
+<ul>
+  <li><strong>Causal mask</strong>：训练时不许"偷看未来"（p37）——否则等于作弊。</li>
+  <li><strong>Multi-Head</strong>：一组 WQ/WK/WV 不够，用多组并行（p44-48），不同头学不同关注模式。</li>
+  <li><strong>残差 + Layer Norm</strong>：每步把输入加回去再归一化，是深层网络能训起来的关键。</li>
+</ul>
+
+<h2>对你 SGRT 系统的三个直接后果</h2>
+<ol>
+  <li><strong>上下文 = 成本与延迟</strong>：n² 关系意味着长上下文不是线性变贵，而是加速变贵。设计 agent 时要主动控制"每次喂多少"。</li>
+  <li><strong>长≠准</strong>：p84、p163 的图（RULER / OOLONG）说明长上下文下召回与聚合能力下降（context rot）。把整本手册塞进去，不如让模型"按需检索"。</li>
+  <li><strong>选型要看架构</strong>：全 softmax attention vs 线性 attention（下层课）在长日志场景的表现和成本差很大。知道底层，才能选对模型跑你的日志排查。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 为什么 attention 是 O(n²)？是哪一步产生的？</p>
+  <details><summary>展开答案</summary><p>因为 <code>Q·Kᵀ</code> 要对"每个 token × 每个 token"算注意力分数，产生一张 n×n 表。序列长度 n 翻倍，表变 4 倍，故 O(n²)。</p></details>
+  <p>Q2. <code>/√dk</code> 和 Softmax 各起什么作用？</p>
+  <details><summary>展开答案</summary><p><code>/√dk</code>：缩放点积，避免值太大让 softmax 饱和、梯度消失。<code>Softmax</code>：把每一行分数归一化成概率，即"这个 token 把注意力如何分配给全场"。</p></details>
+  <p>Q3. Transformer 相比 RNN 的核心取舍是什么？（p61）</p>
+  <details><summary>展开答案</summary><p>换到 O(1) 串行操作（GPU 可大规模并行训练，这是它取代 RNN 的根本），代价是 O(n²) 的序列长度复杂度——长上下文变贵、变难。</p></details>
+  <p>Q4. 你的设备日志排查 agent，为什么不该"把全量日志直接喂模型"？</p>
+  <details><summary>展开答案</summary><p>两个原因叠加：(1) O(n²) 让长日志的 prefill 成本/延迟陡增；(2) context rot 让模型在超长上下文里召回关键行更不准。正确做法是"按需检索 + 压缩"（Week1 的 RAG/压缩，Week2 第 21 课）。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week2 · Lecture02 · 段一 拆开模型</span><br>
+  ← 上一课 <a href="lecture01-0013-course-map-and-graduation.html">0013 · 总复习 + 综合题（Week1 收尾）</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture02-0015-linear-attention.html">0015 · 线性注意力：把 O(n²) 压成 O(n) 的代价</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件（源文件夹 week2-9.28） p24-63、p85-91（Transformer / Attention Is All You Need 2017 / Linear Attention）。图源：p35-39 attention 层（矢量图可精确读）、p49-60 decoder-only block。<br>
+Lesson 14 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

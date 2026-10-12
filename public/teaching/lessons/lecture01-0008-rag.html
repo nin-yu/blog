@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 8 — RAG：先查“你们的资料”再作答</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lesson 8</span>
+  <h1>RAG：先查“你们的资料”，再让模型作答</h1>
+  <div class="meta">第 8 课（共 13 课）· 重建 v3 · 本课成果：能背出 RAG 三步，并点名你手里哪些资料最该 RAG 化 · 对应第 3 课“没世界”那座桥</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+RAG（Retrieval-Augmented Generation，检索增强生成）只有三步：<br>
+<strong>① Retrieve 检索</strong>——在你的文档里搜相关信息；<br>
+<strong>② Augment 增强</strong>——把搜到的内容拼进用户问题的上下文；<br>
+<strong>③ Generate 生成</strong>——LLM 用这些检索到的事实作答。<br>
+一句话：<strong>RAG 让 LLM 实时接上外部知识源</strong>，弥补训练知识静态、过时、且不含你私有资料的短板。
+</div>
+
+<h2>为什么需要它（回到第 1 课理由 2）</h2>
+<p>模型知识冻结在训练那一刻。设备手册、现场 SOP、历史工单、你团队的内部约定——<strong>这些永远不在训练数据里</strong>。RAG 不重训模型，只是“作答前先去查”，把外部事实接进上下文。代价极低，效果立竿见影，所以成了行业默认（Databricks：60% 的 LLM 应用用了 RAG）。</p>
+
+<h2>三步拆开看（每一环的工程要点）</h2>
+<table>
+  <tr><th>步骤</th><th>做什么</th><th>工程要点</th></tr>
+  <tr><td>① Retrieve</td><td>把问题转成查询，在文档库里搜最相关的片段</td><td>切块（chunk）大小、嵌入模型、检索算法（向量/关键词/混合）</td></tr>
+  <tr><td>② Augment</td><td>把命中的片段拼进上下文，连同问题一起给模型</td><td>控制长度、去重、保留来源（以便引用/溯源）</td></tr>
+  <tr><td>③ Generate</td><td>模型基于“问题 + 检索片段”生成答案</td><td>要求“只依据给定资料作答并给出出处”，抑制幻觉</td></tr>
+</table>
+<blockquote>关键设计点：<strong>让答案可溯源。</strong>“LLM + 检索 + 引用”比裸模型可信得多——这既是可靠性的来源，也是医疗场景“可审计”的前提。</blockquote>
+
+<h2>RAG 的失败模式（提前知道，少踩坑）</h2>
+<ul>
+  <li><strong>检索没搜到</strong>：切块不合理 / 查询词不匹配 → 模型只能瞎编。检索质量是 RAG 的命门。</li>
+  <li><strong>搜到但没用对</strong>：拼进去一堆噪声，模型抓错重点 → 要排序、去重、限长。</li>
+  <li><strong>有资料却仍旧幻觉</strong>：没强约束“只依据资料” → prompt 里要明确“资料里没有就说不知道”。</li>
+</ul>
+
+<h2>对照你熟悉的东西（工程桥）</h2>
+<p>你的 SGRT 工作中，最该 RAG 化的资料，按性价比排序：</p>
+<ol>
+  <li><strong>设备手册 / 错误码表</strong>——高价值、稳定、问答高频。故障排查助手的第一块砖。</li>
+  <li><strong>标定与 QA 的 SOP</strong>——步骤固定，检索出来可直接指导动作。</li>
+  <li><strong>历史工单 / 故障复盘</strong>——把“上次这类问题怎么解决的”检索出来，直接复用经验。</li>
+</ol>
+<p>你已经在做“翻手册、查记录”这件事，RAG 只是把它<strong>自动化 + 常驻</strong>，且每次都带上出处。</p>
+
+<h2>自测</h2>
+<div class="quiz">
+  <p>Q1. RAG 三步是什么？哪一步决定“答得对不对”的天花板？</p>
+  <details><summary>展开答案</summary><p>Retrieve → Augment → Generate。<strong>Retrieve（检索）</strong>是天花板：检索不到正确资料，后面两步再强也只能编。</p></details>
+  <p>Q2. RAG 和“把资料喂给模型微调”相比，最大优势是什么？</p>
+  <details><summary>展开答案</summary><p>RAG 不重训、可实时更新、可溯源。资料改一条马上生效；而微调要重训、成本高、且更新滞后，还难以引用出处。</p></details>
+  <p>Q3. 为什么“要求模型只依据给定资料作答、并给出出处”这么重要？</p>
+  <details><summary>展开答案</summary><p>它把模型从“凭记忆乱说”约束成“照证据说话”，同时让答案可核查、可审计——这正是医疗设备场景能信任一个 LLM 助手的前提。</p></details>
+  <p>Q4. 列出你手上 2~3 类最适合 RAG 的资料。</p>
+  <details><summary>展开答案</summary><p>参考：设备手册/错误码表、标定 QA SOP、历史工单/复盘。判据是“高价值 + 稳定 + 被反复问”。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">第三段 · 复合系统</span><br>
+  ← 上一课 <a href="lecture01-0007-agent-memory.html">0007 · 记忆三类</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture01-0009-tools-and-mcp.html">0009 · 工具调用四步 + MCP</a>
+</div>
+
+<p class="foot">一手来源：CS329Z 课件（源文件夹 week1-9.23） p57（RAG）+ BAIR 博客（检索作为系统组件）。<br>
+Lesson 8 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

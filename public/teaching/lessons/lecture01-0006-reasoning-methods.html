@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 6 — 推理方法：CoT / ReAct / Self-Consistency / Reflexion</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lesson 6</span>
+  <h1>推理四招：从“纯想”到“边想边做”再到“反思”</h1>
+  <div class="meta">第 6 课（共 13 课）· 重建 v3 · 本课成果：能讲清 CoT/ReAct/SC/Reflexion 各自机制与适用场景，并复述苹果遥控器案例 · 对应第 5 课 loop 的 Think 环节</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+推理（Think）有四层“加料”方式，越往后越强、也越贵：<br>
+<strong>CoT</strong>（先一步步想再答）→ <strong>ReAct</strong>（边想边做、用观察校正）→ <strong>Self-Consistency</strong>（多次想、投票取一致）→ <strong>Reflexion</strong>（从失败里反思、沉淀成下次的提示）。<br>核心权衡：<strong>推理换准确率，代价是 token 与延迟。</strong>
+</div>
+
+<h2>为什么 agent 需要“推理”（原理，一段话）</h2>
+<p>Obs→Act 的直接映射常常是难的。人做饭时“盐没了 → 去右边柜子拿酱油”不是条件反射，而是中间转了几道弯推出来的。LLM 同理：给它一个中间推理步骤，它才能把“观察”和“该做的动作”连起来——这就带来<strong>泛化</strong>（新场景也推得动）和<strong>对齐</strong>（你能看懂它为什么这么做）。</p>
+
+<h2>四招逐个拆（机制 + 弱点）</h2>
+<table>
+  <tr><th>方法</th><th>机制</th><th>弱点 / 修补</th></tr>
+  <tr><td>CoT 思维链<br>(Chain-of-Thought)</td><td>让模型“先一步步推理，再给答案”</td><td>推理中途可能<strong>幻觉</strong>且无从校验</td></tr>
+  <tr><td>ReAct<br>(Reason + Act)</td><td>推理与行动<strong>交错</strong>：想一步→做一个动作→拿到观察→再想</td><td>把观察 (Obs) 喂回来<strong>缓解幻觉</strong>；普遍优于“只行动不推理”</td></tr>
+  <tr><td>Self-Consistency</td><td>用 CoT 采样<strong>多条</strong>推理路径，取最一致的答案（投票）</td><td>成本×N；对“有唯一正确答案”的题最有效</td></tr>
+  <tr><td>Reflexion</td><td>用自然语言<strong>反思</strong>任务反馈，把失败的长轨迹蒸馏成“自我提示”留到下次</td><td>需要能拿到反馈信号（成败/评分）</td></tr>
+</table>
+<p>延伸：<strong>多智能体辩论</strong>（Du et al., 2023）让多个 LLM 各自推理再互相辩；<strong>编排器（Orchestrator）</strong>用一个总控协调多个子 agent（如 Magentic-One）。属于“多脑”路线，本课程先不深入。</p>
+
+<h2>经典案例：苹果遥控器（课件 p35-36，务必看懂）</h2>
+<p>问：<em>除了 Apple Remote 本身，还有哪些设备能控制它当初被设计来控制的那款程序？</em></p>
+<blockquote>
+<strong>纯推理（CoT）</strong>：Apple Remote 控制 Apple TV；Apple TV 可由 iPhone/iPad/iPod Touch 控制。→ 答“iPhone/iPad/iPod Touch”。<br>
+<strong>错在哪</strong>：漏了“键盘功能键”这个正确答案。它的推理链里少了一次“去查”的校正。<br><br>
+<strong>ReAct（边想边做）</strong>：Thought1 搜 Apple Remote → Obs 得知它控制 Front Row → Thought2 改搜 Front Row → Obs 没找到，提示“Front Row (software)” → Thought3 搜 Front Row (software) → Obs 得知它由 Apple Remote <strong>或键盘功能键</strong>控制 → Thought4 得正确答案。<br>
+<strong>对在哪</strong>：每次“观察”都把推理拽回事实，幻觉没机会跑偏。
+</blockquote>
+<p>结论（背下来）：<strong>ReAct 普遍优于纯 Act；CoT 的严重问题是幻觉，ReAct 靠“观察”落地能缓解幻觉。</strong>这正是第 5 课把 Obs 放进环里的原因。</p>
+
+<h2>对照你熟悉的东西（工程桥）</h2>
+<ul>
+  <li>CoT ≈ 让算法“写出推导过程”，便于你审；但推导本身可能错。</li>
+  <li>ReAct ≈ 迭代配准：每算一步就<strong>看残差</strong>，用真实反馈纠偏，而不是一口气算到底。</li>
+  <li>Self-Consistency ≈ 多组初值/多次配准取最一致结果——用重复换稳定性。</li>
+  <li>Reflexion ≈ 把每次标定失败的原因记成 SOP 条目，下次自动规避。</li>
+</ul>
+
+<h2>更好懂的比喻：走迷宫（一步一探，而非一条路走到底）</h2>
+<p>如果上面的案例还嫌绕，用<strong>走迷宫</strong>来理解 CoT 与 ReAct 的差别——一试就通：</p>
+<ul>
+  <li><strong>CoT = 凭脑子里的地图，一次性画出路线</strong>：模型没在“走”迷宫，它在<strong>回忆</strong>迷宫。它照着印象（“苹果的控制器就是 iPhone”）直接规划一条路线，走到底。<br>
+  印象里缺那条岔路（“键盘也能控 Front Row”），就漏了真答案，而且<strong>它自己不知道走错了</strong>。</li>
+  <li><strong>ReAct = 摸黑走，每到一个岔路口就伸脚探一下</strong>：探到的结果是硬事实（Observation），不是印象。<br>
+  哪怕印象里没这条路，脚一探也知道——“键盘功能键”就是这么被探出来的。</li>
+</ul>
+<p><strong>关键部件 = 那只“探路的脚”（Observation）</strong>：没有它，ReAct 就退化成 CoT（只剩干想）；有它，模型每一圈都被事实拽住一次，幻觉没机会连成一条链。</p>
+<p>顺带解释一个工程细节：为什么 agent 要有<strong>最大步数上限</strong>（如 MaxToolRounds）？<br>
+因为“每步都探路”虽好，但岔路口无限多或原地打转时，会<strong>鬼打墙</strong>——无限走、烧 token、出不来。
+所以必须设“最多走 N 步 + 无进展即停”。（这正是第 6 课结尾 Reflexion/可靠性会再提到的保护逻辑。）</p>
+<p><strong>一句话完整版</strong>：CoT = 凭印象一次性画路线（可能画错还自信）；ReAct = 每个岔路口伸脚探一下再选（慢，但踩在真实上）；但探路也必须限步数，否则鬼打墙。<br>
+换成控制论的词：<strong>CoT 是开环推理，ReAct 是闭环推理</strong>——Observation 就是传感器读数。</p>
+
+<h2>自测</h2>
+<div class="quiz">
+  <p>Q1. 苹果遥控器案例里，CoT 为什么答错、ReAct 为什么答对？</p>
+  <details><summary>展开答案</summary><p>CoT 只靠语言内部推导，链条中漏了“键盘功能键”，且无外部信息纠偏，于是幻觉式地给了错误答案。ReAct 每一步都去检索、用 Obs 校正，最终把“键盘功能键”查出来。</p></details>
+  <p>Q2. Self-Consistency 与 Reflexion 的核心区别？</p>
+  <details><summary>展开答案</summary><p>SC 是“同一时刻多采样、投票取一致”（横向重复）；Reflexion 是“跨尝试的纵向学习”——把上次失败的反思留成提示，改进下一次。一个提升单次稳定性，一个提升长期表现。</p></details>
+  <p>Q3. 什么时候不该上多路径推理（SC）？</p>
+  <details><summary>展开答案</summary><p>当成本/延迟敏感、且任务没有唯一正确答案（开放生成、创意类）时。SC 的收益主要来自“多选题有唯一解”，开放任务里投票意义不大、还徒增成本。</p></details>
+  <p>Q4. 把“反思路线（Reflexion）”落到你的 SGRT 场景，可以怎么做？</p>
+  <details><summary>展开答案</summary><p>例：每次标定/配准失败后，让 agent 用自然语言总结“这次为什么失败”（证据不足？门控时机偏了？遮挡？），把结论沉淀成下次的先验提示或检查项。这就是把一次性排错变成可复用的程序记忆（第 7 课）。</p></details>
+  <p>Q5. 用“走迷宫”比喻说说：CoT 与 ReAct 的本质差别是什么？为什么 agent 要设最大步数上限？</p>
+  <details><summary>展开答案</summary><p>CoT 是“凭脑子里的地图一次性画出路线”——它在回忆迷宫而非走迷宫，印象里有错/有漏也不自知；ReAct 是“每到一个岔路口就伸脚探一下”——Observation 是硬事实（探路的脚），每步把推理拽回现实。最大步数上限则是防“鬼打墙”：探路虽好，但打转/岔路无限时会无限走、烧 token，故须“最多 N 步 + 无进展即停”。一句话：CoT 是开环推理，ReAct 是闭环推理。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">第二段 · 智能体本体</span><br>
+  ← 上一课 <a href="lecture01-0005-agent-loop-and-components.html">0005 · 五大组件 + loop</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture01-0007-agent-memory.html">0007 · 记忆三类：情景/语义/程序</a>
+</div>
+
+<p class="foot">一手来源：CS329Z 课件（源文件夹 week1-9.23） p33-42 + ReAct (Yao 2022) / Self-Consistency (Wang 2023) / Reflexion (Shinn 2023)。<br>
+Lesson 6 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

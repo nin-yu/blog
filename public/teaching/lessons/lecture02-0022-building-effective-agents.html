@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 22 — 构建高效 agent：五种模式（Week2 毕业课）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week2 · Lecture02 · Lesson 22（Week2 毕业课）</span>
+  <h1>构建高效 agent：workflow 的五种模式 + 何时才该上 agent</h1>
+  <div class="meta">第 22 课（Week2 第 9 课 · 毕业课）· 来源：Anthropic《Building effective agents》(2024-12) · 本课成果：把 Week2 学到的模型/训练/推理/上下文知识，落到"该用哪种编排模式"的工程判断上（与 Week1 第 12 课互为里表）</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+Anthropic 的核心经验：<strong>最成功的实现，用的都是"简单、可组合的模式"，而不是复杂框架</strong>。先分清两个词：<strong>Workflow</strong> = LLM 与工具沿<strong>预定义的代码路径</strong>编排；<strong>Agent</strong> = LLM <strong>自己动态决定</strong>流程与工具用法。判断准则：<strong>能用最简单方案就别上 agent</strong>；确实需要复杂性时，步骤固定就 workflow，需要灵活/规模化决策才 agent。<br><br>
+三条原则收尾：<strong>保持简单、保持透明（显式展示计划步骤）、精心做 ACI（工具文档与测试）</strong>。
+</div>
+
+<h2>一个总原则：最简优先</h2>
+<p>原文：<strong>"用最简单的方案，只在必要时才增加复杂度"</strong>——这可能意味着根本不用 agent 系统。agent 系统往往<strong>用延迟和成本换任务表现</strong>，要判断这笔交易值不值。很多场景下，<strong>用检索 + 上下文示例优化过的单次 LLM 调用就够</strong>。</p>
+<p>关于框架：可以用（Claude Agent SDK、Strands、Rivet、Vellum 等），但它们会加抽象层、掩盖底层提示与响应、让你"想加复杂度"。建议<strong>先从直接调 LLM API 开始</strong>——许多模式几行代码就能写；若用框架，务必搞懂底层（"对底层的错误假设是客户错误的常见来源"）。</p>
+
+<h2>积木块：增强型 LLM（augmented LLM）</h2>
+<p>最基础的单元 = LLM + 增强（检索、工具、记忆）。它有两大实现关注点：<strong>针对你的场景定制这些能力</strong>、<strong>给模型一个易用且有文档的接口</strong>。MCP（Model Context Protocol）正是把第三方工具接进来的通用做法（Week1 第 9 课）。</p>
+
+<h2>五种 workflow 模式（原文逐个）</h2>
+
+<h3>① 提示链 Prompt Chaining</h3>
+<p>把任务拆成一串步骤，每步 LLM 处理上一步输出，中间可加<strong>程序化检查（gate）</strong>。适用：任务能干净地拆成固定子任务，用延迟换准确率。</p>
+<p>例：先写营销文案→再翻译；先写大纲→检查达标→按大纲写正文。</p>
+
+<h3>② 路由 Routing</h3>
+<p>先分类输入，再导向专门的下游任务。作用：关注点分离、提示更专门。适用：有明显类别、且分类可准确完成（LLM 或传统分类器都行）。</p>
+<p>例：客服问题分流；简单问题→小便宜模型（Haiku），难题→强模型（Sonnet）。</p>
+
+<h3>③ 并行化 Parallelization</h3>
+<p>两个变体：<strong>分sectioning</strong>（拆成独立子任务并行）与 <strong>投票 voting</strong>（同一任务多次跑取多样输出）。适用：子任务可并行提速，或需要多视角/多次尝试提升置信度。</p>
+<p>例：一个实例答题、另一个实例做安全筛查（比同一个 LLM 兼顾两者更好）；多提示审查代码漏洞。</p>
+
+<h3>④ 编排者-工作者 Orchestrator-Workers</h3>
+<p>中央 LLM <strong>动态拆解任务</strong>、分给 worker LLM、再综合结果。与并行化的关键区别：<strong>子任务不是预定义的，而是编排者按具体输入当场决定</strong>。</p>
+<p>例：每次改多个文件的编码产品；需从多个来源搜集分析的搜索任务。</p>
+
+<h3>⑤ 评估者-优化者 Evaluator-Optimizer</h3>
+<p>一个 LLM 生成、另一个评估并反馈，循环迭代。适用：有清晰评估标准、且迭代改进有可测量价值。</p>
+<p>例：文学翻译（细腻之处需评估者挑刺）；需要多轮搜索分析才能全面的复杂检索。</p>
+
+<h2>Agent：什么时候才用</h2>
+<p>当任务<strong>步骤数无法预测、路径无法硬编码</strong>时，才用 agent：LLM 可能运行很多轮，你必须对它的决策有一定信任。它在受信环境里适合规模化。</p>
+<ul>
+  <li>做法：agent 通常就是"<strong>LLM 在循环里根据环境反馈使用工具</strong>"——所以工具集与文档要设计得极清晰。</li>
+  <li>代价：<strong>成本更高、错误会复合</strong>。建议在沙箱里大量测试 + 恰当护栏。</li>
+  <li>例：SWE-bench 编码 agent；computer-use 参考实现。</li>
+</ul>
+
+<h2>五种模式一张表</h2>
+<table>
+  <tr><th>模式</th><th>谁定步骤</th><th>最适合</th><th>你 SGRT 场景的对应</th></tr>
+  <tr><td>提示链</td><td>代码（固定）</td><td>可干净拆分的固定子任务</td><td>报告生成：提取数值→对照阈值→成文</td></tr>
+  <tr><td>路由</td><td>代码 + 分类</td><td>有明确类别的输入分流</td><td>日志按故障类别分流到不同处置提示</td></tr>
+  <tr><td>并行化</td><td>代码（固定）</td><td>可并行 / 需多视角</td><td>多指标并行质检 + 多提示投票判异常</td></tr>
+  <tr><td>编排者-工作者</td><td>LLM（动态）</td><td>子任务无法预知</td><td>故障排查：按日志内容动态决定查哪些子系统</td></tr>
+  <tr><td>评估者-优化者</td><td>LLM（循环）</td><td>有清晰评估标准、可迭代</td><td>报告草稿 → 按 QA 准则挑刺 → 修订</td></tr>
+</table>
+
+<h2>与 Week1 第 12 课的关系</h2>
+<blockquote>Week1 第 12 课给的是"判定法则 + 四问法"（Workflow vs Agent 的分界线）；本课给的是"确定要用 workflow 后，具体选哪种编排模式"。两课互为里表：先判范式，再选模式。实战建议：<strong>绝大多数 SGRT 工程价值来自"固定管线 + 少量 LLM 判断点"</strong>（提示链/路由/评估者-优化者），真正的开放式 agent 留给"故障排查"这类步骤未知的任务。</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. Workflow 与 Agent 的唯一本质区别是什么？</p>
+  <details><summary>展开答案</summary><p>谁决定步骤：workflow 由预定义代码路径编排；agent 由 LLM 动态决定自己的流程与工具用法。</p></details>
+  <p>Q2. "编排者-工作者"和"并行化"看起来像，关键区别是什么？</p>
+  <details><summary>展开答案</summary><p>子任务是否预定义：并行化的子任务是事先拆好的、固定并行；编排者-工作者的子任务由编排者按具体输入<strong>当场动态决定</strong>，不预先写死。</p></details>
+  <p>Q3. Anthropic 的三条核心原则是什么？</p>
+  <details><summary>展开答案</summary><p>保持 design 简单（simplicity）；保持透明——显式展示 agent 的规划步骤（transparency）；精心打造 ACI——工具文档与测试（carefully craft your agent-computer interface）。</p></details>
+  <p>Q4. 你的"设备故障排查"任务，该用哪种模式？为什么不是更简单的提示链？</p>
+  <details><summary>展开答案</summary><p>用编排者-工作者（或受控的 ReAct agent）——因为步骤无法预知：先查哪份日志取决于日志里有什么。提示链要求子任务能事先干净拆分，而排查是"走一步看一步"，故需要动态编排。护栏：工具只读、关键结论人审。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week2 · Lecture02 · 段五 Week2 毕业</span><br>
+  ← 上一课 <a href="lecture02-0021-longhorizon-context.html">0021 · 上下文工程（下）</a> · <a href="../index.html">课程大纲</a> · 对照 <a href="lecture01-0012-workflow-or-agent.html">Week1-0012 · 范式判定</a><br>
+  Week2 完结 → 回到 <a href="../index.html">课程大纲</a>，可继续 week3（RAG 专题，课件结尾预告"See you on Wednesday for RAG"）
+</div>
+
+<h2>综合结业考试题</h2>
+<div class="takeaway">
+<strong>Lecture02 结业考试</strong>（把本讲当一个整体来考）：上下文成本与模型选型。<br>
+<strong>→ 领取结业考试题</strong>：<a href="../综合题/Lecture02/结业考试-Lecture02-上下文与选型.md">结业考试-Lecture02-上下文与选型.md</a>（Markdown 作答制，作答区就在题目下方；答完对我说"评卷"）。
+</div>
+
+<p class="foot">一手来源：Anthropic《Building effective agents》(2024-12)（workflow 五模式 / agents / Appendix 2 ACI）+ CS329Z lecture02 课件（源文件夹 week2-9.28） p149-159（Structured I/O 与 agent 接口呼应）。<br>
+Lesson 22 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 19 — 结构化输出：约束解码与 DSPy 签名</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week2 · Lecture02 · Lesson 19</span>
+  <h1>结构化 I/O：让模型吐出的东西"能被程序接住"</h1>
+  <div class="meta">第 19 课（Week2 第 6 课）· 来源：lecture02.pdf p151-159 + Anthropic《Building effective agents》Appendix 2（工具提示工程）· 本课成果：掌握"给 Agent 之间定契约"的三条路（约束解码 / 签名 / 分类头），以及工具描述怎么写才不坑模型</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+复合系统里，组件之间必须<strong>共享一份"怎么通信"的契约</strong>（p152）。让 LLM 稳定输出结构化数据，有三条路：<strong>约束解码</strong>（在解码时把非法 token 屏蔽掉，强制合法结构）、<strong>DSPy 签名</strong>（把输入输出字段声明出来，自动生成提示与解析）、<strong>分类头</strong>（在 embedding 上接小分类器做"系统一"式决策）。<br><br>
+工程含义：<strong>结构化输出是"让 LLM 能进你的代码管线"的前提</strong>。你的标定 QA 要给下游程序用，就不能让它自由发挥写散文——要契约。
+</div>
+
+<h2>为什么需要契约（p152）</h2>
+<p>BAIR 复合 AI 系统那篇的核心：多个组件（LLM、检索、工具、传统程序）拼装时，<strong>必须约定彼此的数据格式</strong>，否则组件间没法可靠对接。这就是"结构化 I/O"的动机。</p>
+
+<h2>路 1：约束解码 Constrained Decoding（p153-154）</h2>
+<p>思想：<strong>在生成时就用有限状态机（FSM）限制合法 token 序列</strong>，让模型只能吐出符合目标结构（如 JSON schema）的内容。</p>
+<ul>
+  <li>p153：强制模型输出特定结构。</li>
+  <li>p154：SGLang 用 FSM 做解码——非法分支直接剪掉，从源头保证结构合法。</li>
+</ul>
+<blockquote>大白话：不是"生成完再检查格式"，而是"生成时就不让它跑偏"——像给打印机的字盘里只放合法字的字模。</blockquote>
+
+<h2>路 2：DSPy 签名 Signatures（p155-156）</h2>
+<p>思想：把"这个模块要吃什么、吐什么"声明成<strong>签名</strong>（如 <code>question -&gt; answer</code>），系统自动生成提示、并解析回结构化字段。p156 展示 DSPy 生成的 system/user prompt（带 <code>[[ ## field ## ]]</code> 标记）——<strong>签名让"提示+解析"自动化</strong>。</p>
+
+<h2>路 3：分类头 / 系统一模型（p157-158）</h2>
+<ul>
+  <li><strong>分类头</strong>（p157）：在 embedding 上训一个小头，映射到类别标签——用于稳定的"分类/决策"。</li>
+  <li><strong>System One 模型</strong>（p158）：通俗说就是"带可调选项的分类器"，专门做快速决策——比让大模型自由生成更稳、更便宜。</li>
+</ul>
+
+<h2>工具也是 I/O：怎么"提示工程"你的工具（Anthropic Appendix 2）</h2>
+<p>Anthropic 那篇的 Appendix 2 给了硬核建议（原文结论，非杜撰）：</p>
+<ul>
+  <li><strong>给模型留"思考"的 token</strong>，别让它写到一半被格式逼死。</li>
+  <li><strong>格式尽量贴近模型在自然文本里见过的样子</strong>，减少转义/计数的 overhead（写 diff 要预知行数、JSON 里写代码要转义——都更难）。</li>
+  <li><strong>像写 HCI 一样写 ACI（Agent-Computer Interface）</strong>：站在模型角度想"这工具好用吗"，把参数名/描述写得像给新人看的 docstring。</li>
+  <li><strong>Poka-yoke（防呆）</strong>：改参数设计，让错误更难发生。例：SWE-bench 的 agent 用相对路径出错，改成<strong>强制绝对路径</strong>后使用零失误。他们为此花的调优时间<strong>比调总体提示还多</strong>。</li>
+</ul>
+<blockquote>对你的直接启示：写 <code>read_log()</code>、<code>get_calib_residual()</code> 这类工具时，参数名要自解释、给示例、边界清楚，并"防呆"（比如强制传完整的设备 ID 而不是模糊简称）。</blockquote>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>标定 QA 输出用约束解码/JSON schema</strong>：结果要进报表和下游程序，"通过/不通过 + 残差值 + 原因"必须结构化，不能是散文。</li>
+  <li><strong>需要稳定决策用分类头/系统一</strong>："这条日志属于哪类故障"用分类器比让大模型自由生成更稳、更省。</li>
+  <li><strong>工具描述当作工程活来写</strong>：ACI 的质量直接决定 agent 排查的可靠性——按 Anthropic 那套"防呆 + 示例 + 边界"来写。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 约束解码"在解码时"限制结构，和"生成后再校验"有什么区别？为什么更好？</p>
+  <details><summary>展开答案</summary><p>约束解码用 FSM 在生成时直接屏蔽非法 token，从源头保证结构合法，省去重试；事后校验则要等生成完、失败还得重来，浪费 token 且不可靠。</p></details>
+  <p>Q2. DSPy 签名解决什么问题？</p>
+  <details><summary>展开答案</summary><p>把模块的输入/输出字段声明成签名，自动生成提示并把输出解析回结构。它让"写提示 + 解析"自动化，减少手写易错的格式约定。</p></details>
+  <p>Q3. Anthropic 关于"提示工程工具"的三条硬建议是什么？</p>
+  <details><summary>展开答案</summary><p>(1) 给模型留思考 token；(2) 格式贴近自然文本、减少转义/计数 overhead；(3) 像做 HCI 一样做 ACI（防呆、示例、参数名自解释）。他们为调工具花的时间比调总提示还多。</p></details>
+  <p>Q4. 你的标定报告为什么要用结构化输出而非自然语言？</p>
+  <details><summary>展开答案</summary><p>因为报告要进下游程序和报表，"通过/不通过 + 残差值 + 原因"必须机器可解析。自然语言无法可靠对接，结构（JSON/schema）才能被程序接住。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week2 · Lecture02 · 段四 接口与上下文</span><br>
+  ← 上一课 <a href="lecture02-0018-inference-time-scaling.html">0018 · 推理期扩展</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture02-0020-context-engineering.html">0020 · 上下文工程（上）：context rot 与解剖</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件（源文件夹 week2-9.28） p151-159（Structured I/O / Constrained Decoding, SGLang arXiv 2312.07104 / DSPy Signatures / Toolformer, arXiv 2302.04761）+ Anthropic《Building effective agents》Appendix 2。<br>
+Lesson 19 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

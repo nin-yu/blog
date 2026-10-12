@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 33 — 规模化用工具：Gorilla / ToolLLM / ToolkenGPT</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week4 · Lecture04 · Lesson 33</span>
+  <h1>工具从 5 个变成 16k 个：规模化调用怎么训</h1>
+  <div class="meta">第 33 课（Lecture04 第 3 课）· 来源：lecture04.pdf p32-45 + Gorilla/ToolLLM 论文 · 本课成果：掌握"把工具体系做大"的三条路（ToolkenGPT 把工具当词、ToolLLM 训 API 检索器、Gorilla 用检索感知训练 + AST 测幻觉），并会用 p45 总表选型</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+Toolformer 只有 5 个工具。真要用起成百上千个 API，需要新招：<strong>ToolkenGPT</strong>（每个工具学成一个特殊 token，触发后填参数）、<strong>ToolLLM/ToolBench</strong>（训 LLaMA + 神经 API 检索器，覆盖 16k+ 真实 API）、<strong>Gorilla</strong>（在 1.6k API 上微调，用"检索感知训练"抗低质检索，用 <strong>AST 子树匹配</strong>测幻觉）。<br><br>
+工程含义：当你的工具从"3 个"涨到"300 个"，瓶颈从"会不会调"变成"<strong>选不选得对 + 编不编造不存在的 API</strong>"——这正是 Gorilla 用 AST 匹配量化的东西。
+</div>
+
+<h2>路线 1：ToolkenGPT——把工具当成"词"（p32-35）</h2>
+<p>Hao et al., 2024 的思路：<strong>把每个工具表示成一个 token（"toolken"）并学一个 embedding</strong>。模型预测下一个 token 时，可能预测出一个 toolken；一旦触发，就切换到"工具模式"提示，让模型补全参数并执行。</p>
+<pre class="loop">LLM 预测下一个 token（词 或 toolken）
+   → 若预测出 toolken: 生成暂停，上下文切到 tool-mode prompt（含 [tool](args) 示范）
+   → 模型填参数（ICL 完成参数填充）→ 执行</pre>
+<p>p34：训练 toolken embedding 用类似"把结果 token 换成 [toolken]"的改写做损失。<strong>好处：加新工具只需学一个新 embedding，不用重训整个模型</strong>。</p>
+
+<h2>路线 2：ToolLLM / ToolBench——16k+ 真实 API（p37-38, p61-62）</h2>
+<p>Qin et al., 2023：</p>
+<ul>
+  <li>从 RapidAPI 爬取 <strong>6000+ 真实世界 API</strong>，整理贴近真实的人类指令。</li>
+  <li>微调 LLaMA 得到 <strong>ToolLLaMA</strong>，并配一个<strong>神经 API 检索器</strong>为每条指令推荐合适的 API。</li>
+  <li>覆盖 <strong>16k+ API</strong>（p61-62 强调"16k Real APIs"）。</li>
+</ul>
+<blockquote>要点：工具一多，"该用哪个 API"本身成了检索问题——所以要配 API 检索器（本质是 Week3 的检索技术用在工具选择上）。</blockquote>
+
+<h2>路线 3：Gorilla——规模化 + 抗幻觉（p40-44）</h2>
+<p>Patil et al., 2023：LLM 连接海量 API。</p>
+<ul>
+  <li><strong>数据（p41）</strong>：来自 HuggingFace Model Hub、PyTorch Hub、TensorFlow Hub，共 <strong>1645 个 API 调用</strong>，每条 JSON 含 {domain, framework, functionality, api_name, api_call, api_arguments, environment_requirements, example_code, performance, description}。</li>
+  <li><strong>检索感知训练 RAT（p42）</strong>：在指令微调时，<strong>故意混入正确和错误的检索结果</strong>，让模型学会"用还是忽略"检索上下文——从而对低质量检索鲁棒。推理时支持 zero-shot 或带检索。</li>
+  <li><strong>AST 子树匹配测幻觉（p43）</strong>：用"抽象语法树子树匹配"判断模型生成的 API 调用是否真的对应某个存在的 API（而不是编造）。</li>
+  <li><strong>结果（p44）</strong>：准确率提升、<strong>幻觉下降</strong>。</li>
+</ul>
+
+<h2>四方法总表（p45，逐行读）</h2>
+<table>
+  <tr><th></th><th>Toolformer</th><th>ToolkenGPT</th><th>ToolLLM</th><th>Gorilla</th></tr>
+  <tr><td>工具调用形式</td><td>文本</td><td>一个新 token</td><td>ReAct 式轨迹</td><td>文本 + API 调用代码</td></tr>
+  <tr><td>训练什么</td><td>模型 (GPT-J 6B)</td><td>embeddings</td><td>模型 (LLaMA 7B)</td><td>模型 (LLaMA 7B)</td></tr>
+  <tr><td>标签来源</td><td>自监督</td><td>ground-truth 或合成调用</td><td>ChatGPT 轨迹</td><td>GPT-4 self-instruct</td></tr>
+  <tr><td>"何时用"靠</td><td>损失过滤</td><td>embedding</td><td>微调</td><td>微调</td></tr>
+  <tr><td>"用什么"靠</td><td>微调</td><td>in-context</td><td>微调</td><td>微调</td></tr>
+  <tr><td>规模</td><td>5 个工具</td><td>234 个工具</td><td><strong>16k APIs</strong></td><td>1.6k APIs</td></tr>
+</table>
+<blockquote>读法：这张表把"学调用工具"的四条路并排——从"5 个工具、损失过滤"到"16k API、ChatGPT 轨迹训练"。核心趋势：<strong>工具越多，越依赖"检索器选 API + 训练抗幻觉"</strong>。</blockquote>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>工具少就直接函数调用，别上这套</strong>：你排查系统就十几个工具，用朴素函数调用 + 好描述即可（Week2 课）。规模化方案是给"几百上千 API"准备的。</li>
+  <li><strong>"幻觉工具"是真实风险</strong>：模型可能调用不存在的 API。给工具集做<strong>白名单校验</strong>（只允许调用已注册的工具），相当于 Gorilla 的 AST 匹配在工程侧的落地。</li>
+  <li><strong>加工具 = 加检索问题</strong>：工具一旦上百，就得像 ToolLLM 那样配"API 检索器"，否则选择错误率飙升。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. ToolkenGPT 怎么"把工具当词"？好处是什么？</p>
+  <details><summary>展开答案</summary><p>给每个工具学一个特殊 token（toolken）及其 embedding；模型预测出 toolken 就切到工具模式补参数执行。好处：加新工具只需学一个新 embedding，不必重训整个模型。</p></details>
+  <p>Q2. 工具数量涨到 16k 后，为什么必须配"API 检索器"？</p>
+  <details><summary>展开答案</summary><p>因为"该用哪个 API"变成了检索问题——工具太多，模型无法全部记住/正确选择，需要神经 API 检索器按指令推荐合适 API（ToolLLM 的做法）。</p></details>
+  <p>Q3. Gorilla 的 RAT 和 AST 匹配分别解决什么？</p>
+  <details><summary>展开答案</summary><p>RAT（检索感知训练）：训练时混入正确/错误检索结果，让模型对低质量检索鲁棒；AST 子树匹配：判断生成的 API 调用是否对应真实存在的 API，用来量化"幻觉工具"。</p></details>
+  <p>Q4. 你的 SGRT 排查系统有十几个工具，该不该上 ToolLLM/Gorilla 那套？</p>
+  <details><summary>展开答案</summary><p>不该——那套是给成百上千 API 准备的。十几个工具用朴素函数调用 + 好工具描述即可；但要借 Gorilla 的思路加"工具白名单校验"，防止模型调用不存在的工具。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture04 · 段二 学习调用工具</span><br>
+  ← 上一课 <a href="lecture04-0032-what-are-tools.html">0032 · 什么是工具 + Toolformer</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture04-0034-standard-interfaces.html">0034 · 标准接口三代：REST / 函数调用 / MCP</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture04 课件（源文件夹 week3-10.5） p32-45（ToolkenGPT, Hao et al. 2024 / ToolLLM, Qin et al. 2023 / Gorilla, Patil et al. 2023 / 四方法总表）。<br>
+Lesson 33 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

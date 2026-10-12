@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>题 7 · "模型是无状态"直接推出了哪座桥？（已迁移 → 开放题库/精选题）</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>题 7 · &quot;模型是无状态&quot;直接推出了哪座桥？（已迁移 → 开放题库/精选题）</h1>
+<blockquote>
+<p>⚠️ <strong>这题已升级为&quot;精选题&quot;，单独收录在开放题库中</strong>：
+<a href="../%E5%BC%80%E6%94%BE%E9%A2%98%E5%BA%93/%E7%B2%BE%E9%80%8901-%E6%97%A0%E7%8A%B6%E6%80%81%E6%8E%A8%E5%87%BA%E5%93%AA%E5%BA%A7%E6%A1%A5.html">../开放题库/精选01-无状态推出哪座桥.md</a></p>
+<p>迁移原因：这是一道<strong>跨讲、跨主题的概念串联题</strong>（承重性/串联性/可回味性都够格），
+更适合放在独立的&quot;开放题库&quot;里作为精选式深挖题，而不是混在按讲分的专项题里。</p>
+<p><strong>请在开放题库那页作答</strong>，此文件仅作入口保留，不再单独维护内容。</p>
+</blockquote>
+<hr>
+<h2>一句话回顾</h2>
+<p><strong>大模型本身是无状态的</strong> → 直接推出了 <strong>上下文管理（外部状态重放）</strong> 这座桥的必要性：
+每次调用把全量历史重新喂进去，用&quot;无状态函数 + 外部状态重放&quot;模拟出&quot;它在记着&quot;。</p>
+<p>由&quot;无状态&quot;派生的一整组机制（缺口 → 桥）：
+不记上轮 → 会话历史缓冲 · 工具结果会丢 → tool 回填 · 不记进度 → 外部持久化 ·
+重启即忘 → 磁盘证据重建 · 跨会话无记忆 → 长期记忆/RAG。</p>
+<p>详见 → <a href="../%E5%BC%80%E6%94%BE%E9%A2%98%E5%BA%93/%E7%B2%BE%E9%80%8901-%E6%97%A0%E7%8A%B6%E6%80%81%E6%8E%A8%E5%87%BA%E5%93%AA%E5%BA%A7%E6%A1%A5.html">../开放题库/精选01-无状态推出哪座桥.md</a></p>
+
+  </div>
+</div>
+</body>
+</html>

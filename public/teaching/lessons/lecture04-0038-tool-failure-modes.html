@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 38 — 工具调用的失败模式（Lecture04 收官）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week4 · Lecture04 · Lesson 38（Lecture04 收官课）</span>
+  <h1>工具调用会在哪儿翻车：三层失败清单 + 验收表</h1>
+  <div class="meta">第 38 课（Lecture04 第 8 课 · 收官）· 来源：lecture04.pdf p67（Failure Modes in Tool Use）+ p68（Summary）· 本课成果：拿到"单次调用 / 多步链 / 对话"三层失败清单，每条配 SGRT 场景的对策，作为你自建工具系统的验收表</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+工具调用的失败<strong>分三层</strong>：<strong>单次调用</strong>（选错工具/参数错/幻觉工具）、<strong>多步链</strong>（顺序错/不会退避重试）、<strong>对话</strong>（违反策略/该问却猜/不确定性）。<br><br>
+工程含义：<strong>每加一个工具，就照这张表逐条问"会怎么错、怎么防"</strong>。它和 Week1 第 10-11 课（可靠性/安全）、Week3 第 30 课（RAG 失败三侧）是同一套方法论——查三侧、建清单、配护栏。
+</div>
+
+<h2>失败清单（p67 原文，逐层）</h2>
+
+<h3>一、单次调用 Single call</h3>
+<table>
+  <tr><th>失败</th><th>含义</th><th>SGRT 场景的对策</th></tr>
+  <tr><td><strong>Selection 选择错</strong></td><td>选错工具，或本不该调工具却调了</td><td>工具描述写清边界、去重叠；对"无需工具"的输入做相关性检测（BFCL Relevance）</td></tr>
+  <tr><td><strong>Arguments 参数错</strong></td><td>编造字段、类型/单位错</td><td>用 JSON schema 强约束 + 服务端校验；参数名自解释（防呆）</td></tr>
+  <tr><td><strong>Hallucinated tool 幻觉工具</strong></td><td>调用了不存在的 API</td><td><strong>工具白名单校验</strong>（只允许注册过的工具）；AST 匹配思路</td></tr>
+</table>
+
+<h3>二、多步链 Multi-step chain</h3>
+<table>
+  <tr><th>失败</th><th>含义</th><th>SGRT 场景的对策</th></tr>
+  <tr><td><strong>Sequencing 顺序错</strong></td><td>跳过前置调用、顺序不对</td><td>在工具描述里写明前置条件；必要时用固定管线约束顺序</td></tr>
+  <tr><td><strong>Recovery 不会恢复</strong></td><td>重复同一个失败调用，而不是退避（back off）</td><td>加退避/换策略逻辑；失败计数 + 熔断</td></tr>
+</table>
+
+<h3>三、对话 Conversation</h3>
+<table>
+  <tr><th>失败</th><th>含义</th><th>SGRT 场景的对策</th></tr>
+  <tr><td><strong>Policy 违反策略</strong></td><td>在规则不允许处执行动作</td><td>写清操作红线；敏感操作强制人审（MCP human-in-the-loop）</td></tr>
+  <tr><td><strong>Interaction 该问却猜</strong></td><td>该向用户澄清却自行假设</td><td>设计"信息不足时提问"的路径（MCP elicitation）</td></tr>
+  <tr><td><strong>Non-determinism 不确定性</strong></td><td>同样的输入，时对时错</td><td>用 Pass^k 验收可靠性（上节课）；固定温度、约束解码</td></tr>
+</table>
+
+<h2>Lecture04 总结（p68 原文要点）</h2>
+<blockquote>
+✅ <strong>Why tools</strong>：补 LLM 训练没见过、或够不着的东西。<br>
+✅ <strong>Toolformer</strong>：LM 自学"调哪个 API、何时、传什么参"（自监督 + 损失过滤）。<br>
+✅ <strong>Gorilla</strong>：在 1.6k API 上训练，用 AST 匹配量化幻觉。<br>
+✅ <strong>REST / 函数调用 / MCP</strong>：从"手写请求"到"标准化接口"三代演进。
+</blockquote>
+
+<h2>工具系统验收表（去搭你的排查助手前过一遍）</h2>
+<ol>
+  <li><strong>工具描述清不清</strong>？边界不重叠，参数名自解释（防选错/填错）。</li>
+  <li><strong>有没有白名单</strong>？只允许调用注册工具（防幻觉工具）。</li>
+  <li><strong>schema 校验在不在</strong>？服务端强校验参数（防参数错）。</li>
+  <li><strong>顺序有没有约束</strong>？前置条件写清或固定管线（防顺序错）。</li>
+  <li><strong>失败会不会退避</strong>？退避 + 熔断（防死循环重试）。</li>
+  <li><strong>红线定义了吗</strong>？敏感操作人审（防违反策略）。</li>
+  <li><strong>该问会不会问</strong>？信息不足时的澄清路径（防瞎猜）。</li>
+  <li><strong>稳不稳</strong>？用 Pass^k 测一致性（防时对时错）。</li>
+</ol>
+
+<h2>三讲失败清单合起来看</h2>
+<pre class="loop">Week2 上下文: 别塞太多 / 别让前缀失效 / 别被 context rot 拖垮
+Week3 RAG:   检索侧(召回/过期/权限) · 阅读侧(lost-in-middle/噪声/冲突) · 循环侧(复合/无停止/注入)
+Week4 工具:  单次(选错/参数错/幻觉) · 多步链(顺序/恢复) · 对话(策略/交互/不确定性)
+→ 三个战场，同一套方法：查清单 → 定指标 → 配护栏 → 上线前验收</pre>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 工具调用的三层失败是什么？各举一例。</p>
+  <details><summary>展开答案</summary><p>单次调用（选错工具/参数错/幻觉工具）、多步链（顺序错/不会退避恢复）、对话（违反策略/该问却猜/不确定性）。</p></details>
+  <p>Q2. "幻觉工具"怎么防？</p>
+  <details><summary>展开答案</summary><p>工具白名单校验——只允许调用已注册的工具；Gorilla 的 AST 子树匹配也是同一思路（判断调用是否对应真实存在的 API）。</p></details>
+  <p>Q3. "该问却猜"对应 MCP 的哪个能力？</p>
+  <details><summary>展开答案</summary><p>Elicitation——server 主动向用户追加索要信息，让 agent 在信息不足时提问而非瞎猜。</p></details>
+  <p>Q4. 你的排查助手验收表里，哪一条最容易被忽略？为什么？</p>
+  <details><summary>展开答案</summary><p>"稳不稳"（Pass^k 一致性）最容易被忽略——大家只看单次能不能过，却忽略 agent 要重复运行，"时对时错"不可部署。需固定温度/约束解码并要求连续多次成功。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture04 · 段四 评估与失败</span><br>
+  ← 上一课 <a href="lecture04-0037-evaluating-tool-use.html">0037 · 评估工具使用</a> · <a href="../index.html">课程大纲</a> · 回顾 <a href="lecture03-0030-rag-failure-modes.html">Week3-0030 · RAG 失败三侧</a><br>
+  Lecture04 完结 → 回到 <a href="../index.html">课程大纲</a>
+</div>
+
+<h2>综合结业考试题</h2>
+<div class="takeaway">
+<strong>Lecture04 结业考试</strong>（把本讲当一个整体来考）：工具层与 MCP 落地。<br>
+<strong>→ 领取结业考试题</strong>：<a href="../综合题/Lecture04/结业考试-Lecture04-工具与MCP.md">结业考试-Lecture04-工具与MCP.md</a>（Markdown 作答制，作答区就在题目下方；答完对我说"评卷"）。
+</div>
+
+<p class="foot">一手来源：CS329Z lecture04 课件（源文件夹 week3-10.5） p67（Failure Modes in Tool Use）、p68（Lecture Summary）+ 本讲全部论文（Toolformer / Gorilla / ToolLLM / BFCL / τ-bench）。<br>
+Lecture04 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

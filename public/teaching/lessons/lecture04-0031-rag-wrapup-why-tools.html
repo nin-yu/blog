@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 31 — RAG 收尾与"为什么要工具"</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week4 · Lecture04 · Lesson 31</span>
+  <h1>先给 RAG 收尾：文档塞不满，引用也会瞎编</h1>
+  <div class="meta">第 31 课（Lecture04 第 1 课）· 来源：lecture04.pdf p4-13 + p15-17 · 本课成果：知道 RAG 的两个硬上限（塞不了太多文档、引用也会幻觉），并理解"为什么需要工具"——LLM 有三类天生做不到的事</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+RAG 收尾两条硬事实：<strong>(1) 不能靠"多喂文档"补救</strong>——LM 用不了很多文档，效果在 10–20 篇后就饱和（p5-7）；<strong>(2) RAG 的"引用"也是 LLM 生成的，同样会幻觉</strong>（p8-10）。<br><br>
+于是引出本讲主线：<strong>为什么需要工具</strong>——LLM 有三类天生做不到的事：<strong>算不了</strong>（大数算术、多步逻辑、精确可验证运算）、<strong>没见过</strong>（长尾事实、截止后事件、私有数据）、<strong>够不着</strong>（非语言接口/API/数据库、物理世界、实时状态）。
+</div>
+
+<h2>RAG 的上限一：文档塞多了没用（p5-7）</h2>
+<ul>
+  <li>问："多拿些文档一起塞给 LM 不行吗？"</li>
+  <li>p6（Liu+ 2023）：LM <strong>无法关注整个上下文</strong>。闭卷最佳 GPT-3.5-Turbo ≈ 56%；但"只喂相关文档"的 oracle 能到 ≈ 88.5%——差距就在"被无关内容淹没"。</li>
+  <li>p7：检索器召回率慢慢爬到 90%，但 <strong>RAG 效果很快饱和——10–20 篇文档之后就不再涨</strong>。</li>
+</ul>
+<blockquote>工程含义：别指望"多检索几篇"提升质量。真正的瓶颈是"阅读侧"能不能聚焦到关键证据——这正是 Week3 第 30 课的 "lost in the middle"。解法是重排 + 精选（少而准），不是加量。</blockquote>
+
+<h2>RAG 的上限二：引用也会幻觉（p8-12）</h2>
+<ul>
+  <li>RAG 的独特价值是"能引用来源"，但<strong>这些引用是 LLM 自己生成的，所以也可能编造</strong>。</li>
+  <li>p9 的关键发现：输出<strong>读起来通顺、看起来有用</strong>（评分者打 1–5 分偏高），<strong>但精确率和召回率都低</strong>——"看着靠谱"和"引用真对"是两回事。</li>
+  <li>p12 附了经典的 needle-in-a-haystack 工具（把一根针藏进干草堆测长上下文召回）。</li>
+</ul>
+<div class="warnbox">
+对你的直接启示：<strong>医疗/放疗场景里，"有引用"不等于"引用对"</strong>。验收 RAG 不能只看"读起来像那么回事"，必须核对<strong>引用指向的原文是否真的支持结论</strong>——这是可自动化的检查点（把引用 URI 取回、比对）。
+</div>
+
+<h2>为什么需要工具（p15-17）</h2>
+<p>p15-16 先铺垫：LLM 在任务变复杂时明显吃力（Dziri et al., 2023 的零样本准确率随问题规模下降）。p17 把"LLM 做不到"整理成三栏：</p>
+<table>
+  <tr><th>LLM 做不到</th><th>具体</th><th>Agent + 工具能补上</th></tr>
+  <tr><td><strong>算不了</strong>（can't compute）</td><td>大数算术、多步逻辑推演、精确可验证运算</td><td>计算器 / 代码解释器 / 符号求解器 / 验证器 / 确定性执行</td></tr>
+  <tr><td><strong>没见过</strong>（never saw in training）</td><td>长尾事实、截止后事件、私有专有数据</td><td>网页搜索 / 检索 / 实时 API / 内部语料 RAG</td></tr>
+  <tr><td><strong>够不着</strong>（can't reach）</td><td>非语言接口（API、数据库）、物理世界、实时状态（时间/价格/传感器）</td><td>函数调用 / MCP / 浏览器 / 机器人 / 时钟 / 传感器</td></tr>
+</table>
+<blockquote>这张表是本讲的"总纲"：后面 Toolformer（自学调用）、Gorilla（规模化）、REST/函数调用/MCP（标准接口），都是围绕"怎么让 LLM 稳定地用好这些补件"。</blockquote>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>别用 RAG 硬扛算术/精确运算</strong>：残差统计、剂量计算这类，用工具（计算/代码）而不是让 LLM 心算。</li>
+  <li><strong>引用要可核验</strong>：报告里的每条"依据"都要能回指原文并被程序核对。</li>
+  <li><strong>实时状态必须走工具</strong>：设备当前状态、传感器读数，属于"够不着"栏，靠 API 工具，不能靠模型记忆。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 为什么"多喂文档"不能提升 RAG 质量？给个数字。</p>
+  <details><summary>展开答案</summary><p>因为 LM 无法关注整个上下文，会被无关内容淹没。p7 显示 RAG 效果在 10–20 篇文档后饱和；p6 对比：闭卷~56% vs 只喂相关文档~88.5%。</p></details>
+  <p>Q2. RAG 的"引用"为什么也会出错？</p>
+  <details><summary>展开答案</summary><p>因为引用本身也是 LLM 生成的文本，可能被幻觉编造。p9 指出输出读起来通顺有用但精确率/召回率低——"像那么回事"≠"引用对"。</p></details>
+  <p>Q3. LLM 三类"天生做不到"是什么？各举一个补件。</p>
+  <details><summary>展开答案</summary><p>算不了（大数算术/多步逻辑/精确运算）→ 计算器/代码解释器；没见过（长尾事实/截止后事件/私有数据）→ 搜索/RAG；够不着（API/数据库/物理世界/实时状态）→ 函数调用/MCP/传感器。</p></details>
+  <p>Q4. 你的标定报告 RAG 上线，验收时最该加什么检查？</p>
+  <details><summary>展开答案</summary><p>引用可核验性检查：把每条引用 URI 取回原文，程序比对引用是否真的支持结论，而非只看输出是否通顺。医疗场景"像那么回事"不等于"引用对"。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture04 · 段一 RAG 收尾 + 为什么工具</span><br>
+  ← 上一课 <a href="lecture03-0030-rag-failure-modes.html">0030 · RAG 失败模式全景（Week3 收官）</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture04-0032-what-are-tools.html">0032 · 什么是工具 + Toolformer</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture04 课件（源文件夹 week3-10.5） p4-17（RAG wrap-up: Liu+ 2023 lost-in-the-middle / citation hallucination；Why tools: Dziri et al. 2023）+ MCP 规范（modelcontextprotocol.io/specification/2025-06-18）。<br>
+Lesson 31 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

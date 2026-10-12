@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 41 — LangGraph：State / Node / Edge</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture05 · Lesson 41</span>
+  <h1>LangGraph：用"状态 + 节点 + 边"画一张可执行的工作流</h1>
+  <div class="meta">第 41 课（Lecture05 第 3 课）· 来源：lecture05.pdf p52-77 · 本课成果：掌握 LangGraph 的三个原语（共享 State、读写的 Node、定流向的 Edge 含条件边），并能用它把 workflow 画成图、把 agent 画成"LLM↔工具"环</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+LangGraph 的抽象是<strong>图（Graph）</strong>：<strong>State</strong> 是共享工作区（可理解为图会修改的对象）、<strong>Node</strong> 是读写 State 的函数、<strong>Edge</strong> 定义控制流（有些是<strong>条件边</strong>，实现分支）。<br><br>
+一句话对照 DSPy：<strong>DSPy 用"签名+模块"（声明 What/How），LangGraph 用"状态+节点+边"（显式画控制流）</strong>。前者偏"自动优化提示"，后者偏"手工编排流程"。
+</div>
+
+<h2>三原语（p53-57）</h2>
+<pre class="loop">State:  共享工作区（图会修改的对象）
+Start ─► Node ─► Node ─► End      （每个图都要有 Start 和 End 节点）
+                │
+                └─► Node         Edge 定义控制流；部分 Edge 是"条件边"（分支）</pre>
+<table>
+  <tr><th>原语</th><th>是什么</th><th>课件原话</th></tr>
+  <tr><td><strong>State</strong></td><td>共享工作区</td><td>"可以把它想成图会修改的一个对象"</td></tr>
+  <tr><td><strong>Node</strong></td><td>读写 state 的函数</td><td>"Nodes are functions that read and write to/from the shared state"</td></tr>
+  <tr><td><strong>Edge</strong></td><td>定义控制流</td><td>"Edges Define Control Flow；Some Edges are Conditional"</td></tr>
+</table>
+<p>每个 Graph 都需要 <strong>Start 和 End 节点</strong>。</p>
+
+<h2>用图表达一个 Agent（p58, p73-75）</h2>
+<pre class="loop">State（可以是消息历史）
+Start ─► LLM ─► Tools ─► LLM ─► … ─► End
+           ▲              │
+           └──────────────┘   （LLM 决定调工具 → 工具返回 → 再回 LLM）</pre>
+<p>p58 的"Outline of a LangGraph Agent"正是这个环：<strong>State 可为消息历史</strong>，节点是 LLM 和 Tools，边构成"LLM→工具→LLM"的循环——这就是 Week1 第 5 课的 agent loop 在图上的样子。</p>
+
+<h2>LangGraph 总结（p76，原文）</h2>
+<blockquote>
+• LangGraph 在图上操作共享 state；<br>
+• Nodes 读写 state；<br>
+• Edges 定义节点间控制流；<br>
+• 有些边可以是条件边（实现分支工作流）；<br>
+• LangGraph 有内置工具来创建 agent：<code>create_agent</code>。
+</blockquote>
+
+<h2>与 DSPy 的对照（p77 小结）</h2>
+<table>
+  <tr><th></th><th>DSPy</th><th>LangGraph</th></tr>
+  <tr><td>核心抽象</td><td>签名（What）+ 模块（How）+ 优化器</td><td>State + Node + Edge</td></tr>
+  <tr><td>关注点</td><td>声明契约 + 按指标自动优化</td><td>显式编排控制流（含条件分支）</td></tr>
+  <tr><td>适合</td><td>想让框架自动调提示/权重</td><td>想手工画清流程与分支</td></tr>
+</table>
+<p>课件小结原文：workflow 把"模型调用、工具、程序逻辑"组合成更大的 AI 系统；框架暴露不同抽象——<strong>DSPy 用签名与模块，LangGraph 用 state/nodes/edges</strong>。</p>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>画得清就是好设计</strong>：把你的"标定 QA 流程"（拍照→提取→算残差→对阈值→出报告）画成 LangGraph 图，天然就是可执行、可检查的 workflow。</li>
+  <li><strong>条件边=你的判定点</strong>："残差超 2mm 就走告警分支，否则走通过分支"——条件边正是这个。</li>
+  <li><strong>agent 也是图</strong>：排查 agent 的"LLM→工具→LLM"环，用图表达后循环与终止条件一目了然（配合 Week3 的停止规则）。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. LangGraph 三原语是什么？各干什么？</p>
+  <details><summary>展开答案</summary><p>State（共享工作区/图会修改的对象）、Node（读写 state 的函数）、Edge（定义控制流，部分为条件边实现分支）。</p></details>
+  <p>Q2. 一个 LangGraph Agent 的图长什么样？State 常用什么？</p>
+  <details><summary>展开答案</summary><p>Start→LLM→Tools→LLM→…→End 的环：LLM 决定调工具、工具返回结果再回 LLM。State 常用消息历史。</p></details>
+  <p>Q3. 条件边有什么用？给你的 SGRT 举个例。</p>
+  <details><summary>展开答案</summary><p>实现分支工作流。例："残差超 2mm → 告警分支；否则 → 通过分支"。</p></details>
+  <p>Q4. DSPy 和 LangGraph 的核心抽象差别？各适合什么？</p>
+  <details><summary>展开答案</summary><p>DSPy：签名+模块+优化器，适合让框架自动优化提示/权重；LangGraph：State+Node+Edge，适合手工编排控制流与分支。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture05 · 段二 Workflow/程序框架</span><br>
+  ← 上一课 <a href="lecture05-0040-dspy.html">0040 · DSPy</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture05-0042-agent-harnesses.html">0042 · 开源 Agent Harness 对比</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture05 课件（源文件夹 week3-10.7）p52-77（LangGraph：State/Node/Edge/Conditional Edges / Summary）。<br>
+Lesson 41 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 4 — 智能体从哪来（历史脉络）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lesson 4</span>
+  <h1>智能体从哪来：五十年的一条线</h1>
+  <div class="meta">第 4 课（共 13 课）· 重建 v3 · 本课成果：能按时间段讲出 agent 概念的来历，并说出“agent 四性”是什么 · 知道脉络即可，不用背年份</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+“智能体”不是 2022 年才有的新词。<strong>核心思想五十年没变：一个能自主感知环境、自己决定行动、并朝着目标推进的东西。</strong>LLM 做的，只是终于给这个老概念装上了一颗能“推理”的大脑。
+</div>
+
+<h2>一条时间线（看趋势，不必背年份）</h2>
+<table>
+  <tr><th>时期</th><th>关键事件</th><th>留下的思想</th></tr>
+  <tr><td>1990 之前</td><td>词源拉丁 agens（“行动者”）；1973 ACTOR 形式化（Hewitt 等）；1980 Contract Net（智能体间协商任务）；1986 Minsky《心智社会》</td><td>“行动者”与“多个体协作”的概念雏形</td></tr>
+  <tr><td>1990 年代</td><td>Wooldridge &amp; Jennings（1995）定义 agent 四性；Russell &amp; Norvig（1995）定义“通过传感器感知、通过执行器行动”</td><td><strong>agent 四性</strong>与“感知-行动”范式</td></tr>
+  <tr><td>强化学习时代</td><td>agent–environment 循环（Sutton &amp; Barto, 1998）；DQN 打通 Atari（Mnih 2015）</td><td>“循环”与“从反馈中学习”</td></tr>
+  <tr><td>LLM 时代</td><td>GPT-3 带出 in-context learning（2020）</td><td>模型第一次能“零训练”地听指令、举例学</td></tr>
+</table>
+
+<h2>爆发时间线（2022–2023，记住顺序即可）</h2>
+<pre class="loop">2022-10    ReAct（推理+行动，第 5 课的“环”从这里来）
+2022-11-30 ChatGPT 发布
+2023-03-14 GPT-4
+2023-03-28 BabyAGI
+2023-03-30 AutoGPT</pre>
+<p>短短半年，“LLM 自己规划、自己调工具干活”从一篇论文变成全民玩具。这个加速度，就是这门课存在的理由。</p>
+
+<h2>agent 四性（1995 年的定义，今天依然成立）</h2>
+<table>
+  <tr><th>性质</th><th>含义</th><th>SGRT 里的影子</th></tr>
+  <tr><td>自主性 autonomy</td><td>没人盯着也能自己推进</td><td>自动标定流程自己跑完并出报告</td></tr>
+  <tr><td>社交性 social ability</td><td>能与其他 agent/人交互协作</td><td>多个工具/模块协同（标定+配准+报告）</td></tr>
+  <tr><td>反应性 reactivity</td><td>能对环境变化及时响应</td><td>检测到残差超阈值立即转人工</td></tr>
+  <tr><td>主动性 proactivity</td><td>能主动朝目标采取行动，而非被动等指令</td><td>主动巡检历史标定、发现漂移趋势</td></tr>
+</table>
+<blockquote>读法：今天你在设计 agent 时反复问的“它该有多大自主权”，本质就是 1995 年这四个性质在 LLM 语境下的重新表述。</blockquote>
+
+<h2>自测</h2>
+<div class="quiz">
+  <p>Q1. 智能体的“环”（agent loop）最早出自哪篇工作？</p>
+  <details><summary>展开答案</summary><p>ReAct（Yao et al., 2022）。Obs→Think→Act 的循环是第 5 课那张核心架构图的来源。</p></details>
+  <p>Q2. agent 四性是哪四条？</p>
+  <details><summary>展开答案</summary><p>自主性、社交性、反应性、主动性（autonomy / social ability / reactivity / proactivity），出自 Wooldridge &amp; Jennings 1995。</p></details>
+  <p>Q3. “LLM 时代”相比“RL 时代”，给 agent 带来的最本质变化是什么？</p>
+  <details><summary>展开答案</summary><p>RL 时代的 agent 靠大量试错学习、策略是隐式的；LLM 带来了<strong>用自然语言推理和调用工具</strong>的能力，于是“规划”第一次可以用语言直接表达和检查（这也让可靠性/对齐成为新问题）。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">第二段 · 智能体本体</span><br>
+  ← 上一课 <a href="lecture01-0003-llm-brain-not-worker.html">0003 · LLM 是大脑</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture01-0005-agent-loop-and-components.html">0005 · 架构核心：五大组件 + agent loop ★心脏课</a>
+</div>
+
+<p class="foot">一手来源：CS329Z 课件（源文件夹 week1-9.23）“History of Agents”（p18-25）。脉络型内容，有印象即可。<br>
+Lesson 4 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

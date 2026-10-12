@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 24 — 索引与分块：检索的基本单位怎么切</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week3 · Lecture03 · Lesson 24</span>
+  <h1>分块与向量检索：切得好，才查得准</h1>
+  <div class="meta">第 24 课（Week3 第 2 课）· 来源：lecture03.pdf p23-25, p36-38 · 本课成果：知道 embedding 的层级、四种分块策略与取舍，以及向量检索三件套（精确/IVF/PQ/HNSW）各自省什么</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+检索的第一步不是"算相似度"，而是<strong>决定把文档切成什么单位</strong>（chunk）。切太小——向量没上下文；切太大——一个向量把多个主题平均掉，谁也匹配不准。经验：<strong>100–500 token/块，重叠 10–20%</strong>。<br><br>
+向量检索的规模问题：N 个块要查 top-k，<strong>精确扫描是 O(N·d)</strong>。百万级就得上<strong>近似最近邻（ANN）</strong>——IVF（只探最近簇）、PQ（压缩向量）、HNSW（多层跳图，~log N 跳）。代价：用少量召回换大量速度。
+</div>
+
+<h2>Embedding 的层级（p23）</h2>
+<p>"一个向量覆盖什么"决定了它能检索什么：</p>
+<table>
+  <tr><th>类型</th><th>代表</th><th>一个向量覆盖</th></tr>
+  <tr><td>静态词</td><td>word2vec, GloVe</td><td>一个词型（word type）</td></tr>
+  <tr><td>上下文化</td><td>BERT, RoBERTa</td><td>上下文中的一个 token</td></tr>
+  <tr><td>段落级</td><td>Sentence-BERT, DPR, E5</td><td>一个 chunk</td></tr>
+  <tr><td>多模态</td><td>CLIP</td><td>文本或图像（共享空间）</td></tr>
+  <tr><td>图</td><td>node2vec, GNN</td><td>图节点</td></tr>
+</table>
+<p>RAG 用的是<strong>段落级</strong> embedding（一个 chunk 一个向量）。</p>
+
+<h2>四种分块策略（p24）</h2>
+<ol>
+  <li><strong>固定大小 chunking</strong>：按 token 数切（100–500）。
+    <ul>
+      <li>太小 → 向量没上下文；太大 → 一个向量平均掉多个主题。</li>
+      <li><strong>重叠 10–20%</strong>：保证边界处的句子不被切断丢信息。</li>
+    </ul>
+  </li>
+  <li><strong>语义 chunking</strong>：按逻辑边界（句子、章节）切。</li>
+  <li><strong>上下文增强 chunking</strong>：每块附带额外元数据/摘要。</li>
+  <li><strong>AI 驱动动态 chunking</strong>：用 LLM 识别自然断点。</li>
+</ol>
+
+<h3>同一段文字，三种切法（p25 例子）</h3>
+<pre class="loop">原文: "The project milestone is due Week 6, Thursday 11:59pm.
+       Late days may not be applied to the milestone.
+       The final report is due Week 10."
+固定 50 token 切:  …"milestone is due Week 6, Thursday" (被硬切断)
+语义切:            "…due Week 6, Thursday 11:59pm." / "Late days…" / "final report due Week 10."</pre>
+<p>直白说：固定切可能把"周四 11:59pm"和后面的"逾期不补"切断成两块，检索"截止时间"时只能命中半条信息。</p>
+
+<h2>向量检索三件套（p36-38）</h2>
+<p>任务：给定查询向量，返回 N 个 chunk 向量里的 top-k。</p>
+<ul>
+  <li><strong>精确搜索</strong>：暴力扫描，每查询 O(N·d)——准，但贵。</li>
+  <li><strong>近似最近邻 ANN</strong>：用一点召回损失换大量速度：
+    <ul>
+      <li><strong>IVF（倒排文件索引）</strong>：把索引聚成簇，只探最接近的几个簇中心。</li>
+      <li><strong>PQ（乘积量化）</strong>：把每个向量压成短编码，省内存。</li>
+      <li><strong>HNSW（分层可导航小世界）</strong>：多层邻近图，从粗层贪心下降。</li>
+    </ul>
+  </li>
+</ul>
+<h3>HNSW 怎么快（p37-38）</h3>
+<pre class="loop">层结构: 底层放全部向量；越往上样本越稀
+搜索:   从顶层出发，贪心地朝查询"跳"，卡住就下沉一层
+复杂度: ~log N 跳到达目标，召回率高
+建图:   逐个插入；随机选它出现的最高层（多数只在 layer 0）；
+        每层连 M 个最近邻 + 一条"跨簇"启发式连边，防止贪心走死胡同</pre>
+<blockquote>工程桥：HNSW 像你的点云配准用 Kd-tree/八叉树做近邻加速——不是全扫，而是"先跳粗层定位、再在局部细找"，用可控的近似换速度。</blockquote>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>切块是检索质量的地基</strong>：SOP 里"步骤 + 注意事项"要切在一起，别让"注意：此步须断电"和它所属步骤分到两块。</li>
+  <li><strong>别盲目追大模型</strong>：本地几万条错误码/日志的检索，HNSW + 段落 embedding 就够快够用。</li>
+  <li><strong>重叠 10–20% 是廉价保险</strong>：医疗文档切错边界代价高，重叠是低成本的兜底。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. chunk 切太小和太大各有什么问题？推荐参数？</p>
+  <details><summary>展开答案</summary><p>太小→向量没有上下文；太大→一个向量平均掉多个主题、匹配不准。推荐 100–500 token/块，重叠 10–20%。</p></details>
+  <p>Q2. 为什么需要 ANN？三种 ANN 各省什么？</p>
+  <details><summary>展开答案</summary><p>精确搜索 O(N·d)，百万级太贵。IVF 省扫描量（只探最近簇）；PQ 省内存（压缩向量）；HNSW 省时间（~log N 跳），三者都用少量召回损失换速度。</p></details>
+  <p>Q3. HNSW 的"分层 + 跨簇连边"分别解决什么？</p>
+  <details><summary>展开答案</summary><p>分层：粗层快速定位、细层精确定位，实现 ~log N 跳；跨簇启发式连边：防止贪心走法被困在局部、走不到正确的簇。</p></details>
+  <p>Q4. 你的标定 SOP 分块时要注意什么？</p>
+  <details><summary>展开答案</summary><p>把"步骤 + 该步骤的注意事项/参数"切在同一块，避免"须断电""残差须<2mm"这类关键约束与所属步骤分离；用重叠兜住边界。这类结构性文档适合语义/上下文增强切块，而非纯固定切。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week3 · Lecture03 · 段二 索引</span><br>
+  ← 上一课 <a href="lecture03-0023-why-rag-pipeline.html">0023 · 为什么 RAG</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture03-0025-contextual-retrieval.html">0025 · 上下文检索：给每个 chunk 补背景</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件（源文件夹 week2-9.30） p23-25（Embeddings / Chunking）、p36-38（Vector Search / IVF / PQ / HNSW）。<br>
+Lesson 24 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

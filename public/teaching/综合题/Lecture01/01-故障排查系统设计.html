@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>题 1 · 故障排查助手全设计（主考题 ★★★）</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>题 1 · 故障排查助手全设计（主考题 ★★★）</h1>
+<blockquote>
+<p>场景：SGRT 设备报错进来了（比如&quot;标定板识别失败&quot;或&quot;ICP 残差 RMS 连续超标&quot;），你要做一个智能助手：拿到报错 → 判断是<strong>相机 / 标定板 / 床板</strong>哪个环节的问题 → 给出排查建议。
+这是你 MISSION 里&quot;故障排查&quot;环节的最小版本。逐题作答，每题都要写<strong>为什么</strong>。</p>
+</blockquote>
+<hr>
+<h2>题目</h2>
+<ol>
+<li><strong>你选 workflow 还是 agent？为什么？</strong>（用四问法逐问过一遍）</li>
+<li><strong>你要给它配哪几样东西</strong>（工具 / RAG 检索 / 记忆）？各自干什么？请具体到你的 SGRT 场景——相机、标定板 ±30°、ICP 配准、床板 QA 2mm/1°，能用上的都用上。</li>
+<li><strong>它的 agent loop</strong>（Obs→Think→Act→Obs）在这个任务里怎么转一圈？举一个具体报错从进来到出建议的完整例子（每个 Obs/Think/Act 都写一句）。</li>
+<li><strong>怎么保证它&quot;可靠&quot;？</strong> 分别设计一致性、鲁棒性、可预期失败三个测试（给出具体测试集和通过标准）。</li>
+<li><strong>怎么保证它&quot;安全&quot;？</strong> 哪些必须人拍板？哪些工具必须只读/沙箱？怎么防第三方内容带偏（提示：87%）？</li>
+<li><strong>一句话</strong>：上线前你最担心它在哪里出错？</li>
+</ol>
+<hr>
+<h2>我的作答</h2>
+<h3>1. 范式判定</h3>
+<p>（你的回答）</p>
+<h3>2. 组件选配</h3>
+<p>（你的回答）</p>
+<h3>3. loop 走位</h3>
+<p>（你的回答）</p>
+<h3>4. 可靠性设计</h3>
+<p>（你的回答）</p>
+<h3>5. 安全设计</h3>
+<p>（你的回答）</p>
+<h3>6. 最担心的错</h3>
+<p>（你的回答）</p>
+<hr>
+<h2>评判关注点（评卷时用）</h2>
+<ul>
+<li>第 1 题：路径未知 + 每步观察决定下一步 → 应判 agent（ReAct 式）；若答 workflow，看理由是否成立。</li>
+<li>第 2 题：有没有落地的组件（只读日志工具 / 错误码表 RAG / 历史工单记忆），还是空名词。</li>
+<li>第 3 题：Obs/Think/Act 是否真的交替且后步踩在前步观察上（ReAct 的本质）。</li>
+<li>第 4 题：三个测试是否可执行（固定测试集、跑 N 次、扰动、必败输入），不是&quot;多测几遍&quot;。</li>
+<li>第 5 题：只读权限、人审点、白名单三件套有没有配齐；患者数据红线有没有提。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

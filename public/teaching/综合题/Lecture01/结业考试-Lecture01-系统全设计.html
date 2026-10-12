@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>结业考试 · Lecture01（智能体系统入门）★★★</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>结业考试 · Lecture01（智能体系统入门）★★★</h1>
+<blockquote>
+<p>对齐 CS329Z Lecture 01 · 教学空间 lesson lecture01-0001 ~ 0013 · 源文件夹 week1-9.23/slides
+这是 Lecture01 的<strong>综合结业考试题</strong>：把 13 课当一个整体，考&quot;能不能自己设计一个系统&quot;，不是背名词。
+作答方式：直接在下面「我的作答」区写，用你自己的话、越具体越好。答完告诉我&quot;评卷&quot;，我按「评判关注点」逐条评判。</p>
+</blockquote>
+<hr>
+<h2>题目</h2>
+<p><strong>给一个 SGRT 场景，做一次完整设计。</strong></p>
+<p>场景：你要为&quot;每日标定 QA&quot;做一个智能助手——每天采集标定数据后，它要判断本次标定<strong>通过 / 不通过</strong>，不通过时给出可能原因，并生成一份可归档的中文报告。</p>
+<p>请逐步作答，每步写<strong>为什么</strong>：</p>
+<ol>
+<li><strong>范式判定</strong>：这个任务该用 workflow 还是 agent？用四问法（步骤已知？中间结果可检查？失败代价？怎么算对？）逐问过一遍再下结论。</li>
+<li><strong>组件选配</strong>：给它配哪几样东西（LLM Core / 工具 / 记忆 / 检索）？各自在最容易出错的环节干什么？</li>
+<li><strong>loop 或管线</strong>：把它画出来——如果是 workflow，画固定管线；如果是 agent，写清 Obs→Think→Act 怎么转一环。</li>
+<li><strong>评估</strong>：怎么算&quot;对&quot;？给出一个你能实际跑起来的指标（准确率/一致性/耗时）。</li>
+<li><strong>可靠性</strong>：设计一致性、鲁棒性、可预期失败三个测试（具体测试集 + 通过标准）。</li>
+<li><strong>安全</strong>：哪些必须人拍板？哪些工具必须只读？第三方内容（如导入的 Excel 备注）怎么防带偏？</li>
+</ol>
+<hr>
+<h2>我的作答</h2>
+<h3>1. 范式判定</h3>
+<p>（你的回答）</p>
+<h3>2. 组件选配</h3>
+<p>（你的回答）</p>
+<h3>3. loop / 管线</h3>
+<p>（你的回答）</p>
+<h3>4. 评估</h3>
+<p>（你的回答）</p>
+<h3>5. 可靠性</h3>
+<p>（你的回答）</p>
+<h3>6. 安全</h3>
+<p>（你的回答）</p>
+<hr>
+<h2>评判关注点（评卷时用）</h2>
+<ul>
+<li>第 1 题：流程固定、结果可枚举（通过/不通过）、指标现成（2mm/1°）→ <strong>workflow</strong> 正确；若判 agent，看理由是否成立（如&quot;异常归因路径未知&quot;可作为部分 agent 化的理由）。</li>
+<li>第 2 题：是否落在具体件上（读标定日志的工具、错误码表 RAG、历史标定档案记忆），而非空名词；LLM 判断点是否收敛到&quot;摘要成报告&quot;这类少量点。</li>
+<li>第 3 题：管线是否清晰、每步输入输出明确；若 agent 化，Obs/Think/Act 是否真的交替。</li>
+<li>第 4 题：指标是否可执行（如&quot;100 次标定对照人工判定的准确率&quot;&quot;同一输入跑 5 次的通过判定一致率&quot;）。</li>
+<li>第 5 题：三个测试是否具体（固定测试集 / 跑 N 次 / 加扰动 / 必败输入），不是&quot;多测几遍&quot;。</li>
+<li>第 6 题：人审点、只读工具、外部内容白名单三件套；是否提到患者/医院数据红线。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

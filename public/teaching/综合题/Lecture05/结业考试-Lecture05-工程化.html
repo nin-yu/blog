@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>结业考试 · Lecture05（Frameworks &amp; Orchestration）★★★</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>结业考试 · Lecture05（Frameworks &amp; Orchestration）★★★</h1>
+<blockquote>
+<p>对齐 CS329Z Lecture 05 · 教学空间 lesson lecture05-0039 ~ 0044 · 源文件夹 week3-10.7
+这是 Lecture05 的<strong>综合结业考试题</strong>：把&quot;工程化&quot;落到框架选型、harness 取舍、编排与最佳实践。
+作答方式：在下面「我的作答」区写。答完告诉我&quot;评卷&quot;。</p>
+</blockquote>
+<hr>
+<h2>题目</h2>
+<p><strong>把你的 SGRT 排查助手从&quot;能跑&quot;工程化为&quot;可维护&quot;。</strong></p>
+<ol>
+<li><strong>三支柱自检</strong>：Data / System / Eval 三根柱子，你现在最缺哪一根？为什么它会限制你？</li>
+<li><strong>框架要不要上</strong>：DSPy 和 LangGraph 各用什么抽象、适合什么？你的系统（固定管线 + 少量 LLM 判断点）该不该上框架？给出取舍理由。</li>
+<li><strong>DSPy 用在哪</strong>：如果你要用 DSPy 优化&quot;残差报告生成&quot;，先要准备什么（Data+Metric）？举一个你会写的签名（输入/输出）。</li>
+<li><strong>Harness 取舍</strong>：从 Mini SWE-Agent / OpenHands / Pi / OpenClaw 里，哪些做法你的医疗场景<strong>不能照搬</strong>，哪些<strong>值得借鉴</strong>？各说理由。</li>
+<li><strong>编排与可观测性</strong>：你的长流程某步会 flaky（时好时坏），Temporal 的 Activity/Workflow 怎么帮你？你需要哪一类可观测性工具来排障？</li>
+<li><strong>四条铁律</strong>：写出四条工程铁律，并各给你的系统配一条具体动作。</li>
+</ol>
+<hr>
+<h2>我的作答</h2>
+<h3>1. 三支柱自检</h3>
+<p>（你的回答）</p>
+<h3>2. 框架要不要上</h3>
+<p>（你的回答）</p>
+<h3>3. DSPy 用在哪</h3>
+<p>（你的回答）</p>
+<h3>4. Harness 取舍</h3>
+<p>（你的回答）</p>
+<h3>5. 编排与可观测性</h3>
+<p>（你的回答）</p>
+<h3>6. 四条铁律</h3>
+<p>（你的回答）</p>
+<hr>
+<h2>评判关注点（评卷时用）</h2>
+<ul>
+<li>第 1 题：能点出自己缺的柱子并解释限制（如&quot;缺 Eval → 无法判断改动好坏&quot;）。</li>
+<li>第 2 题：DSPy=签名+模块+优化器（自动调提示/权重）；LangGraph=State/Node/Edge（显式编排）；固定管线系统可能不需要框架，理由是&quot;最简优先&quot;。</li>
+<li>第 3 题：先说清需要 Data（示例/示范）和 Metric（客观指标）；签名示例合理（如 res_stats -&gt; verdict+reason）。</li>
+<li>第 4 题：不能照搬 Pi 的无权限系统；可借鉴 OpenHands 事件溯源（可审计）、OpenClaw 记忆沉淀。</li>
+<li>第 5 题：Activity=可失败单元（可重试）、Workflow=连接、Execution History&amp;State=可恢复；可观测性=MLflow/LangSmith/LangFuse 追踪模型/工具调用。</li>
+<li>第 6 题：保持简单 / 让失败可观察可恢复 / 跑评估（且用领域 eval）/ 懂底层，各配一条具体动作。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

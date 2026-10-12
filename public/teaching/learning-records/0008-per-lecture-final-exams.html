@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0008 — 每讲加"综合结业考试题"（Lecture01–05 各一道）+ 综合题总览重构</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>0008 — 每讲加&quot;综合结业考试题&quot;（Lecture01–05 各一道）+ 综合题总览重构</h1>
+<p>用户要求：&quot;更新下教学课程，每个 lecture 的最后都需要加上一个综合结业考试题。&quot;</p>
+<h2>做了什么</h2>
+<ol>
+<li><strong>新增 5 道综合结业考试题</strong>（每讲一道，Markdown 作答制，存 <code>综合题/</code>）：<ul>
+<li><code>结业考试-Lecture01-系统全设计.md</code>（每日标定 QA 完整设计：范式/组件/loop/评估/可靠性/安全）</li>
+<li><code>结业考试-Lecture02-上下文与选型.md</code>（O(n²)/Prefill/KV Cache + 训练三阶段 + 上下文工程）</li>
+<li><code>结业考试-Lecture03-RAG全链路.md</code>（分块/索引增强/混合检索/RRF/指标/失败三侧）</li>
+<li><code>结业考试-Lecture04-工具与MCP.md</code>（工具定义/标准接口/MCP 落地/双令牌鉴权/三层失败/Pass^k）</li>
+<li><code>结业考试-Lecture05-工程化.md</code>（三支柱/框架取舍/harness/编排/四条铁律）
+每题结构（沿用既有格式）：题目 → 「我的作答」分区 → 「评判关注点（评卷时用）」。</li>
+</ul>
+</li>
+<li><strong>每讲最后一课底部插入&quot;综合结业考试题&quot;入口块</strong>（<code>&lt;h2&gt;综合结业考试题&lt;/h2&gt;</code> + <code>.takeaway</code> 提示 + 指向 <code>../综合题/结业考试-*.md</code> 的链接）：
+lecture01-0013 / lecture02-0022 / lecture03-0030 / lecture04-0038 / lecture05-0044。</li>
+<li><strong>重构 <code>综合题/README.md</code></strong>：分两节——① 每讲综合结业考试题（5 道）；② Lecture01 专项题（原有 6 道）。保留评判标准与提醒。</li>
+<li><strong>index.html</strong>：新增&quot;综合结业考试题&quot;清单（5 道）+ &quot;Lecture01 专项综合题&quot;节；更新 meta（&quot;每讲 1 道综合结业考试题（+ Lecture01 专项 6 题）&quot;）与底部用法说明。</li>
+</ol>
+<h2>设计理由</h2>
+<ul>
+<li>综合题是用户 MISSION 的&quot;领会证据&quot;（覆盖≠领会，见学习记录 0001）。原来只有 Lecture01 有 6 道专项题；用户希望<strong>每讲都有</strong>，故新增 5 讲解耦的&quot;结业考试&quot;，与本讲内容强绑定。</li>
+<li>保持&quot;Markdown 作答制 + 作答区在题目下 + 末尾评判关注点&quot;的既有约定（用户明确偏好）。</li>
+</ul>
+<h2>Evidence</h2>
+<p>用户原话：&quot;更新下教学课程，每个lecture的最后都需要加上一个综合结业考试题&quot;。模型：本会话默认 deepseek-chat（provider: deepseek）。</p>
+<h2>验证</h2>
+<ul>
+<li>verify_links 检查 58 个 HTML：0 缺失（脚本亦覆盖非 HTML 目标，5 个 .md 均存在）。</li>
+<li>浏览器冒烟：lecture03-0030 底部出现&quot;综合结业考试题&quot;标题与链接；lesson.css 加载、浅色底、details 折叠均正常。</li>
+<li>5 个 .md 目标从 lessons/ 相对路径均可解析。</li>
+</ul>
+<h2>Status</h2>
+<p>active（每讲结业考试题已交付并校验通过；等待用户作答 → 我按&quot;评判关注点&quot;评卷）</p>
+
+  </div>
+</div>
+</body>
+</html>

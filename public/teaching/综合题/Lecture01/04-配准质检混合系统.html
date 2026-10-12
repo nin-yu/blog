@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>题 4 · 配准质检混合系统（★★）</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>题 4 · 配准质检混合系统（★★）</h1>
+<blockquote>
+<p>考点：&quot;固定管线 + 少量 LLM 判断点&quot;的混合设计（Lesson 12）。这是工程上最常用、也最容易被做错的结构。
+场景：胸腹表面配准（Point-to-Plane ICP + 呼吸门控 end-exhalation + Tukey 权重 + ROI 裁剪）每次跑完，你想要一个&quot;自动质检 + 异常定位&quot;模块。</p>
+</blockquote>
+<hr>
+<h2>题目</h2>
+<ol>
+<li><strong>拆分</strong>：这条质检链路里，哪些环节必须保持<strong>固定管线</strong>（代码定步骤、可复现），哪些适合交给 <strong>LLM 判断</strong>？逐环节说理由。（至少列出：数值阈值检查、残差分布/空间模式分析、历史对比、报告生成）</li>
+<li><strong>为什么数值判定不能交给 LLM？</strong> 从可靠性（一致性/鲁棒性）角度论证。</li>
+<li><strong>LLM 判断点</strong>具体怎么设计：给它什么输入（上下文里放什么）、要它输出什么（结构化结论？建议？）、输出给谁用（人/下游程序）？</li>
+<li><strong>RAG 在这里怎么用</strong>：哪些历史资料进知识库，检索什么，喂给谁？</li>
+<li><strong>失败模式设计</strong>：如果 LLM 判断点给出的分析明显不可靠（比如同输入两次结论不同），系统怎么办？（考察：可预期失败 + 降级路径）</li>
+</ol>
+<hr>
+<h2>我的作答</h2>
+<h3>1. 拆分</h3>
+<h3>2. 数值判定为什么不给 LLM</h3>
+<h3>3. LLM 判断点设计</h3>
+<h3>4. RAG 用法</h3>
+<h3>5. 失败降级</h3>
+<hr>
+<h2>评判关注点（评卷时用）</h2>
+<ul>
+<li>1：阈值/数值对比=固定管线（可复现、可审计）；空间模式解读/建议生成=LLM。分层清晰。</li>
+<li>2：应答出一致性（同输入不同输出会毁掉验收）与鲁棒性（措辞扰动改变判定=质量事故），且数值判定有客观对错，LLM 引入不必要方差。</li>
+<li>3：输入=结构化摘要（指标数值+残差统计+异常区域描述），输出=受控格式（如 JSON 标签+建议文本），用途=给人看/触发人工复核，而不是直接控制设备。</li>
+<li>4：历史案例（残差超标当时的原因+处置）进库；检索当前模式相似案例；喂给 LLM 当参考证据。</li>
+<li>5：降级路径：LLM 不可信时回退到纯阈值结果+标记&quot;需人工分析&quot;，系统整体不失效。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

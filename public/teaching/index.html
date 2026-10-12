@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>教学空间 · 课程大纲（CS329Z Lecture 1 重建版）</title>
+<link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+<header class="course">
+  <span class="badge">教学空间 · 课程大纲</span>
+  <h1>从零学会"设计智能体系统"（对齐 Stanford CS329Z Lecture 1–5）</h1>
+  <div class="meta">Lecture01–05 · 44 课 + 每讲 1 道综合结业考试题（+ Lecture01 专项 6 题）· 中文 · 概念先行，判定课殿后 · 每课配自测（折叠式答案，先答后看）· 文件名前缀标来源：lecture01-* … lecture05-*（对应源文件夹见各课页脚）</div>
+</header>
+
+<h2>Week1 · 学习路线（5 段，Lecture01）</h2>
+<table>
+  <tr><th>段</th><th>主题</th><th>课</th></tr>
+  <tr><td>一 · 打地基</td><td>为什么"系统"才是主角：模型vs系统、改系统&gt;换模型、LLM 三个缺口</td><td>0001-0003</td></tr>
+  <tr><td>二 · 智能体本体</td><td>历史脉络 → 五大组件+loop（心脏课）→ 推理四招 → 记忆三类</td><td>0004-0007</td></tr>
+  <tr><td>三 · 复合系统</td><td>RAG 三步、工具调用四步 + MCP</td><td>0008-0009</td></tr>
+  <tr><td>四 · 挑战与上线</td><td>可靠性/评估、长程上下文、安全红线</td><td>0010-0011</td></tr>
+  <tr><td>五 · 合体毕业</td><td>Workflow vs Agent 判定（零件合体）+ 总复习 + 综合题</td><td>0012-0013</td></tr>
+</table>
+
+<h2>Week2 · 学习路线（5 段，Lecture02）</h2>
+<table>
+  <tr><th>段</th><th>主题</th><th>课</th></tr>
+  <tr><td>一 · 拆开模型</td><td>Transformer/注意力（上下文的 O(n²)）→ 线性注意力（压成 O(n) 的代价）</td><td>0014-0015</td></tr>
+  <tr><td>二 · 模型怎么造出来</td><td>训练三阶段：预训练 / 中训练 / 后训练（RLHF 坑、RLVR、Agent 训练）</td><td>0016</td></tr>
+  <tr><td>三 · 模型怎么跑起来</td><td>Prefill/Decode + KV Cache → 推理期扩展（CoT/重复采样/自洽）</td><td>0017-0018</td></tr>
+  <tr><td>四 · 接口与上下文</td><td>结构化 I/O（约束解码/DSPy）→ 上下文工程（context rot / 长程三招）</td><td>0019-0021</td></tr>
+  <tr><td>五 · Week2 毕业</td><td>构建高效 agent：workflow 五模式 + 何时上 agent</td><td>0022</td></tr>
+</table>
+
+<h2>Week3 · 学习路线（5 段，Lecture03：RAG + Agents）</h2>
+<table>
+  <tr><th>段</th><th>主题</th><th>课</th></tr>
+  <tr><td>一 · 为什么 RAG</td><td>为什么要检索、retriever-reader、RAG 两部件</td><td>0023</td></tr>
+  <tr><td>二 · 索引</td><td>分块与向量检索（HNSW）→ 上下文检索（Late Chunking/RAPTOR）</td><td>0024-0025</td></tr>
+  <tr><td>三 · 检索</td><td>BM25 vs DPR → ColBERT 晚期交互 → 混合检索/RRF/指标</td><td>0026-0028</td></tr>
+  <tr><td>四 · Agentic RAG</td><td>检索放进循环：Self-RAG / CRAG / Search-R1</td><td>0029</td></tr>
+  <tr><td>五 · 收官</td><td>RAG 失败模式全景（检索侧/阅读侧/循环侧）+ 验收清单</td><td>0030</td></tr>
+</table>
+
+<h2>Week4 · 学习路线（5 段，Lecture04：Tool Use）</h2>
+<table>
+  <tr><th>段</th><th>主题</th><th>课</th></tr>
+  <tr><td>一 · RAG 收尾 + 为什么工具</td><td>RAG 两个上限（塞不满/引用幻觉）→ LLM 三类做不到</td><td>0031</td></tr>
+  <tr><td>二 · 学习调用工具</td><td>工具定义 + Toolformer → Gorilla/ToolLLM/ToolkenGPT 规模化</td><td>0032-0033</td></tr>
+  <tr><td>三 · 标准接口</td><td>REST/函数调用/MCP 三代 → MCP 深入（架构/tools）→ MCP 实战</td><td>0034-0036</td></tr>
+  <tr><td>四 · 评估与失败</td><td>BFCL/ToolBench/τ-bench + Pass^k → 工具失败三层清单</td><td>0037-0038</td></tr>
+</table>
+
+<h2>Lecture05 · 学习路线（5 段，Frameworks &amp; Orchestration，源文件夹 week3-10.7）</h2>
+<table>
+  <tr><th>段</th><th>主题</th><th>课</th></tr>
+  <tr><td>一 · 什么叫"工程化"Agent</td><td>三支柱 Data/System/Eval + 框架谱系</td><td>0039</td></tr>
+  <tr><td>二 · Workflow 框架</td><td>DSPy（签名/模块/优化器）→ LangGraph（State/Node/Edge）</td><td>0040-0041</td></tr>
+  <tr><td>三 · Agent Harness</td><td>Mini SWE-Agent / OpenHands / Pi / OpenClaw 取舍</td><td>0042</td></tr>
+  <tr><td>四 · 编排与遥测</td><td>Temporal 持久执行 + MLflow/LangSmith/LangFuse</td><td>0043</td></tr>
+  <tr><td>五 · 收官</td><td>四条工程铁律 + Build→Run→Eval→Improve 循环</td><td>0044</td></tr>
+</table>
+
+<h2>课时清单（按顺序）</h2>
+<ol>
+  <li><a href="lessons/lecture01-0001-model-vs-system.html">L01-0001 · 模型与系统：结果来自"整机"不是"零件"</a></li>
+  <li><a href="lessons/lecture01-0002-system-beats-scale.html">L01-0002 · 改系统 &gt; 换更大模型：迭代到底值多少钱</a></li>
+  <li><a href="lessons/lecture01-0003-llm-brain-not-worker.html">L01-0003 · LLM 是大脑，不是执行者（三座桥）</a></li>
+  <li><a href="lessons/lecture01-0004-history-of-agents.html">L01-0004 · 智能体从哪来（历史脉络）</a></li>
+  <li><a href="lessons/lecture01-0005-agent-loop-and-components.html">L01-0005 · 架构核心：五大组件 + agent loop ★心脏课</a></li>
+  <li><a href="lessons/lecture01-0006-reasoning-methods.html">L01-0006 · 推理方法：CoT/ReAct/Self-Consistency/Reflexion</a></li>
+  <li><a href="lessons/lecture01-0007-agent-memory.html">L01-0007 · 记忆三类：情景/语义/程序</a></li>
+  <li><a href="lessons/lecture01-0008-rag.html">L01-0008 · RAG：先查"你们的资料"再作答</a></li>
+  <li><a href="lessons/lecture01-0009-tools-and-mcp.html">L01-0009 · 工具调用四步 + Toolformer/Gorilla + MCP</a></li>
+  <li><a href="lessons/lecture01-0010-reliability-and-evaluation.html">L01-0010 · 可靠性与评估：能力高≠可靠</a></li>
+  <li><a href="lessons/lecture01-0011-longhorizon-and-safety.html">L01-0011 · 长程上下文 + 安全红线（任务成功≠安全）</a></li>
+  <li><a href="lessons/lecture01-0012-workflow-or-agent.html">L01-0012 · 毕业课：拿到任务，判 Workflow 还是 Agent ★判定</a></li>
+  <li><a href="lessons/lecture01-0013-course-map-and-graduation.html">L01-0013 · 总复习 + 综合题领取</a></li>
+  <li><a href="lessons/lecture02-0014-transformer-attention.html">L02-0014 · Transformer 与注意力：上下文为什么是 O(n²)</a></li>
+  <li><a href="lessons/lecture02-0015-linear-attention.html">L02-0015 · 线性注意力：把 O(n²) 压成 O(n) 的代价</a></li>
+  <li><a href="lessons/lecture02-0016-training-three-stages.html">L02-0016 · 训练三阶段：预训练 / 中训练 / 后训练</a></li>
+  <li><a href="lessons/lecture02-0017-inference-kvcache.html">L02-0017 · 推理与 KV Cache：Prefill vs Decode</a></li>
+  <li><a href="lessons/lecture02-0018-inference-time-scaling.html">L02-0018 · 推理期扩展：CoT / 重复采样 / 自洽</a></li>
+  <li><a href="lessons/lecture02-0019-structured-io.html">L02-0019 · 结构化输出：约束解码与 DSPy 签名</a></li>
+  <li><a href="lessons/lecture02-0020-context-engineering.html">L02-0020 · 上下文工程（上）：context rot 与上下文解剖</a></li>
+  <li><a href="lessons/lecture02-0021-longhorizon-context.html">L02-0021 · 上下文工程（下）：长程任务三招</a></li>
+  <li><a href="lessons/lecture02-0022-building-effective-agents.html">L02-0022 · 构建高效 agent：五种模式 ★Week2 毕业</a></li>
+  <li><a href="lessons/lecture03-0023-why-rag-pipeline.html">L03-0023 · 为什么需要检索：RAG 的管线与两个部件</a></li>
+  <li><a href="lessons/lecture03-0024-indexing-chunking.html">L03-0024 · 索引与分块：检索的基本单位怎么切</a></li>
+  <li><a href="lessons/lecture03-0025-contextual-retrieval.html">L03-0025 · 上下文检索：给每个 chunk 补背景</a></li>
+  <li><a href="lessons/lecture03-0026-retrieval-bm25-dpr.html">L03-0026 · 检索器：BM25 与 DPR</a></li>
+  <li><a href="lessons/lecture03-0027-colbert-late-interaction.html">L03-0027 · ColBERT：晚期交互，按 token 打分</a></li>
+  <li><a href="lessons/lecture03-0028-hybrid-and-metrics.html">L03-0028 · 混合检索、RRF 与检索指标</a></li>
+  <li><a href="lessons/lecture03-0029-agentic-rag.html">L03-0029 · Agentic RAG：把检索放进循环</a></li>
+  <li><a href="lessons/lecture03-0030-rag-failure-modes.html">L03-0030 · RAG 失败模式全景（Week3 收官）</a></li>
+  <li><a href="lessons/lecture04-0031-rag-wrapup-why-tools.html">L04-0031 · RAG 收尾与"为什么要工具"</a></li>
+  <li><a href="lessons/lecture04-0032-what-are-tools.html">L04-0032 · 什么是工具 + Toolformer</a></li>
+  <li><a href="lessons/lecture04-0033-gorilla-llm-toolllm.html">L04-0033 · 规模化用工具：Gorilla / ToolLLM / ToolkenGPT</a></li>
+  <li><a href="lessons/lecture04-0034-standard-interfaces.html">L04-0034 · 标准接口三代：REST / 函数调用 / MCP</a></li>
+  <li><a href="lessons/lecture04-0035-mcp-deep-dive.html">L04-0035 · MCP 深入：架构、tools/list 与 tools/call</a></li>
+  <li><a href="lessons/lecture04-0036-mcp-example.html">L04-0036 · MCP 实战：把 REST 包装成 MCP 工具</a></li>
+  <li><a href="lessons/lecture04-0037-evaluating-tool-use.html">L04-0037 · 评估工具使用：BFCL / ToolBench / τ-bench</a></li>
+  <li><a href="lessons/lecture04-0038-tool-failure-modes.html">L04-0038 · 工具调用的失败模式（Lecture04 收官）</a></li>
+  <li><a href="lessons/lecture05-0039-engineer-agents.html">L05-0039 · 什么叫"工程化"Agent：三支柱与框架谱系</a></li>
+  <li><a href="lessons/lecture05-0040-dspy.html">L05-0040 · DSPy：签名 / 模块 / 优化器</a></li>
+  <li><a href="lessons/lecture05-0041-langgraph.html">L05-0041 · LangGraph：State / Node / Edge</a></li>
+  <li><a href="lessons/lecture05-0042-agent-harnesses.html">L05-0042 · 开源 Agent Harness 对比</a></li>
+  <li><a href="lessons/lecture05-0043-orchestration-telemetry.html">L05-0043 · 编排与可观测性（Temporal / LangSmith / LangFuse）</a></li>
+  <li><a href="lessons/lecture05-0044-best-practices.html">L05-0044 · 工程最佳实践与挑战（Lecture05 收官）</a></li>
+</ol>
+
+<h2>综合结业考试题（每讲一道，Markdown 作答制）</h2>
+<ul>
+  <li><a href="综合题/README.html">综合题 / 结业考试 总览与作答说明</a></li>
+  <li><a href="综合题/Lecture01/结业考试-Lecture01-系统全设计.html">Lecture01 · 智能体系统全设计</a> ★★★</li>
+  <li><a href="综合题/Lecture02/结业考试-Lecture02-上下文与选型.html">Lecture02 · 上下文成本与模型选型</a> ★★★</li>
+  <li><a href="综合题/Lecture03/结业考试-Lecture03-RAG全链路.html">Lecture03 · RAG 全链路设计与验收</a> ★★★</li>
+  <li><a href="综合题/Lecture04/结业考试-Lecture04-工具与MCP.html">Lecture04 · 工具层与 MCP 落地</a> ★★★</li>
+  <li><a href="综合题/Lecture05/结业考试-Lecture05-工程化.html">Lecture05 · 把助手从"能跑"工程化为"可维护"</a> ★★★</li>
+</ul>
+
+<h2>Lecture01 专项综合题（早期 6 题，可任选先答）</h2>
+<ul>
+  <li><a href="综合题/README.html">见 README 第二节</a>（故障排查全设计 / 四场景选范式 / loop 走一遍 / 配准质检 / 可靠性与安全 / 反套路辩护）</li>
+</ul>
+
+<h2>随课支持文件</h2>
+<ul>
+  <li><a href="reference/glossary.html">术语表（纯文本参考卡）</a></li>
+  <li><a href="RESOURCES.html">权威一手资料清单</a></li>
+  <li><a href="MISSION.html">你的学习使命</a></li>
+  <li><a href="learning-records/0001-week1-baseline.html">学习记录 0001（起点：覆盖≠领会）</a></li>
+  <li><a href="learning-records/0004-week2-lecture02.html">学习记录 0004（Week2 新增 + 文件名加 lecture 前缀 + PDF 图可读性结论）</a></li>
+  <li><a href="learning-records/0005-week3-lecture03.html">学习记录 0005（Week3 新增：RAG + Agents）</a></li>
+  <li><a href="learning-records/0006-lecture04-tool-use.html">学习记录 0006（Lecture04 新增：Tool Use + MCP）</a></li>
+  <li><a href="learning-records/0007-lecture05-frameworks.html">学习记录 0007（Lecture05 新增：Frameworks &amp; Orchestration）</a></li>
+  <li><a href="learning-records/0008-per-lecture-final-exams.html">学习记录 0008（每讲新增综合结业考试题）</a></li>
+  <li><a href="learning-records/0009-exams-reorganized-by-lecture.html">学习记录 0009（综合题按讲重组为子文件夹）</a></li>
+</ul>
+
+<blockquote>用法：每课先读正文 → 做自测（先答再展开答案）→ 读到本讲最后一课有<strong>综合结业考试题</strong>入口 → 用你自己的话作答，我来评判是否真理解——那是"毕业"的唯一证据。五讲各有 1 道结业考试题（Lecture01 另有 6 道专项题），见上方列表。</blockquote>
+
+<p class="foot">教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/ · 旧版存档：lessons-glm53-old/、lessons-v4-old/（只读参考）</p>
+</div>
+</body>
+</html>

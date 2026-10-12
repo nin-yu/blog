@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 10 — 可靠性与评估：能力高 ≠ 可靠</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lesson 10</span>
+  <h1>可靠性与评估：能力高 ≠ 可靠，错误还会复合</h1>
+  <div class="meta">第 10 课（共 13 课）· 重建 v3 · 本课成果：能说出可靠性三个维度、背出 0.95^10 的含义，并解释“能力-可靠性鸿沟”对你项目的意义 · 上线前必读</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+<strong>能力（成功率）高，不等于可靠。</strong>可靠性有三个维度：<strong>一致性、鲁棒性、可预期失败模式</strong>。<br>而 agent 是串联系统——<strong>错误会复合</strong>：单步 95% 正确，串 10 步只剩约 60%（0.95<sup>10</sup> ≈ 0.60）。所以“能演示”离“能上线”之间，差的就是这一课。
+</div>
+
+<h2>可靠性 vs 评估：先分清（课件 p62）</h2>
+<p><strong>评估是“衡量”，可靠性是“属性”。</strong>你先得有指标能测，才谈得上可靠性好不好。</p>
+<table>
+  <tr><th>维度</th><th>问的问题</th><th>SGRT 场景里的检验</th></tr>
+  <tr><td>① 一致性<br>Consistency across runs</td><td>同一任务给两次，结果是否相同？</td><td>同一组点云跑两次配准，结果是否一致？</td></tr>
+  <tr><td>② 鲁棒性<br>Robustness to perturbations</td><td>对 prompt/工具的微小真实扰动，反应是否稳定？</td><td>换个说法描述同一个故障，结论是否仍一致？</td></tr>
+  <tr><td>③ 可预期的失败模式<br>Predictable failure</td><td>失败时是“可读、可恢复、可预期”，还是随机崩？</td><td>超差时是明确报“需人工复核”，还是给出一个像模像样的错答案？</td></tr>
+</table>
+
+<h2>能力-可靠性鸿沟（Capability–Reliability Gap）</h2>
+<blockquote>
+Princeton HAL Reliability Dashboard 直观展示：模型的<strong>任务成功率（能力）可以很高，但一致性/鲁棒性/可预期失败（可靠性）远跟不上</strong>。这道缝，就是 agent 工程要啃的硬骨头。
+</blockquote>
+<p>大白话：一个模型可能“80% 的题能答对”，但同一题问两遍给你两个不同答案、稍微换个措辞就崩、失败时还不告诉你它崩了——这种系统没人敢用在放疗流程里。</p>
+
+<h2>错误会复合（本课最该记住的一个数）</h2>
+<pre class="loop">单步正确率 p = 0.95
+串 10 步的端到端正确率 ≈ 0.95^10 ≈ 0.60
+→ 单步看着都挺好，串起来 4 成的任务会出错。</pre>
+<p>工程含义：<strong>串联系统的可靠性由最弱环节决定，且会指数衰减。</strong>这直接推出两条设计原则：<strong>① 每步设检查点/可中断</strong>；<strong>② 关键步骤上人审或加冗余</strong>（第 12 课 MVP 清单里的护栏）。</p>
+
+<h2>评估怎么做（先定指标，再动手）</h2>
+<ol>
+  <li><strong>定一个客观数</strong>：准确率 / 完成率 / 平均耗时 / 平均成本——至少选一个能测的。</li>
+  <li><strong>跑 N 次看一致性</strong>：同样的输入重复跑，结果抖不抖。</li>
+  <li><strong>加扰动看鲁棒性</strong>：改措辞、改工具返回格式，看结论稳不稳。</li>
+  <li><strong>故意造失败</strong>：喂坏输入，看它是“可读地失败”还是“不可预期地崩”。</li>
+</ol>
+
+<h2>自测</h2>
+<div class="quiz">
+  <p>Q1. 可靠性三维度是哪三个？可靠性和评估是什么关系？</p>
+  <details><summary>展开答案</summary><p>一致性、鲁棒性、可预期的失败模式。评估是“衡量手段”，可靠性是“被衡量的属性”——先有评估指标，才能谈可靠性。</p></details>
+  <p>Q2. 单步 95% 正确，串 10 步大约多少？这说明什么工程原则？</p>
+  <details><summary>展开答案</summary><p>≈ 0.95^10 ≈ 0.60。说明串联系统错误会复合、可靠性服从最弱环节。原则：关键步骤要设检查点、人审或冗余，别让错误无声地传递下去。</p></details>
+  <p>Q3. “能力-可靠性鸿沟”在医疗设备项目里为什么尤其致命？</p>
+  <details><summary>展开答案</summary><p>因为医疗流程要求可预期、可审计、可回溯。能力高但一致性差、失败不可读的系统，一旦给出错误结论且不自我暴露，可能直接影响患者安全——所以宁可要“会老实说不知道”的系统。</p></details>
+  <p>Q4. 你给一个 SGRT 质检助手定指标，至少会取哪两个数？</p>
+  <details><summary>展开答案</summary><p>参考：判断准确率（与专家判定一致的比例）+ 一致性（重复跑结果一致率）；再加平均耗时/成本。有争议时以“漏判率/误判率”分开统计更安全。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">第四段 · 挑战与上线</span><br>
+  ← 上一课 <a href="lecture01-0009-tools-and-mcp.html">0009 · 工具调用 + MCP</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture01-0011-longhorizon-and-safety.html">0011 · 长程上下文 + 安全红线</a>
+</div>
+
+<p class="foot">一手来源：CS329Z 课件（源文件夹 week1-9.23） p61-63 + Princeton HAL Reliability Dashboard。<br>
+Lesson 10 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mission: 学会"设计 agent 系统"，用于 SGRT 标定/故障排查/日常 QA</title>
+<link rel="stylesheet" href="assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>Mission: 学会&quot;设计 agent 系统&quot;，用于 SGRT 标定/故障排查/日常 QA</h1>
+<h2>Why</h2>
+<p>我是利纳特(Linatech)放疗表面追踪(SGRT)工程师（熟悉自身系统：相机随加速器机架转动、标定板固定±30°、外参 X/轴/δ 求解、床板 QA 2mm/1°、ICP 胸腹表面配准等）。但<strong>我在 agent 领域是小白</strong>——只拿它写过代码，不懂得怎么&quot;设计&quot;一个 agent 系统。我要学会设计方法，然后用于自己手头的 SGRT 环节：标定引导 / 自动标定、故障排查、日常 QA。</p>
+<h2>Success looks like</h2>
+<ul>
+<li>面对 SGRT 的一个环节，我<strong>能自己判断该用 workflow 还是 agent</strong>，不再是一团模糊。</li>
+<li>我能为一个 SGRT 流程（先挑最容易的：标定 QA 或日常 QA）<strong>亲手设计并搭出一个最小可用的 agent/workflow</strong>，跑通并产出可复现结果。</li>
+<li>我能讲清自己这个系统里：哪里该固定管线（workflow）、哪里该让 LLM 判断（agent）、需要哪些工具/记忆/检索。</li>
+<li>能把故障排查做成&quot;会查日志/文档、会拟定排查步骤&quot;的智能助手，而不是靠人肉翻记录。</li>
+<li>每学一块，我都能当场套到自己的一个环节上，而不是只会&quot;认识名词&quot;。</li>
+</ul>
+<h2>Constraints</h2>
+<ul>
+<li>基础定位：<strong>agent 设计零基础</strong>（只用过代码生成）。一切从小白能懂的高度讲起，不跳步。</li>
+<li>中文讲解；先概念/原理、再细节、直接给结论；默认不用类比（明确要求费曼讲法时才用直觉类比）。</li>
+<li>数值一律给大白话含义 + 对工程的实质影响（精度/速度/成本）。</li>
+<li>每次只讲一小块，配自测（判断/选择，附答案与解析），用真实 SGRT 场景当例子。</li>
+<li>用高质量一手资料（见 RESOURCES.md），不靠二手口碑知识。</li>
+<li>业余时间推进，内容精炼不冗长。</li>
+</ul>
+<h2>Out of scope</h2>
+<ul>
+<li>不追求生产级安全审计/形式化验证；不做通用 agent 产品商业化。</li>
+<li>不钻 GRPO/RL 数学细节（工程理解即可）；不追 LLM 训练端。</li>
+<li>暂时不学多智能体协作、主动式智能体等进阶方向——先把&quot;单 agent + workflow&quot;设计学会。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

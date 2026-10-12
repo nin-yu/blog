@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 27 — ColBERT：晚期交互，按 token 打分</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week3 · Lecture03 · Lesson 27</span>
+  <h1>ColBERT：既准又快，靠"晚期交互"</h1>
+  <div class="meta">第 27 课（Week3 第 5 课）· 来源：lecture03.pdf p50-54 + ColBERT 论文（Khattab & Zaharia, SIGIR 2020）· 本课成果：理解 bi-encoder / cross-encoder / late interaction 三者的取舍，并会用延迟与内存数据选型</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+检索精度与速度的经典矛盾：<strong>双编码器（bi-encoder</strong>，query/段各自编码，快但粗）<strong> vs 交叉编码器（cross-encoder</strong>，query+段一起过模型，准但慢到不能扫全库）。ColBERT 取中间：<strong>晚期交互（late interaction）——每个 token 一个向量，编码时各自独立（可离线预算），只在打分时做细粒度交互（MaxSim）</strong>。结果：效果媲美 BERT 交叉编码器，但<strong>快两个数量级、FLOPs 少四个数量级</strong>。<br><br>
+工程含义：ColBERT 的代价是<strong>索引大</strong>（token 级而非文档级），换来"token 级证据 + 可扫全库"。
+</div>
+
+<h2>三层方案对比（p50-51）</h2>
+<table>
+  <tr><th>方案</th><th>怎么算</th><th>优缺点</th></tr>
+  <tr><td>Bi-encoder（检索）</td><td>query、段落<strong>各自</strong>编码成向量，算点积</td><td>快（可预算+ANN）；但交互太粗</td></tr>
+  <tr><td>Cross-encoder（重排）</td><td>query 和段落<strong>拼一起</strong>过模型，全注意力</td><td>准；但不能预计算，只能对候选集重排</td></tr>
+  <tr><td>Late interaction（ColBERT）</td><td>每 token 一个向量，各自独立编码，<strong>打分时</strong>才交互</td><td>准且快；代价=索引大</td></tr>
+</table>
+
+<h2>晚期交互怎么打分：MaxSim（p51）</h2>
+<pre class="loop">每个 query token 向量 q_i，去和所有段落 token 向量 d_j 求最大内积，再对 query token 求和：
+S(q,d) = Σ_{i∈q} max_{j} ( q_i · d_j )</pre>
+<p>直白说：<strong>为 query 的每个词，在段落里找"最像"的那个词（取 max），再把这些最大相似度加起来</strong>。这样每个 query 词都能对到段落的细粒度证据，而不是被压成一个整体向量。</p>
+
+<h2>ColBERT 的整体架构（p52）</h2>
+<p>论文标题就是结论：《ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction over BERT》(Khattab & Zaharia, SIGIR 2020)。核心：用 BERT 分别编码 query 和文档，靠<strong>廉价的晚期交互步</strong>建模细粒度相似；因为"延迟且保留"细粒度交互，文档表示可<strong>离线预计算</strong>，大幅加速查询；其"剪枝友好"的交互机制还支持直接用向量相似度索引<strong>端到端检索</strong>。</p>
+
+<h2>选型表：延迟、内存、擅长/死穴（p54，逐行读）</h2>
+<table>
+  <tr><th>检索器</th><th>离线预计算</th><th>查询延迟</th><th>擅长</th><th>死穴</th></tr>
+  <tr><td>BM25（稀疏）</td><td>倒排索引</td><td>62 ms（快）</td><td>精确词：ID、人名、错误码</td><td>改写、同义词</td></tr>
+  <tr><td>DPR（双编码器）</td><td>每段一个向量</td><td>数十 ms（快）</td><td>语料规模上的语义匹配</td><td>罕见字面量；需标注配对</td></tr>
+  <tr><td>ColBERT（晚期交互）</td><td>每 token 一个向量</td><td>458 ms 端到端（中）</td><td>大规模 token 级证据</td><td>索引大小按 token 计，不是按文档</td></tr>
+  <tr><td>Cross-encoder (BERT-base)</td><td>无</td><td>10,700 ms / 1k 段落（慢）</td><td>短名单上的高精度</td><td>无法扫全语料</td></tr>
+</table>
+<p><em>延迟数据来自 Khattab & Zaharia (2020) / Karpukhin et al. (2020)，MS MARCO，硬件不同（p54 注明）。</em></p>
+<blockquote>读法：ColBERT 是"中间档"——比 BM25/DPR 慢（458ms vs 62ms），但比 cross-encoder 快 20 倍以上，且能直接扫全库。它的死穴是索引内存（token 级）。</blockquote>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>精度要求高时考虑 ColBERT 重排</strong>：如"这条报错对应的处置是不是这条"需要 token 级证据，ColBERT 比单向量更细。</li>
+  <li><strong>内存是硬约束</strong>：ColBERT 索引按 token 存，几万篇文档可能就到 GB 级——本机常驻要算这笔账。</li>
+  <li><strong>典型组合</strong>：BM25/DPR 粗筛（快）→ ColBERT 或 cross-encoder 重排（准），兼顾延迟与精度。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. bi-encoder、cross-encoder、late interaction 三者最核心的区别？</p>
+  <details><summary>展开答案</summary><p>bi-encoder：query、段各自编码后只做粗交互（快、可预算）；cross-encoder：query+段拼一起全注意力（准但慢、不能扫全库）；late interaction：各自编码但保留 token 级向量，打分时才做细粒度交互（准且快，代价是索引大）。</p></details>
+  <p>Q2. MaxSim 的打分方式是怎么做的？</p>
+  <details><summary>展开答案</summary><p>对每个 query token，在段落所有 token 里取最大内积（找最像的），再对所有 query token 求和。即"逐词找最佳匹配再累加"。</p></details>
+  <p>Q3. ColBERT 的代价是什么？有具体数据吗？</p>
+  <details><summary>展开答案</summary><p>索引大——按 token 存向量而非按文档。p54 数据：端到端查询延迟 458ms（比 BM25 的 62ms 慢，但比 cross-encoder 的 10,700ms/1k 段快两个数量级）。</p></details>
+  <p>Q4. 你会怎么组合这些检索器做设备排查 RAG？</p>
+  <details><summary>展开答案</summary><p>两级：BM25+DPR（或 ANN）粗筛出候选（快、覆盖精确词与语义）→ ColBERT 或 cross-encoder 对候选重排（准）。兼顾延迟与 token 级精度，且避开 ColBERT 索引过大的问题（只对候选算）。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week3 · Lecture03 · 段三 检索</span><br>
+  ← 上一课 <a href="lecture03-0026-retrieval-bm25-dpr.html">0026 · BM25 与 DPR</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture03-0028-hybrid-and-metrics.html">0028 · 混合检索、RRF 与检索指标</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件（源文件夹 week2-9.30） p50-54 + ColBERT 论文《Efficient and Effective Passage Search via Contextualized Late Interaction over BERT》(Khattab & Zaharia, SIGIR 2020)。<br>
+Lesson 27 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

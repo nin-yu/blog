@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 29 — Agentic RAG：把检索放进循环</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week3 · Lecture03 · Lesson 29</span>
+  <h1>Agentic RAG：决定"要不要查、查什么、够不够"</h1>
+  <div class="meta">第 29 课（Week3 第 7 课）· 来源：lecture03.pdf p56-61 · 本课成果：理解普通 RAG 与 agentic RAG 的分界、三个决策点，以及 Self-RAG / CRAG / Search-R1 三种把"检索"变成"可学习动作"的路子</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+前面所有 RAG 都只擅长"回答<strong>一个</strong>问题"，但<strong>没有一个会决定：要不要检索、该问什么、什么时候停</strong>。Agentic RAG 把<strong>检索变成 agent 主动采取的一个动作</strong>，三个决策点：(1) 直接答还是先检索；(2) 该发什么查询；(3) 结果够不够好（要不要再查）。<br><br>
+工程含义：这正是你 MISSION 里"故障排查"的形态——路径未知，得边走边查。三条技术路线：<strong>Self-RAG</strong>（自学检索+自我批判）、<strong>CRAG</strong>（用 critic 给检索结果打分）、<strong>Search-R1</strong>（用 RL 学搜索策略）。
+</div>
+
+<h2>分界线：固定检索 vs 检索即动作（p56）</h2>
+<p>课件原话大意：迄今为止的一切都只把"回答一个问题"做好，但都不决定是否检索、问什么、何时停。Agentic RAG 的主张：</p>
+<ul>
+  <li><strong>检索应是 agent 采取的动作</strong>（不是每轮都无条件先检索）。</li>
+  <li>三个决策：
+    <ol>
+      <li><strong>retrieve or answer directly</strong>：这题需要查资料吗，还是我能直接答？</li>
+      <li><strong>what query to issue</strong>：要发什么查询？（还能基于上一步结果改写查询）</li>
+      <li><strong>whether the result is good enough</strong>：检索到的够不够，要不要再查？</li>
+    </ol>
+  </li>
+</ul>
+<blockquote>对照 Week1 第 5 课的 agent loop：普通 RAG = 固定管线（workflow）；agentic RAG = 把"检索"作为 Act 放进 Obs→Think→Act 的循环里。查不查、查几次，由模型当场决定。</blockquote>
+
+<h2>路线 1：Self-RAG（p57）</h2>
+<p>Asai et al., 2024：让模型<strong>学会"检索、批判、生成"</strong>，以增强生成质量、事实性与可验证性。要点：模型自己产出"是否需要检索"以及"检索到的段落相不相关/答案是否有据"的反思标记，据此调整。= 把批判内化成模型能力。</p>
+
+<h2>路线 2：CRAG（p58）</h2>
+<p>Yan et al., 2024：加一个 <strong>critic（评估器）给检索结果打分</strong>——评估检索到的文档与输入的相关性并给出置信度，据此触发不同的知识检索动作（例如：相关度高就直接用、中等就补充检索、太低就走别的路径）。= 用外部 critic 做"检索质量闸门"。</p>
+
+<h2>路线 3：Search-R1（p59-61）</h2>
+<p>Jin et al., 2025：用<strong>强化学习优化"多轮搜索交互"的推理轨迹</strong>——即直接训练"搜索策略"本身（何时搜、搜什么、何时停），而不是靠提示词规定。</p>
+
+<h2>三条路线对照</h2>
+<table>
+  <tr><th>方法</th><th>核心机制</th><th>"要不要查/够不够"由谁决定</th></tr>
+  <tr><td>Self-RAG</td><td>模型自学检索+自我批判，输出反思标记</td><td>模型自身的反思标记</td></tr>
+  <tr><td>CRAG</td><td>独立 critic 给检索结果打分+置信度</td><td>外部评估器</td></tr>
+  <tr><td>Search-R1</td><td>RL 直接优化多轮搜索的推理轨迹</td><td>学出来的搜索策略</td></tr>
+</table>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>简单问答用固定 RAG 就够</strong>：日常 QA 走 Week1 第 12 课判定的 workflow（固定"检索→生成"），别上 agentic 的复杂度。</li>
+  <li><strong>故障排查才用 agentic RAG</strong>：先查哪份日志取决于日志内容，检索次数也不固定——这正是 agentic RAG 的主场。</li>
+  <li><strong>从 CRAG 式闸门起步</strong>：不要一上来训 RL（Search-R1 成本高）。最实用的第一版是"检索 → critic 打相关性分 → 分不够就改写查询再查"，可控、可评估、可加人审点。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 普通 RAG 和 agentic RAG 的本质区别？</p>
+  <details><summary>展开答案</summary><p>普通 RAG 是固定管线：每轮无条件检索一次再生成。Agentic RAG 把检索变成 agent 主动决定的动作，由模型决定要不要检索、发什么查询、结果够不够——是带检索动作的 loop。</p></details>
+  <p>Q2. Agentic RAG 的三个决策点是什么？</p>
+  <details><summary>展开答案</summary><p>(1) 直接答还是先检索；(2) 该发什么查询；(3) 检索结果够不够好、要不要再查。</p></details>
+  <p>Q3. Self-RAG、CRAG、Search-R1 各自用什么决定"检索质量/策略"？</p>
+  <details><summary>展开答案</summary><p>Self-RAG：模型自学检索并自我批判（反思标记）；CRAG：独立的 critic 给检索结果打相关性分/置信度；Search-R1：用 RL 学出多轮搜索策略。</p></details>
+  <p>Q4. 你的故障排查 agent，第一版该怎么起步？</p>
+  <details><summary>展开答案</summary><p>用 CRAG 式闸门：检索 → critic 打相关性分 → 分不够就改写查询再查，够了就生成。可控、可评估、可插人审点；先别上 RL（Search-R1 成本高）。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week3 · Lecture03 · 段四 Agentic RAG</span><br>
+  ← 上一课 <a href="lecture03-0028-hybrid-and-metrics.html">0028 · 混合检索、RRF 与指标</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture03-0030-rag-failure-modes.html">0030 · RAG 失败模式全景（Week3 收官）</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件（源文件夹 week2-9.30） p56-61（Agentic RAG / Self-RAG, Asai et al. 2024 / CRAG, Yan et al. 2024 / Search-R1, Jin et al. 2025）。<br>
+Lesson 29 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

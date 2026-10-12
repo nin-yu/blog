@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>精选03 · 如果 LLM 是一位"会写菜谱却从没下过厨"的大厨，为什么 agent 必须给它配工具和确认闸门？</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>精选03 · 如果 LLM 是一位&quot;会写菜谱却从没下过厨&quot;的大厨，为什么 agent 必须给它配工具和确认闸门？</h1>
+<blockquote>
+<p><strong>精选理由</strong>（为什么这题够格）：它从&quot;LLM 到底是什么&quot;这一个本质判断，
+反向推出<strong>整套 agent 护栏的必然性</strong>。答对了，你就不再是&quot;照抄最佳实践加护栏&quot;，
+而是理解<strong>每一条护栏都是在补一个具体的不可信</strong>——护栏的数量 = 不可信的程度。</p>
+<p><strong>牵出哪些讲</strong>：L1（agent 组成）· L4（工具层设计 / 工具失败）· L5（工程化 / 可靠性安全）。
+与 <a href="%E7%B2%BE%E9%80%8901-%E6%97%A0%E7%8A%B6%E6%80%81%E6%8E%A8%E5%87%BA%E5%93%AA%E5%BA%A7%E6%A1%A5.html">精选01</a>、<a href="%E7%B2%BE%E9%80%8902-LLM%E6%97%B6%E4%BB%A3vsRL%E6%97%B6%E4%BB%A3.html">精选02</a> 构成同一主题簇：
+<strong>能力从哪来、存在哪、为什么不可全信</strong>。</p>
+</blockquote>
+<hr>
+<h2>题目</h2>
+<p>先接受一个判断（可用你自己的话重述）：</p>
+<blockquote>
+<p><strong>LLM 不是&quot;会做菜的大厨&quot;，而是&quot;会写菜谱、且能把菜谱写得像真做过的大厨&quot;。</strong>
+它产出的是<strong>文本</strong>，不是<strong>验证过的结果</strong>；它在<strong>模仿</strong>，不是<strong>理解</strong>；
+它手边没的东西会用最像的凑（幻觉），而且<strong>不自知</strong>。</p>
+</blockquote>
+<p><strong>请回答：从&quot;它产出的是文本而非验证过的结果&quot;这一条，能推出 agent 为什么必须
+给 LLM 配【工具】和【确认闸门】？请推出整套护栏的必要性。</strong></p>
+<h3>作答要求</h3>
+<ol>
+<li><strong>点根</strong>：用一句话说出——为什么&quot;文本 ≠ 验证过的结果&quot;就足以要求护栏？
+（提示：如果它真是一台精确的机器，护栏是否还需要？）</li>
+<li><strong>逐条推</strong>：把 LLM 的每个&quot;不可信&quot;（幻觉 / 不自知 / 模仿而非理解 / 会为&quot;显得完成任务&quot;乱来）
+与它对所需的护栏一一对应列出来（不可信 → 护栏 → 补了什么）。</li>
+<li><strong>配工具 vs 配闸门</strong>：这两类护栏分别治什么病？为什么&quot;加工具&quot;解决不了&quot;信任人的确认&quot;这个问题？</li>
+<li><strong>量化直觉</strong>：题里有一句&quot;护栏的数量 = 不可信的程度&quot;。请你论证它，
+并给出一个反例——如果 LLM 变成完全可信（永不出错、完全理解意图），哪些护栏可以撤掉？</li>
+<li><strong>落项目</strong>：以 Mono-BPS BPS Copilot 为例，挑 3 条设计（如&quot;只引用工具返回值&quot;
+/ 确认闸门 / 不新增写盘路径），说明每条分别对应上面哪种&quot;不可信&quot;。</li>
+</ol>
+<hr>
+<h2>我的作答</h2>
+<p><strong>1. 点根：</strong></p>
+<p><strong>2. 逐条推（不可信 → 护栏 → 补了什么）：</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>LLM 的不可信</th>
+<th>对应的护栏</th>
+<th>补了什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<p><strong>3. 配工具 vs 配闸门（各治什么病）：</strong></p>
+<p><strong>4. &quot;护栏数量 = 不可信程度&quot;的论证 + 反例：</strong></p>
+<p><strong>5. 落项目（3 条设计各自对应哪种不可信）：</strong></p>
+<hr>
+<h2>参考解析（评卷用）</h2>
+<h3>根：因为它&quot;写菜谱&quot;而不是&quot;尝味道&quot;</h3>
+<p><strong>一句话：</strong> 如果 LLM 是一台精确的机器（给描述 → 精确产出验证过的结果），
+护栏一条都不需要。正因为它产出的是<strong>文本</strong>（模仿出来的、没经过验证的东西），
+所有护栏才有存在的必要——<strong>护栏的存在本身，就是在承认&quot;它的输出不可直接采信&quot;。</strong></p>
+<h3>逐条推（不可信 → 护栏）</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>LLM 的不可信</th>
+<th>对应护栏</th>
+<th>补了什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>幻觉：没见过的拿最像的凑</td>
+<td>工具（算数/查询/采集外包）+ &quot;只引用工具返回值&quot;</td>
+<td>用确定性来源替代&quot;像不像&quot;</td>
+</tr>
+<tr>
+<td>2</td>
+<td>不自知：错了也不知道</td>
+<td>确认闸门（人复核）+ 审计日志</td>
+<td>引入外部校验者</td>
+</tr>
+<tr>
+<td>3</td>
+<td>模仿而非理解意图</td>
+<td>结构化输出 / Schema 约束 / 少样本</td>
+<td>用格式和示例收窄歧义</td>
+</tr>
+<tr>
+<td>4</td>
+<td>会为&quot;显得完成任务&quot;乱来</td>
+<td>权限白名单 / 不新增写盘路径 / 不自动重试</td>
+<td>限制它的可作恶面</td>
+</tr>
+<tr>
+<td>5</td>
+<td>上下文/记忆不可靠（见精选01）</td>
+<td>状态外置、进度由工具合成</td>
+<td>不让它&quot;记&quot;，让它&quot;查&quot;</td>
+</tr>
+</tbody></table>
+<p><strong>注意因果</strong>：不是&quot;最佳实践说要加护栏&quot;，而是&quot;<strong>每一条不可信，必然对应一条护栏</strong>&quot;。
+护栏不是清单，是<strong>从它的本质推出来的必然结果</strong>。</p>
+<h3>配工具 vs 配闸门（两类护栏治不同的病）</h3>
+<ul>
+<li><strong>工具</strong>（算数、查询、采集、执行）：治&quot;<strong>做得不对</strong>&quot;——把&quot;它不擅长的精确操作&quot;
+外包给确定性的东西。工具解决&quot;<strong>能力</strong>&quot;问题。</li>
+<li><strong>确认闸门</strong>：治&quot;<strong>信不过</strong>&quot;——即使工具结果正确、模型判断合理，<strong>最终动作仍需人点头</strong>。
+它解决&quot;<strong>授权/责任</strong>&quot;问题。</li>
+</ul>
+<p><strong>为什么加工具解决不了闸门的问题？</strong>
+工具能让&quot;算得准&quot;，但不能让&quot;<strong>该不该做</strong>&quot;这件事变得可信——
+模型可能算对了、却理解了错误的意图，或越权去做本不该它做的事。
+工具的定位是&quot;帮手&quot;，闸门的定位是&quot;把最终决定权留给人&quot;。
+用一句话：<strong>工具管&quot;能不能做对&quot;，闸门管&quot;允不允许做&quot;。</strong></p>
+<h3>&quot;护栏数量 = 不可信程度&quot;的论证 + 反例</h3>
+<p>论证：每一条护栏都锚定一个具体的&quot;不可信&quot;。可信度越高，需要的护栏越少；
+所以护栏集合的大小，直接反映我们对它的信任缺口有多大。</p>
+<p>反例（完全可信的假设）：若 LLM 永不出错、完全理解意图、且从不为&quot;表现&quot;而偏离——
+则可撤掉：</p>
+<ul>
+<li>确认闸门（不需要人复核了）</li>
+<li>&quot;只引用工具返回值&quot;（它自己说的就可信）</li>
+<li>权限白名单/不新增写盘（它不会越权）</li>
+<li>但<strong>审计日志可能仍保留</strong>（合规/追溯要求，与信任无关）——这是个好的边界观察。</li>
+</ul>
+<h3>落项目：Bps Copilot 3 条设计</h3>
+<table>
+<thead>
+<tr>
+<th>设计条款</th>
+<th>对应的&quot;不可信&quot;</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>&quot;只引用工具返回值，禁止编造数值&quot;</td>
+<td>幻觉（#1）——它会给假数值</td>
+</tr>
+<tr>
+<td>确认闸门（动作需操作员点执行）</td>
+<td>不自知 + 授权（#2）——它可能理解偏，且最终动作要人负责</td>
+</tr>
+<tr>
+<td>不新增写盘路径 / 不自动重跑直到通过</td>
+<td>会为&quot;显得完成任务&quot;乱来（#4）——限制可作恶面</td>
+</tr>
+</tbody></table>
+<p>（可加分：指出&quot;工具输出 &lt;2K token 裁剪&quot;对应精选01 的上下文不可靠——#5。）</p>
+<h3>深一层（加分）</h3>
+<p>&quot;护栏数量 = 不可信程度&quot;其实是一个通用的<strong>安全工程原则</strong>：
+任何自动化系统，其约束的强度应当与&quot;该系统偏离目标时会造成的损害 × 它偏离的概率&quot;成正比。
+LLM 的偏离概率高、又可能碰临床/硬件，所以护栏密集。
+这也解释了为什么医疗设备领域对 AI 介入格外保守（见设计文档 §8 安全边界）。</p>
+<hr>
+<h2>评判关注点</h2>
+<ul>
+<li>✅ <strong>抓根</strong>：是否理解&quot;护栏是它本质的必然推论&quot;，而不是背诵&quot;要加护栏&quot;。</li>
+<li>✅ <strong>因果对应</strong>：每条不可信 → 护栏是否对得上、补的是不是同一个缺口。</li>
+<li>✅ <strong>工具 vs 闸门</strong>：是否分得清&quot;能力&quot;与&quot;授权/责任&quot;两个不同层次的问题。</li>
+<li>✅ <strong>反例质量</strong>：能否正确指出&quot;哪些护栏该撤、哪些与信任无关（审计）&quot;。</li>
+<li>⭐ <strong>加分</strong>：能把它抬到通用安全原则（约束强度 ∝ 偏离概率 × 损害）。</li>
+</ul>
+<hr>
+<h2>延伸关联网（这题能牵出的知识）</h2>
+<pre><code>&quot;为什么 agent 必须配工具和护栏&quot;
+   ├─→ [L1] agent 组成：大脑 + 工具 + 记忆 + 护栏的关系
+   ├─→ [L4] 工具层设计：工具是&quot;补能力&quot;，也是&quot;事实来源&quot;
+   ├─→ [L4] 工具失败模式：工具有了也会错 → 三层失败
+   ├─→ [L5] 工程化：可靠性/安全/审计——医疗 AI 的变更管理
+   ├─→ [精选01] 记忆从哪来（无状态 → 上下文管理）
+   ├─→ [精选02] 策略从哪来（RL 训练 → 上下文装配）
+   └─→ 本题：可信度从哪来（工具补能力 + 闸门补授权）
+
+主题簇三片叶（同根：能力从哪来、存在哪、为什么不可全信）
+   · 推理/策略从哪来 → pretrain + CoT + RL → 上下文装配
+   · 记忆从哪来     → 模型无状态 → 外部上下文管理
+   · 可信度从哪来   → 产出是文本而非验证结果 → 工具 + 护栏
+</code></pre>
+
+  </div>
+</div>
+</body>
+</html>

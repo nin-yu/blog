@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 5 — 架构核心：五大组件 + agent loop</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lesson 5</span>
+  <h1>架构核心：一个 agent 由五大组件拼成，靠 loop 转起来</h1>
+  <div class="meta">第 5 课（共 13 课）· 全课程的<strong>心脏课</strong> · 本课成果：闭着眼画出这张图、复述四步循环，并在自己的 SGRT 场景里点名五个组件</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+一个 agent = <strong>LLM Core（大脑）+ 规划推理（想）+ 记忆（记）+ 工具（手）+ 环境（世界）</strong>，靠一个循环驱动：<strong>Obs（观察）→ Think（思考）→ Act（行动）→ 新的 Obs → … 直到完成</strong>。<br>后面 8 课，全都是在往这个环上插插件——先把这张图刻进脑子，后面就都是“往哪儿插、怎么插”的问题。
+</div>
+
+<h2>架构图（课件 p29-30，请自己画一遍）</h2>
+<pre class="loop">                环境 Environment（外部世界）
+       桌面OS / 浏览器 / 数据库 / 游戏 / SGRT设备…
+                        ▲  observe 观察
+                        │
+   ┌────────────────────┼────────────────────┐
+   │              LLM Core（大脑）            │
+   │                                        ▼
+   │   Planning &amp; Reasoning ◄────────── act 行动
+   │        ▲           │      （工具调用 / 交互 / 回复用户）
+   │        │           ▼
+   │      Memory      Tools
+   │    （记：轨迹/知识/技能）（手：检索/计算器/代码/搜索/读写…）
+   └────────────────────┴────────────────────┘
+
+   循环：Obs → Think → Act → 新的 Obs → …</pre>
+
+<h2>五个组件各自干什么（对号入座）</h2>
+<table>
+  <tr><th>组件</th><th>干什么</th><th>你的 SGRT 场景里，它长什么样</th></tr>
+  <tr><td>LLM Core</td><td>思考与生成语言的本体</td><td>你选用的那个模型（如 deepseek-flash / qwen）</td></tr>
+  <tr><td>Planning &amp; Reasoning</td><td>“下一步干什么，才离目标更近”</td><td>“先查错误码表，还是先看标定日志？”</td></tr>
+  <tr><td>Memory</td><td>存住做过的事 / 学到的知识 / 练成的技能</td><td>过去 30 次标定的结果档案、常见故障处置记录</td></tr>
+  <tr><td>Tools</td><td>检索、跑代码、读写文件、查设备</td><td><code>read_log()</code>、查错误码表、算残差统计</td></tr>
+  <tr><td>Environment</td><td>外部世界，提供观察、接受行动</td><td>日志文件、设备数据库、操作工终端</td></tr>
+</table>
+
+<h2>ReAct 论文与这张图的对应（课件 p29 原文）</h2>
+<table>
+  <tr><th>ReAct 记号</th><th>→ 对应组件</th></tr>
+  <tr><td>the model</td><td>LLM Core</td></tr>
+  <tr><td>Think[…]</td><td>Planning &amp; Reasoning</td></tr>
+  <tr><td>traces so far（到目前为止的轨迹）</td><td>Memory</td></tr>
+  <tr><td>Act:</td><td>Tools</td></tr>
+  <tr><td>Obs:</td><td>Environment</td></tr>
+</table>
+<blockquote>读法：ReAct 论文里那串 Think/Act/Obs 的执行轨迹，就是这张架构图“跑起来”的样子。五大组件不是课件凭空分的，是从 ReAct 的记号直接翻译过来的——记住这一点，整门课就有了锚。</blockquote>
+
+<h2>环怎么转（背这个四步）</h2>
+<ol>
+  <li><strong>Obs</strong>：看一眼当前处境（环境返回的信息：日志新行、工具结果、用户消息）。</li>
+  <li><strong>Think</strong>：心里推演“接下来做什么才更接近目标”。</li>
+  <li><strong>Act</strong>：动手——调用工具 / 与环境交互 / 回复用户。</li>
+  <li><strong>新的 Obs</strong>：看这一步造成了什么新局面，回到第 1 步。循环直到任务完成或触发终止条件。</li>
+</ol>
+<p>为什么推理这一步不能省（课件 p33-34）：从 Obs 直接映射到 Act 往往很难。“盐用完了 → 该开右边的柜子拿酱油”是<strong>一步步推出来的</strong>，不是直接映射。推理带来两个好处：<strong>泛化（generalization）</strong>——新情况也能套；<strong>对齐（alignment）</strong>——行为可解释、可指挥。</p>
+
+<h2>三层抽象（课件 p55，调优时分层看）</h2>
+<ol>
+  <li><strong>系统层 The system</strong>：架构设计、组件怎么编排（本课 + 第 12 课）。</li>
+  <li><strong>数据层 The data</strong>：训练示例、示范、上下文。</li>
+  <li><strong>评估层 The evals</strong>：指标与评测——这一层定义“什么是好”（第 10 课）。</li>
+</ol>
+<p>工程含义：出问题时先分清是“架构没设计对”还是“数据/指标没定对”。很多人一上来猛改架构，其实指标那层根本没定义清楚。</p>
+
+<h2>自测</h2>
+<div class="quiz">
+  <p>Q1. 闭卷：默写五大组件 + 循环四步。（写在纸上再对）</p>
+  <details><summary>展开答案</summary><p>五组件：LLM Core / Planning &amp; Reasoning / Memory / Tools / Environment。四步：Obs → Think → Act → 新 Obs。</p></details>
+  <p>Q2. “traces so far”对应哪个组件？这说明 Memory 的第一形态是什么？</p>
+  <details><summary>展开答案</summary><p>Memory。第一形态就是<strong>对话/执行轨迹本身</strong>（把走过的路留在上下文里）；等上下文装不下了，才需要外挂记忆（第 7 课）。</p></details>
+  <p>Q3. 推理对 agent 的两大好处（课件 p34）？</p>
+  <details><summary>展开答案</summary><p>泛化 generalization + 对齐 alignment。</p></details>
+  <p>Q4. 三层抽象里，“什么算好”由哪一层定义？这层没定好会怎样？</p>
+  <details><summary>展开答案</summary><p>评估层。指标没定好，系统层的调优就是盲调——你无法判断改动是变好还是变坏（第 10 课“评估先于建设”）。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">第二段 · 智能体本体</span><br>
+  ← 上一课 <a href="lecture01-0004-history-of-agents.html">0004 · 历史</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture01-0006-reasoning-methods.html">0006 · 推理方法：CoT/ReAct/SC/Reflexion</a>
+</div>
+
+<p class="foot">一手来源：CS329Z 课件（源文件夹 week1-9.23） p29-34、p55 + ReAct 论文（Yao et al., 2022）。这是全课程最重要的一张图，值得画在白纸上贴墙。<br>
+Lesson 5 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,41 @@
+# 0004 — 教学空间新增 Week2（CS329Z Lecture 2 + Anthropic 两篇工程文章），文件名加 lecture 前缀
+
+用户要求：看 `C:\Users\nin\Desktop\hermes\agent\week2` 下的 ppt（lecture02.pdf）与两篇 Anthropic 文章
+（building-effective-agents、effective-context-engineering-for-ai-agents）生成课程；并要把课程"前缀加上 lecture"，
+方便对上是由哪节课生成的。
+
+## 做了什么
+1. **Week1 旧 13 课改名加前缀**：`0001-*.html` → `lecture01-0001-*.html`（13 个文件），并**同步更新全部内部链接**
+   （index.html 13 处 + lessons 内课间 footnav/复习表若干处）。改名前先 `cp -r lessons lessons-preprename-backup` 保底。
+   实测：index 与 lessons 中已无裸 `0xxx` 引用残留。
+2. **新增 Week2 9 课**（`lecture02-00NN-*.html`，14–22），命名自带来源前缀：
+   - 0014 Transformer 与注意力（lecture02 p24-63, p85-91）
+   - 0015 线性注意力（p63-90，p87 对比表为矢量图，精确读）
+   - 0016 训练三阶段（p92-118）
+   - 0017 推理与 KV Cache（p119-137，p133 矢量图）
+   - 0018 推理期扩展（p138-148，p143 矢量图）
+   - 0019 结构化 I/O（p151-159 + Anthropic《Building effective agents》Appendix 2）
+   - 0020 上下文工程（上）（Anthropic 上下文工程文章 + p160-167）
+   - 0021 上下文工程（下）（同上 + p171-173, p168-169）
+   - 0022 构建高效 agent：五模式（Anthropic《Building effective agents》全文，Week2 毕业课）
+3. 统一 chrome：`header.course`+badge（含 Week2·Lecture02·Lesson N）+ h1 + meta → takeaway → 分节 → 折叠式自测 → footnav → foot（一手来源标注页码）。
+4. 更新：index.html（Week2 路线表 + 22 课清单 + 标题/meta）、RESOURCES.md（新增 Week2 一节含两篇 Anthropic 文章 + 论文）、
+   reference/glossary.md（新增 Week2 术语表 25 条）。
+
+## 关于 PDF 架构图可读性（用户问题）
+- 视差模型（aux vision）当前不可用（404 model not found）。
+- 但 lecture02 的图分两类：**约 77 页为原生矢量图**（文字标签是内嵌文本层、坐标可精确读出，如 p35-60 attention、
+  p87 对比表、p90 Kimi K3、p133 KV Cache、p136 投机解码）——这类图不靠"看图"，靠几何+文本可精确还原；
+  **约 79 页为导入位图**（p26/p61/p123/p163 等）——无文本层，需视觉通道，当前读不了，可选 OCR 补。
+  本批课程引用与页码标注，均基于可精确读取的矢量图 + 文本层，未臆造位图内容。
+
+## Evidence
+用户原话：“看下 C:\Users\nin\Desktop\hermes\agent\week2 下的 ppt 和 [两篇 Anthropic 文章] 生成下课程”，
+以及“这些课程的前缀加上 lecture，方便我对上是哪节课”。模型：本会话默认 deepseek-chat（provider: deepseek）。
+
+## Implications
+- Week2 是"模型内部原理"层（Week1 是"系统设计"层），补上了 agent 设计者对底层模型的理解，与 MISSION（SGRT 场景设计 agent）互补。
+- 下一步仍可推进 MISSION 毕业考核（综合题 .md 作答 → 我评卷）。如需 week3（课件结尾预告 RAG 专题），按同法新增 `lecture03-*`。
+
+## Status
+active（Week2 9 课已交付；链接校验与浏览器冒烟见 0004 之后的验证步骤）

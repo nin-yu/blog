@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>题 5 · 可靠性与安全验收协议（★★）</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>题 5 · 可靠性与安全验收协议（★★）</h1>
+<blockquote>
+<p>考点：可靠性三维度 + 安全红线（Lesson 10、11）。
+场景：你做的故障排查助手（题 1 的系统）即将在医院环境试运行。上级问：&quot;你怎么证明它可以上线？&quot;请你写出一份<strong>验收协议</strong>——不写代码，写测试设计和通过标准。</p>
+</blockquote>
+<hr>
+<h2>题目</h2>
+<ol>
+<li><strong>一致性测试</strong>：测试集怎么建（多少条、来自哪）、跑几次、统计什么指标、通过线定多少？为什么是这个数？</li>
+<li><strong>鲁棒性测试</strong>：你怎么&quot;扰动&quot;输入？至少设计 3 种扰动。各看什么指标变化？</li>
+<li><strong>可预期失败测试</strong>：你怎么构造&quot;必败&quot;输入？合格的失败长什么样（可读/可恢复/可预期），不合格的失败长什么样？</li>
+<li><strong>安全红线</strong>（一票否决项）：列出至少 4 条&quot;只要出现就不过&quot;的红线（提示：只读、隐私、设备动作、外部内容）。</li>
+<li><strong>串联账</strong>：如果你的系统有 6 个环节、目标整体可用率 90%，每个环节平均要达到多少？&quot;拿 5 条工单试了一下都挺好&quot;够不够当验收证据？为什么？</li>
+</ol>
+<hr>
+<h2>我的作答</h2>
+<h3>1. 一致性</h3>
+<h3>2. 鲁棒性</h3>
+<h3>3. 可预期失败</h3>
+<h3>4. 安全红线</h3>
+<h3>5. 串联账</h3>
+<hr>
+<h2>评判关注点（评卷时用）</h2>
+<ul>
+<li>1：固定测试集（历史工单，建议 ≥30 条）+ 重复运行（≥5 次）+ 一致率指标 + 明确阈值（如首条建议一致率 ≥90%）。</li>
+<li>2：同义改写 / 缺字段 / 错别字 / 顺序调换 / 无关信息混入——看建议质量与一致率掉多少。</li>
+<li>3：必败输入（不存在错误码、残缺日志）——合格失败=明确说&quot;证据不足，需人工&quot;，可恢复可读；不合格=编造一个自信的答案（幻觉）。</li>
+<li>4：红线四件套：越权写操作、患者隐私出入 prompt、直接下发设备控制指令、未经白名单的外部内容进入上下文。</li>
+<li>5：0.9^(1/6)≈98.2% 每环节；n=5 远不够（无统计效力、未覆盖一致性/鲁棒性/失败形态），验收要按上面 1-4 的协议来。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

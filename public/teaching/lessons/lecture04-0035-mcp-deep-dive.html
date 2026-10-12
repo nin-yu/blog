@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 35 — MCP 深入：架构、tools/list 与 tools/call</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week4 · Lecture04 · Lesson 35</span>
+  <h1>MCP 深入：Host / Client / Server 与三条消息流</h1>
+  <div class="meta">第 35 课（Lecture04 第 5 课）· 来源：MCP 规范 2025-06-18（architecture / tools / lifecycle）+ lecture04.pdf p51-56 · 本课成果：能画出 MCP 架构、说出能力协商与生命周期三步，读懂 tools/list 与 tools/call 的报文，并知道认证与安全要点</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+MCP 采用 <strong>client-host-server 架构</strong>：一个 <strong>Host</strong>（LLM 应用）可运行多个 <strong>Client</strong>，每个 Client 与一个 <strong>Server</strong> 保持 1:1 的有状态会话。通信是 <strong>JSON-RPC 2.0</strong>。三层能力：Server 提供 <strong>Resources / Prompts / Tools</strong>，Client 提供 <strong>Sampling / Roots / Elicitation</strong>。<br><br>
+两条最常用的消息：<code>tools/list</code>（问"你有哪些工具"）与 <code>tools/call</code>（"用这些参数执行这个工具"）。安全核心：<strong>工具是任意代码执行，调用前须用户授权；工具描述（annotations）在非可信来源下一律视为不可信</strong>。
+</div>
+
+<h2>架构：Host / Client / Server（规范 architecture）</h2>
+<pre class="loop">[ Host 进程 ]        ← LLM 应用：创建并管理多个 Client、控制连接权限与生命周期、
+  ├─ Client 1 ──► Server 1（本地：文件/Git）
+  ├─ Client 2 ──► Server 2（本地：数据库）
+  └─ Client 3 ──► Server 3（远程：外部 API）
+每个 Client 与一个 Server 1:1，维护隔离的安全边界</pre>
+<table>
+  <tr><th>角色</th><th>职责</th></tr>
+  <tr><td><strong>Host</strong></td><td>容器与协调者：创建/管理 Client、控制连接权限与生命周期、执行安全策略与用户同意、协调 LLM 集成、聚合上下文</td></tr>
+  <tr><td><strong>Client</strong></td><td>Host 创建：每个 Server 一个会话、协议协商与能力交换、双向路由消息、维护 Server 间安全边界</td></tr>
+  <tr><td><strong>Server</strong></td><td>提供专门能力：暴露 resources/tools/prompts、独立聚焦职责、可请求 sampling、遵守安全约束、本地进程或远程服务</td></tr>
+</table>
+
+<h3>四条设计原则（规范）</h3>
+<ol>
+  <li><strong>Server 应极易构建</strong>——复杂的编排由 Host 承担，Server 只聚焦特定能力。</li>
+  <li><strong>Server 应高度可组合</strong>——各自独立提供功能，可无缝组合。</li>
+  <li><strong>Server 不能读整段对话、也看不见别的 Server</strong>——只收到必要上下文，完整历史留在 Host，跨 Server 交互由 Host 控制。</li>
+  <li><strong>能力可渐进添加</strong>——核心协议最小化，附加能力按需协商。</li>
+</ol>
+
+<h2>生命周期三步（规范 lifecycle）</h2>
+<pre class="loop">① Initialization（初始化）：协议版本 + 能力协商
+   Client 发 initialize（protocolVersion、capabilities、clientInfo）
+   Server 回 initialize（capabilities、serverInfo）
+   Client 再发 initialized 通知 → 进入正常操作
+② Operation（操作）：按协商好的能力交换消息
+③ Shutdown（关闭）：无专门消息，用底层传输（stdio 关输入流 / HTTP 关连接）收尾</pre>
+<p>能力协商（capability negotiation）：双方显式声明支持的特性，决定本次会话可用哪些功能。</p>
+<table>
+  <tr><th>类别</th><th>能力</th><th>含义</th></tr>
+  <tr><td>Client</td><td><code>roots</code></td><td>提供文件系统根边界</td></tr>
+  <tr><td>Client</td><td><code>sampling</code></td><td>支持 LLM 采样请求</td></tr>
+  <tr><td>Client</td><td><code>elicitation</code></td><td>支持向用户追加索要信息</td></tr>
+  <tr><td>Server</td><td><code>tools</code></td><td>暴露可调用工具</td></tr>
+  <tr><td>Server</td><td><code>resources</code></td><td>提供可读资源</td></tr>
+  <tr><td>Server</td><td><code>prompts</code></td><td>提供提示模板</td></tr>
+</table>
+
+<h2>核心消息：tools/list 与 tools/call（规范 tools + p53-54）</h2>
+<h3>发现工具 tools/list</h3>
+<pre class="loop">REQUEST:  {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{…}}}
+RESPONSE: {"id":2,"result":{"tools":[
+   {"name":"weather_current","title":"Weather Information",
+    "description":"Current weather for a location",
+    "inputSchema":{"type":"object","properties":{
+       "location":{"type":"string"},
+       "units":{"enum":["metric","imperial"]}},
+      "required":["location"]}},
+   {"name":"calculator_arithmetic", …}], "ttlMs":300000}}</pre>
+<p>每个工具带 name、description、JSON inputSchema（可选 outputSchema）。p53 简述："你有哪些工具？"→ 服务端返回列表。</p>
+
+<h3>执行工具 tools/call</h3>
+<pre class="loop">REQUEST:  {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{
+   "name":"weather_current",
+   "arguments":{"location":"Stanford","units":"imperial"},"_meta":{…}}}
+RESPONSE: {"id":3,"result":{"content":[
+   {"type":"text","text":"Current weather in Stanford: 68°F, partly cloudy, wind W 8 mph"}]}}</pre>
+<p>p54：name 选中一个已列出的工具，arguments 按其 inputSchema 给，结果是 content 数组，由 Host 交回给 LLM。</p>
+
+<h2>认证：入站 vs 出站（p55-56）</h2>
+<pre class="loop">Agent --inbound·AGENT_TOKEN--> Course MCP server --outbound·LMS_TOKEN--> LMS REST API</pre>
+<p>两层令牌：<strong>入站</strong>（agent → MCP server 的鉴权）与<strong>出站</strong>（MCP server → 后端 REST API 的鉴权）要分开管。课件用 FastMCP + StaticTokenVerifier 演示。</p>
+
+<h2>安全要点（规范 tools & 总览）</h2>
+<ul>
+  <li>工具 = <strong>任意代码执行</strong>，须谨慎对待；<strong>工具描述（annotations）在非可信 Server 下不可信</strong>。</li>
+  <li>Host <strong>必须</strong>在调用任何工具前获得<strong>用户明确同意</strong>；应展示工具调用、给确认提示（human-in-the-loop）。</li>
+  <li>Server <strong>必须</strong>：校验所有工具输入、做访问控制、限流、清理输出。</li>
+  <li>Client <strong>应</strong>：敏感操作前确认、调用前把工具输入展示给用户（防外泄）、校验工具结果、设超时、记录审计日志。</li>
+</ul>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>权限边界正是你要的</strong>："Server 不能读整段对话、看不见别的 Server"——对应医疗数据分区隔离，天然满足"最小必要可见"。</li>
+  <li><strong>tools/call 前必须人审</strong>：涉及设备的写操作（改参数、触发标定）务必 human-in-the-loop，规范也是这么要求的。</li>
+  <li><strong>双层令牌照搬</strong>：agent→你的 MCP server、server→设备后端 API，两套凭证分开管理，避免越权。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 画出 MCP 的 Host/Client/Server 关系，说明"1:1"指谁和谁。</p>
+  <details><summary>展开答案</summary><p>一个 Host 运行多个 Client，每个 Client 与一个 Server 建立 1:1 的有状态会话。Server 之间相互隔离，完整对话留在 Host。</p></details>
+  <p>Q2. tools/list 和 tools/call 各干什么？返回什么？</p>
+  <details><summary>展开答案</summary><p>tools/list：问"有哪些工具"，返回工具列表（name/description/inputSchema）。tools/call：用 name+arguments 执行某工具，返回 content 数组（由 Host 交回 LLM）。</p></details>
+  <p>Q3. MCP 的三条与安全直接相关的规范要求是什么？</p>
+  <details><summary>展开答案</summary><p>(1) 工具是任意代码执行，annotations 在非可信 Server 下不可信；(2) Host 须在调用前获用户明确同意（human-in-the-loop）；(3) Server 须校验输入/访问控制/限流/清理输出，Client 须确认敏感操作/展示输入/校验结果/超时/审计。</p></details>
+  <p>Q4. 你的设备控制场景，怎么用 MCP 的架构实现权限隔离？</p>
+  <details><summary>展开答案</summary><p>每个设备/子系统做成独立 MCP Server（各自聚焦），Server 之间由 Host 隔离、看不到彼此；只读查询与写操作分不同 Server/凭证；涉及写操作的工具调用强制人审。双层令牌：agent→server、server→设备 API 分开。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture04 · 段三 标准接口</span><br>
+  ← 上一课 <a href="lecture04-0034-standard-interfaces.html">0034 · 标准接口三代</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture04-0036-mcp-example.html">0036 · MCP 实战：把 REST 包装成 MCP 工具</a>
+</div>
+
+<p class="foot">一手来源：MCP 规范 2025-06-18（modelcontextprotocol.io/specification/2025-06-18：architecture / server/tools / basic/lifecycle）+ CS329Z lecture04 课件（源文件夹 week3-10.5） p51-56。<br>
+Lesson 35 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

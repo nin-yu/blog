@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 44 — 工程最佳实践与挑战（Lecture05 收官）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture05 · Lesson 44（Lecture05 收官课）</span>
+  <h1>Agent 工程最佳实践：简单、可观测、有评估、懂底层</h1>
+  <div class="meta">第 44 课（Lecture05 第 6 课 · 收官）· 来源：lecture05.pdf p123-132 · 本课成果：记住四条工程铁律（保持简单 / 让失败可观察可恢复 / 跑评估 / 懂底层），理解"建→跑→评→改"的循环，以及为什么别爬通用编码榜</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+四条工程铁律（p124-130）：<strong>① 保持简单</strong>（别默认上最复杂方案）；<strong>② 让失败可观察、可恢复</strong>（trace/超时/重试/预算/日志/监控）；<strong>③ 跑评估</strong>（用 eval 驱动设计决策，且<strong>用你自己的领域 eval，不是通用编码榜</strong>）；<strong>④ 懂底层</strong>（抽象让你离系统细节更远，务必知道 under the hood 在干什么）。<br><br>
+总纲（p130）：<strong>工程 agent 是一个循环——Build → Run → Evaluate → Improve</strong>。
+</div>
+
+<h2>铁律 1：保持简单（p124）</h2>
+<p>"Keep it Simple"——回到 p15 的框架谱系："<strong>你也许并不总是需要</strong>[最复杂的那档]"。即：先试简单方案，只在对得起时再加复杂度（呼应 Week2 第 22 课"最简优先"）。</p>
+
+<h2>铁律 2：让失败可观察、可恢复（p125）</h2>
+<pre class="loop">• Trace：模型调用 / 工具调用 / 状态变化 / 错误
+• Timeouts、retry limits、execution budgets（超时/重试上限/执行预算）
+• Log outputs、diagnose failures（记录输出、诊断失败）
+• Monitor the state of your system（监控系统状态）
+→ 可以把错误抛回给 agent 让它重试（raise the error to the agent to try again）</pre>
+<p>要点：失败不是"异常"，而是<strong>设计对象</strong>——为失败而设计、为恢复而设计（Design for failure and recovery）。</p>
+
+<h2>铁律 3：跑评估（p127-128）</h2>
+<ul>
+  <li>做设计决策的最好方式是用评估来"接地"（ground them in evals）。</li>
+  <li>评估让<strong>优化</strong>成为可能；<strong>建好一个 eval 是造 AI 系统最重要的一步之一</strong>。</li>
+  <li><strong>关键警告（p128）</strong>：除非你在造通用编码 agent harness 或测通用 agent 系统改进，<strong>标准编码基准不是你要爬的榜</strong>——要用<b>你自己的领域 eval（Your Custom Domain Eval!）</b>。</li>
+</ul>
+<blockquote>对你的直接含义：别拿"HumanEval 多少分"比你的 SGRT 排查助手。要建的是"这套 SOP/故障判定在真实数据上准不准"的<b>领域评测集</b>——Week1 第 10 课、Week3 第 28 课的落地。</blockquote>
+
+<h2>铁律 4：懂底层（p129 Challenges / Limitations）</h2>
+<ul>
+  <li><strong>抽象会让你离底层系统细节更远</strong>，务必知道 under the hood 发生了什么。</li>
+  <li>复杂 AI 系统里<strong>很难定位失败来源</strong>——所以务必<strong>看 trace</strong>。</li>
+  <li>基于框架构建会<strong>引入依赖</strong>、依赖外部库被持续维护。</li>
+</ul>
+
+<h2>总纲：工程 agent 是一个循环（p130）</h2>
+<pre class="loop">Build ──► Run ──► Evaluate ──► Improve
+  ▲                              │
+  └──────────────────────────────┘
+• Engineer Agents by Building → Running → Evaluating → Improving（是个循环！）
+• 从简单开始，为新增复杂度找理由
+• 为失败与恢复而设计
+• 用证据与评估衡量质量、成本、延迟
+• 完全理解你的系统如何工作</pre>
+
+<h2>本讲总结（p132）</h2>
+<blockquote>
+• 什么叫"工程化"agent？<br>
+• Workflow/程序框架（DSPy、LangGraph）<br>
+• 开源 agent harness<br>
+• 编排与遥测（Temporal）<br>
+• 最佳实践与挑战
+</blockquote>
+
+<h2>五讲合起来：你已经拿到的"设计工具箱"</h2>
+<pre class="loop">Week1 (L01): agent 是什么、五大组件、workflow vs agent 判定
+Week2 (L02): 模型内部（注意力/训练/推理/上下文工程）
+Week3 (L03): RAG（索引/检索/混合/agentic/失败三侧）
+Week4 (L04): 工具（Toolformer/Gorilla/标准接口/MCP/失败三层）
+Week5 (L05): 工程化（框架 DSPy·LangGraph / harness / 编排 Temporal / 最佳实践）
+→ 一条主线：从"知道概念"→"会评范式"→"会搭检索/工具层"→"会工程化上线并评估"</pre>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 四条工程铁律是什么？</p>
+  <details><summary>展开答案</summary><p>(1) 保持简单；(2) 让失败可观察、可恢复；(3) 跑评估；(4) 懂底层。</p></details>
+  <p>Q2. "让失败可观察可恢复"具体要做什么？</p>
+  <details><summary>展开答案</summary><p>Trace 模型/工具调用与状态变化和错误；设超时、重试上限、执行预算；记录输出并诊断失败；监控系统状态；必要时把错误抛回给 agent 重试。</p></details>
+  <p>Q3. 为什么"标准编码基准不是你该爬的榜"？你应该用什么？</p>
+  <details><summary>展开答案</summary><p>因为除非你造通用编码 harness 或测通用 agent 改进，通用基准与你的领域无关。应用自己的领域 eval（真实 SGRT 数据上的评测集）来驱动设计决策。</p></details>
+  <p>Q4. "工程 agent" 的核心循环是什么？对你的实际工作意味着什么？</p>
+  <details><summary>展开答案</summary><p>Build → Run → Evaluate → Improve 的循环。意味着你的 SGRT 排查助手不是一次搭成，而是从简单开始、持续用评估驱动迭代，并为失败与恢复而设计。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture05 · 段五 最佳实践 · Lecture05 收官</span><br>
+  ← 上一课 <a href="lecture05-0043-orchestration-telemetry.html">0043 · 编排与可观测性</a> · <a href="../index.html">课程大纲</a> · 回顾 <a href="lecture01-0012-workflow-or-agent.html">Week1-0012 · 范式判定</a><br>
+  Lecture05 完结 → 回到 <a href="../index.html">课程大纲</a>
+</div>
+
+<h2>综合结业考试题</h2>
+<div class="takeaway">
+<strong>Lecture05 结业考试</strong>（把本讲当一个整体来考）：把助手从'能跑'工程化为'可维护'。<br>
+<strong>→ 领取结业考试题</strong>：<a href="../综合题/Lecture05/结业考试-Lecture05-工程化.md">结业考试-Lecture05-工程化.md</a>（Markdown 作答制，作答区就在题目下方；答完对我说"评卷"）。
+</div>
+
+<p class="foot">一手来源：CS329Z lecture05 课件（源文件夹 week3-10.7）p123-132（Best Practices: Keep it Simple / Make Failures Observable &amp; Recoverable / Run Evaluations / Challenges / Recap / Summary）。<br>
+Lesson 44 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

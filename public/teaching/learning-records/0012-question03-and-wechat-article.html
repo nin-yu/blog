@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0012 — 精选题 03 入库 + 首篇公众号文章（RL 预制菜 / 大厨 LLM）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>0012 — 精选题 03 入库 + 首篇公众号文章（RL 预制菜 / 大厨 LLM）</h1>
+<p>用户提供原创比喻（LLM=大厨现做，RL=预制菜），要求：① 收成精选题；② 据此写一篇技术科普风公众号文章。</p>
+<h2>A. 精选题 03</h2>
+<ul>
+<li>文件：<code>综合题/开放题库/精选03-大厨比喻与护栏必然性.md</code>（★★★）</li>
+<li>题面：从&quot;LLM 产出的是文本而非验证过的结果&quot;推出——为何 agent 必须配工具 + 确认闸门。</li>
+<li>核心答案：<ul>
+<li>根：若 LLM 完全可信，护栏一条都不需要；正因它产出是&quot;模仿出来的文本&quot;，护栏才必然存在。</li>
+<li>逐条推（不可信→护栏）：幻觉→工具+&quot;只引用工具返回值&quot;；不自知→确认闸门+审计；
+模仿非理解→结构化约束；会为&quot;显得完成&quot;乱来→权限白名单/不新增写盘。</li>
+<li>工具 vs 闸门：工具管&quot;能不能做对&quot;（能力），闸门管&quot;允不允许做&quot;（授权/责任），互不可替。</li>
+<li>加分：护栏数量 ∝ 不可信程度；可抬到通用安全原则（约束强度 ∝ 偏离概率×损害）。</li>
+</ul>
+</li>
+<li>主题簇成形：精选01 记忆从哪来 / 精选02 策略从哪来 / 精选03 可信度从哪来。</li>
+</ul>
+<h2>B. 公众号文章</h2>
+<ul>
+<li>文件：<code>公众号文章-RL预制菜与大厨LLM.md</code>（放在 teaching/ 根，与 lessons/综合题 平级）</li>
+<li>风格：技术科普（用户选定）——大厨/预制菜比喻开头抓人，中段给硬核（RL vs LLM 范式、
+&quot;写菜谱≠做菜&quot;、幻觉三坑），结尾落到真实项目（BPS Copilot 三条护栏）与可复用判断尺。</li>
+<li>结构：① 两道菜两个时代 ② 大厨真面目（写菜谱≠做菜）③ 为什么必须配工具+方向盘
+④ 落到医疗设备 AI 助手 ⑤ 一把可复用的尺子。</li>
+<li>结论句：RL=预制菜（稳定可复现/只有一道），LLM=现做大厨（灵活独一无二/需配试菜人+衡器+食材库）；
+工程要点=知道哪个环节用预制菜、哪个环节请大厨。</li>
+</ul>
+<h2>同步更新</h2>
+<ul>
+<li><code>综合题/开放题库/README.md</code>：目录 + 一览表 + &quot;主题簇&quot;说明。</li>
+<li><code>综合题/README.md</code>：精选题表新增精选03。</li>
+<li>本记录。</li>
+</ul>
+<h2>备注</h2>
+<ul>
+<li>文章为&quot;发布用草稿&quot;，用户可自行排版。生成位置选 teaching/ 根目录（与教学空间同域，便于管理）。</li>
+<li>后续若还有精选题，继续按 精选NN-短标题.md 命名、更新两处 README。</li>
+</ul>
+<h2>Status</h2>
+<p>active</p>
+
+  </div>
+</div>
+</body>
+</html>

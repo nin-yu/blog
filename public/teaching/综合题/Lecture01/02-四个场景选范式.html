@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>题 2 · 四个场景选范式（★）</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>题 2 · 四个场景选范式（★）</h1>
+<blockquote>
+<p>考点：四问法 + 判定法则（Lesson 12）。每个场景判断该用 workflow / agent / 混合（固定管线+LLM 判断点），<strong>并写清为什么</strong>——四问法过一遍，不能只给结论。</p>
+</blockquote>
+<hr>
+<h2>题目</h2>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>你的判定</th>
+<th>为什么（四问法逐问）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>A. 每日晨检：读 5 项 QA 指标 → 对照阈值（2mm/1°）→ 生成日报</td>
+<td>___</td>
+<td>___</td>
+</tr>
+<tr>
+<td>B. 设备报&quot;标定板识别失败&quot;，排查原因（可能查日志/错误码/历史工单）</td>
+<td>___</td>
+<td>___</td>
+</tr>
+<tr>
+<td>C. 把新的故障案例整理成结构化工单入库</td>
+<td>___</td>
+<td>___</td>
+</tr>
+<tr>
+<td>D. 每月把 30 天的报警记录聚类，找出 Top3 反复出现的故障模式并写分析报告</td>
+<td>___</td>
+<td>___</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>我的作答</h2>
+<p><strong>场景 A：</strong>（判定 + 四问法）</p>
+<p><strong>场景 B：</strong>（判定 + 四问法）</p>
+<p><strong>场景 C：</strong>（判定 + 四问法）</p>
+<p><strong>场景 D：</strong>（判定 + 四问法）</p>
+<hr>
+<h2>评判关注点（评卷时用）</h2>
+<ul>
+<li>A：步骤完全固定、结果可枚举 → workflow（LLM 至多做报告摘要）。</li>
+<li>B：路径未知、观察决定下一步 → agent。</li>
+<li>C：结构相对固定 → workflow（模板填充）；若说 agent 要给出强理由。</li>
+<li>D：没有唯一正确答案——&quot;固定聚类管线 + LLM 写分析&quot;的混合最合理；纯 agent 判定要检查是否考虑了成本和可复现性（聚类结果要可复现，LLM 自由发挥会伤一致性）。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

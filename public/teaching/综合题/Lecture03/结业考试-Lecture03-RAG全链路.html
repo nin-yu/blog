@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>结业考试 · Lecture03（RAG + Agents）★★★</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>结业考试 · Lecture03（RAG + Agents）★★★</h1>
+<blockquote>
+<p>对齐 CS329Z Lecture 03 · 教学空间 lesson lecture03-0023 ~ 0030 · 源文件夹 week2-9.30
+这是 Lecture03 的<strong>综合结业考试题</strong>：把 RAG 全链路设计一遍，并用指标验收。
+作答方式：在下面「我的作答」区写。答完告诉我&quot;评卷&quot;。</p>
+</blockquote>
+<hr>
+<h2>题目</h2>
+<p><strong>为你的 SGRT 知识库做一套 RAG 设计与验收。</strong></p>
+<p>场景：把&quot;设备错误码表 + 故障处置 SOP + 标定规范&quot;做成检索增强助手，回答&quot;这个错误码怎么处理&quot;。请设计：</p>
+<ol>
+<li><strong>分块</strong>：三份材料各怎么切？参数（大小/重叠）怎么定？为什么不能全网一套切法？</li>
+<li><strong>索引增强</strong>：要不要上 Contextual Retrieval / Late Chunking / RAPTOR？给你的取舍理由（成本 vs 效果）。</li>
+<li><strong>检索器组合</strong>：选 BM25 / DPR / ColBERT 中的哪几个、怎么组合？为什么单用稠密（或单用 BM25）会漏？</li>
+<li><strong>融合与指标</strong>：两个检索器的结果怎么合（写出 RRF 公式）？你会用哪两个指标验收检索，各自衡量什么？</li>
+<li><strong>失败清单</strong>：从&quot;检索侧 / 阅读侧 / 循环侧&quot;各挑一个你最容易踩的失败，写具体对策。</li>
+<li><strong>Agentic 与否</strong>：这个任务该用固定 RAG 管线还是 agentic RAG？为什么？（用 Lecture01 的判定思路）</li>
+</ol>
+<hr>
+<h2>我的作答</h2>
+<h3>1. 分块</h3>
+<p>（你的回答）</p>
+<h3>2. 索引增强</h3>
+<p>（你的回答）</p>
+<h3>3. 检索器组合</h3>
+<p>（你的回答）</p>
+<h3>4. 融合与指标</h3>
+<p>（你的回答）</p>
+<h3>5. 失败清单</h3>
+<p>（你的回答）</p>
+<h3>6. Agentic 与否</h3>
+<p>（你的回答）</p>
+<hr>
+<h2>评判关注点（评卷时用）</h2>
+<ul>
+<li>第 1 题：错误码表适合按条目切、SOP 按步骤+注意事项切（别把&quot;注意&quot;和所属步骤分开）、规范适合语义/层级切；给出 100–500 token、重叠 10–20% 这类具体参数。</li>
+<li>第 2 题：能说出三者差别（Contextual Retrieval 要 LLM 调用、Late Chunking 无调用但需长上下文编码器、RAPTOR 建摘要树适合主题型问题），取舍理由成立即可。</li>
+<li>第 3 题：应指出 BM25 抓精确字面（错误码！）、稠密抓语义，故需<strong>混合</strong>；单用稠密会漏错误码是硬伤。</li>
+<li>第 4 题：RRF(d)=Σ 1/(k+rank)，k=60；指标如 Hit@k（有没有找到）+ Recall@k（找全了没）或 nDCG@k。</li>
+<li>第 5 题：检索侧（召回天花板/索引过期/权限泄漏）、阅读侧（lost-in-middle/噪声/冲突）、循环侧（错误复合/无停止规则/注入）各一，对策具体。</li>
+<li>第 6 题：单问单答 → 固定 RAG 管线足够；若&quot;按内容决定下一步查什么&quot;才需 agentic。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

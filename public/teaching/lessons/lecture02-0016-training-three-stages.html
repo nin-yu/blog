@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 16 — 训练三阶段：预训练 / 中训练 / 后训练</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week2 · Lecture02 · Lesson 16</span>
+  <h1>模型是怎么造出来的：预训练 → 中训练 → 后训练</h1>
+  <div class="meta">第 16 课（Week2 第 3 课）· 来源：lecture02.pdf p92-118 · 本课成果：分清三段各在干什么、数据为什么是核心、RLHF 的坑与 RLVR 的破法，以及"agent 专用训练"是什么</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+一个能当 agent 大脑的模型，分三段炼成：<strong>预训练</strong>（啃海量网页，学语言与世界常识）→ <strong>中训练</strong>（把数据配比往目标领域倾斜，如数学/代码）→ <strong>后训练</strong>（指令微调 + 人类偏好对齐，让它"听话又好用"）。<br><br>
+对你的工程含义：<strong>后训练决定"性格与对齐"，预训练/中训练决定"下限与领域知识"</strong>。你选模型做 SGRT 排查，领域能力来自中/预训练，而"是否老实、是否会瞎编"来自后训练——两者要分开评估。
+</div>
+
+<h2>第 0 步：损失函数（p93-100）</h2>
+<p>训练目标=抬高"数据里真实下一个词"的预测概率。用交叉熵：</p>
+<pre class="loop">Loss = - log P(正确词)
+例：P(how | The class was about) = 0.0124
+    Loss = -log(0.0124) = 1.907</pre>
+<p>直白说：<strong>正确词概率越高，Loss 越小</strong>；训练就是不断把 Loss 压下去。</p>
+
+<h2>第 1 段：预训练 Pretraining（p101-107）</h2>
+<p>目标：从原始网页里炼出"干净、量大、高质量"的语料。管线（p102 数据管线图）：</p>
+<pre class="loop">HTML → 文本抽取 → 去重 → 语言识别(Lang ID) → 规则过滤 → 质量过滤 → 最终训练数据</pre>
+<ul>
+  <li><strong>数据质量就是模型上限</strong>。p103 (DataComp-LM)、p104 (Nemotron-CC-Math)、p106 (The Pile) 都在讲同一件事：不同数据配比直接决定模型能力。</li>
+  <li><strong>数据混合 Data Mixing</strong>（p107）：不同来源按什么比例混，是门正经学问。</li>
+</ul>
+
+<h2>第 2 段：中训练 Midtraining（p108-111）</h2>
+<p>目标：不重训，只<strong>调整数据配比，往目标领域倾斜</strong>（数学、代码等）。</p>
+<ul>
+  <li>p109：把数据 mix 改成更聚焦目标领域。</li>
+  <li>p110《The Finetuner's Fallacy》：把目标领域数据"混进预训练"往往比只做微调更有效。</li>
+  <li>p111：中训练是连接预训练与后训练分布之间的桥。</li>
+</ul>
+<blockquote>工程桥：这就像你的标定流程里，不必推倒重来重训整个模型，而是"用一批贴近真实工况（不同体型/呼吸幅度）的数据补一轮中训练"，让模型在你关心的分布上更稳。</blockquote>
+
+<h2>第 3 段：后训练 Posttraining（p112-118）</h2>
+<h3>① 指令微调 Instruction Finetuning（p113）</h3>
+<p>用"指令→好答案"的样例教模型"听懂话、按格式答"（Scaling Instruction-Finetuned LMs）。</p>
+<h3>② 人类偏好对齐 RLHF（p114）</h3>
+<p>让人对多个回答排序，训练奖励模型，再用 RL 优化（InstructGPT, 2022）。</p>
+<h3>③ 人类反馈的坑（p115）</h3>
+<ul>
+  <li>标注者不可靠、口味不一；</li>
+  <li>诱导出坏激励——<strong>谄媚（sycophancy）、装权威</strong>。</li>
+</ul>
+<h3>④ RLVR：让奖励可验证（p116）</h3>
+<p><strong>Reinforcement Learning with Verifiable Rewards</strong>：把奖励做成能"自动判对错"的——单元测试、Lean 证明、精确匹配。数学和代码尤其适用。<strong>注意验证器本身的设计</strong>（否则会被刷分）。</p>
+<h3>⑤ Agent 专用训练（p117-118）</h3>
+<p>用 SWE-Smith 这类方法，<strong>批量合成"软件工程 agent"的任务轨迹</strong>来训 agent 能力。意义：agent 能力可以被专门数据"练"出来，而不只是提示词堆出来。</p>
+
+<h2>三段一句话对照</h2>
+<table>
+  <tr><th>阶段</th><th>输入</th><th>产出/目的</th><th>对你选型的意义</th></tr>
+  <tr><td>预训练</td><td>海量网页</td><td>语言/世界常识</td><td>决定基础智力下限</td></tr>
+  <tr><td>中训练</td><td>领域配比数据</td><td>领域能力强化</td><td>决定你关心的领域（如医学文本）好不好</td></tr>
+  <tr><td>后训练</td><td>指令/偏好/可验证奖励</td><td>听话、对齐、行为风格</td><td>决定"是否会瞎编、是否老实"</td></tr>
+</table>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 三段训练各自的核心目标是什么？</p>
+  <details><summary>展开答案</summary><p>预训练=学语言与世界常识（吃海量网页）；中训练=调数据配比往目标领域倾斜；后训练=指令微调 + 偏好对齐，让模型听话、行为可控。</p></details>
+  <p>Q2. RLHF 会导致哪类坏激励？为什么会这样？</p>
+  <details><summary>展开答案</summary><p>谄媚（sycophancy）与装权威等。因为人类标注不可靠、口味不一，模型学会"讨好评判者"而非"说真话"，于是产生坏激励。</p></details>
+  <p>Q3. RLVR 是什么？特别适合哪类任务？要注意什么？</p>
+  <details><summary>展开答案</summary><p>用可自动验证的奖励做 RL（单元测试、Lean 证明、精确匹配等）。特别适合数学和代码。要注意验证器的设计——验证器有漏洞就会被刷分。</p></details>
+  <p>Q4. 你的 SGRT 排查助手偶尔"一本正经瞎编处置步骤"，问题更可能出在哪一段训练？</p>
+  <details><summary>展开答案</summary><p>更可能出在后训练（对齐/偏好）——它决定"是否会瞎编、是否老实"。领域知识好不好更像中/预训练的事。所以对策是：接入检索（把事实约束在资料里）+ 后训练更强调可验证奖励的模型。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week2 · Lecture02 · 段二 模型怎么造出来</span><br>
+  ← 上一课 <a href="lecture02-0015-linear-attention.html">0015 · 线性注意力</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture02-0017-inference-kvcache.html">0017 · 推理与 KV Cache：Prefill vs Decode</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件（源文件夹 week2-9.28） p92-118（Cross-Entropy Loss / Pretraining / Midtraining / Posttraining / RLVR / SWE-Smith）。<br>
+Lesson 16 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

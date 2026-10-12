@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>综合题 / 结业考试（毕业考核 · Markdown 作答制）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>综合题 / 结业考试（毕业考核 · Markdown 作答制）</h1>
+<blockquote>
+<p>对齐 Stanford CS329Z Lecture 1–5 · 教学空间 lessons/
+<strong>组织方式</strong>：按讲分文件夹 <code>Lecture01/ … Lecture05/</code>。每讲放 1 道<strong>综合结业考试题</strong>；Lecture01 另有早期 6 道专项题，也归入 <code>Lecture01/</code>。
+规则：<strong>用你自己的话、越具体越好</strong>。回答里要能看到&quot;你为什么这么设计&quot;，而不是背名词。
+作答方式：每题一个 .md 文件，题目在上，<strong>「我的作答」区在下方</strong>——直接编辑保存，随时可以改。答完（哪怕只答一题）告诉我&quot;评卷&quot;，我逐题评判。</p>
+</blockquote>
+<h2>目录结构</h2>
+<pre><code>综合题/
+├─ README.md                ← 本文件
+├─ 开放题库/                 ← 跨讲·跨主题的精选深挖题（独立体系）
+│   ├─ README.md
+│   └─ 精选01-无状态推出哪座桥.md
+├─ Lecture01/
+│   ├─ 结业考试-Lecture01-系统全设计.md   ← 本讲结业考试
+│   └─ 01~06-*.md                        ← 早期 6 道专项题（07 已升级迁往开放题库）
+├─ Lecture02/结业考试-Lecture02-上下文与选型.md
+├─ Lecture03/结业考试-Lecture03-RAG全链路.md
+├─ Lecture04/结业考试-Lecture04-工具与MCP.md
+└─ Lecture05/结业考试-Lecture05-工程化.md
+</code></pre>
+<h2>一、每讲综合结业考试题（每讲一道）</h2>
+<table>
+<thead>
+<tr>
+<th>讲</th>
+<th>文件</th>
+<th>考什么</th>
+<th>难度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Lecture01</td>
+<td><a href="Lecture01/%E7%BB%93%E4%B8%9A%E8%80%83%E8%AF%95-Lecture01-%E7%B3%BB%E7%BB%9F%E5%85%A8%E8%AE%BE%E8%AE%A1.html">Lecture01/结业考试-Lecture01-系统全设计.md</a></td>
+<td>智能体系统全设计：范式判定、组件、loop、评估、可靠性、安全</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>Lecture02</td>
+<td><a href="Lecture02/%E7%BB%93%E4%B8%9A%E8%80%83%E8%AF%95-Lecture02-%E4%B8%8A%E4%B8%8B%E6%96%87%E4%B8%8E%E9%80%89%E5%9E%8B.html">Lecture02/结业考试-Lecture02-上下文与选型.md</a></td>
+<td>上下文成本（O(n²)/Prefill/KV Cache）+ 训练三阶段选型 + 上下文工程</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>Lecture03</td>
+<td><a href="Lecture03/%E7%BB%93%E4%B8%9A%E8%80%83%E8%AF%95-Lecture03-RAG%E5%85%A8%E9%93%BE%E8%B7%AF.html">Lecture03/结业考试-Lecture03-RAG全链路.md</a></td>
+<td>RAG 全链路：分块/索引增强/混合检索/RRF/指标/失败三侧</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>Lecture04</td>
+<td><a href="Lecture04/%E7%BB%93%E4%B8%9A%E8%80%83%E8%AF%95-Lecture04-%E5%B7%A5%E5%85%B7%E4%B8%8EMCP.html">Lecture04/结业考试-Lecture04-工具与MCP.md</a></td>
+<td>工具层设计 + MCP 架构/鉴权 + 三层失败 + Pass^k 验收</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>Lecture05</td>
+<td><a href="Lecture05/%E7%BB%93%E4%B8%9A%E8%80%83%E8%AF%95-Lecture05-%E5%B7%A5%E7%A8%8B%E5%8C%96.html">Lecture05/结业考试-Lecture05-工程化.md</a></td>
+<td>三支柱 / 框架取舍（DSPy·LangGraph）/ harness / 编排 / 四条铁律</td>
+<td>★★★</td>
+</tr>
+</tbody></table>
+<h2>二、Lecture01 专项题（早期 6 题 + 1 道概念串联题，可按序或任选）</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>文件</th>
+<th>考什么</th>
+<th>难度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><a href="Lecture01/01-%E6%95%85%E9%9A%9C%E6%8E%92%E6%9F%A5%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1.html">Lecture01/01-故障排查系统设计.md</a></td>
+<td><strong>主考题</strong>：全设计——范式判定、组件选配、loop 走位、可靠性、安全</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>2</td>
+<td><a href="Lecture01/02-%E5%9B%9B%E4%B8%AA%E5%9C%BA%E6%99%AF%E9%80%89%E8%8C%83%E5%BC%8F.html">Lecture01/02-四个场景选范式.md</a></td>
+<td>四问法 + 判定法则的熟练运用</td>
+<td>★</td>
+</tr>
+<tr>
+<td>3</td>
+<td><a href="Lecture01/03-agent-loop%E8%B5%B0%E4%B8%80%E9%81%8D.html">Lecture01/03-agent-loop走一遍.md</a></td>
+<td>五大组件 + Obs→Think→Act 循环的具体走位</td>
+<td>★★</td>
+</tr>
+<tr>
+<td>4</td>
+<td><a href="Lecture01/04-%E9%85%8D%E5%87%86%E8%B4%A8%E6%A3%80%E6%B7%B7%E5%90%88%E7%B3%BB%E7%BB%9F.html">Lecture01/04-配准质检混合系统.md</a></td>
+<td>&quot;固定管线 + 少量 LLM 判断点&quot;的混合设计</td>
+<td>★★</td>
+</tr>
+<tr>
+<td>5</td>
+<td><a href="Lecture01/05-%E5%8F%AF%E9%9D%A0%E6%80%A7%E4%B8%8E%E5%AE%89%E5%85%A8%E9%AA%8C%E6%94%B6%E5%8D%8F%E8%AE%AE.html">Lecture01/05-可靠性与安全验收协议.md</a></td>
+<td>可靠性三维度 + 安全红线的验收设计</td>
+<td>★★</td>
+</tr>
+<tr>
+<td>6</td>
+<td><a href="Lecture01/06-%E5%8F%8D%E5%A5%97%E8%B7%AF%E8%AE%BE%E8%AE%A1%E8%BE%A9%E6%8A%A4.html">Lecture01/06-反套路设计辩护.md</a></td>
+<td>反向题：给一个故意做错的设计，找出错并辩护正确做法</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>7</td>
+<td><a href="Lecture01/07-%E6%97%A0%E7%8A%B6%E6%80%81%E6%8E%A8%E5%87%BA%E5%93%AA%E5%BA%A7%E6%A1%A5.html">Lecture01/07-无状态推出哪座桥.md</a></td>
+<td>（已升级为精选题，迁往 <a href="%E5%BC%80%E6%94%BE%E9%A2%98%E5%BA%93/%E7%B2%BE%E9%80%8901-%E6%97%A0%E7%8A%B6%E6%80%81%E6%8E%A8%E5%87%BA%E5%93%AA%E5%BA%A7%E6%A1%A5.html">开放题库/精选01</a>，此文件仅作入口）</td>
+<td>★★★</td>
+</tr>
+</tbody></table>
+<h2>三、开放题库 · 精选题（跨讲·跨主题，独立体系）</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>题目</th>
+<th>牵出哪些讲</th>
+<th>难度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>精选01</td>
+<td><a href="%E5%BC%80%E6%94%BE%E9%A2%98%E5%BA%93/%E7%B2%BE%E9%80%8901-%E6%97%A0%E7%8A%B6%E6%80%81%E6%8E%A8%E5%87%BA%E5%93%AA%E5%BA%A7%E6%A1%A5.html">开放题库/精选01-无状态推出哪座桥.md</a></td>
+<td>L1 loop/memory · L2 context · L4 工具回填</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>精选02</td>
+<td><a href="%E5%BC%80%E6%94%BE%E9%A2%98%E5%BA%93/%E7%B2%BE%E9%80%8902-LLM%E6%97%B6%E4%BB%A3vsRL%E6%97%B6%E4%BB%A3.html">开放题库/精选02-LLM时代vsRL时代.md</a></td>
+<td>L1 agent 定义 · L2 训练三阶段/in-context · L5 工程化</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>精选03</td>
+<td><a href="%E5%BC%80%E6%94%BE%E9%A2%98%E5%BA%93/%E7%B2%BE%E9%80%8903-%E5%A4%A7%E5%8E%A8%E6%AF%94%E5%96%BB%E4%B8%8E%E6%8A%A4%E6%A0%8F%E5%BF%85%E7%84%B6%E6%80%A7.html">开放题库/精选03-大厨比喻与护栏必然性.md</a></td>
+<td>L1 agent 组成 · L4 工具层/失败 · L5 可靠性安全</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>精选04</td>
+<td><a href="%E5%BC%80%E6%94%BE%E9%A2%98%E5%BA%93/%E7%B2%BE%E9%80%8904-%E6%8E%A8%E7%90%86%E6%98%AF%E8%A7%A3%E8%8D%AF%E8%BF%98%E6%98%AF%E5%B8%AE%E5%87%B6.html">开放题库/精选04-推理是解药还是帮凶.md</a></td>
+<td>L1 reasoning/ReAct · L2 inference-time scaling · L4 工具vs自推理</td>
+<td>★★★</td>
+</tr>
+<tr>
+<td>精选05</td>
+<td><a href="%E5%BC%80%E6%94%BE%E9%A2%98%E5%BA%93/%E7%B2%BE%E9%80%8905-%E8%B5%B0%E8%BF%B7%E5%AE%ABCoT%E4%B8%8EReAct.html">开放题库/精选05-走迷宫CoT与ReAct.md</a></td>
+<td>L1 reasoning/agent loop · L4 工具=探路的脚 · L5 可靠性</td>
+<td>★★</td>
+</tr>
+</tbody></table>
+<h2>评判标准（所有题通用）</h2>
+<ul>
+<li>✅ 说对了、<strong>并且能解释为什么</strong> → 说明真懂了。</li>
+<li>⚠️ 只说对了名词、说不出为什么 → 还在背概念（我会指出来）。</li>
+<li>❌ 有设计漏洞（该上 agent 却选了纯 workflow、漏了安全护栏、没定指标就动手）→ 我会标出来并解释。</li>
+</ul>
+<h2>提醒</h2>
+<ul>
+<li>覆盖 ≠ 领会：读过课不算数，<strong>写下来的才算证据</strong>。</li>
+<li>不确定的地方写出你的犹豫和取舍过程——那正是我最想看的设计思维。</li>
+<li>每讲正文最后一课都有&quot;综合结业考试题&quot;入口，也可从本页直接领取。</li>
+<li>新增一讲时：在 <code>综合题/LectureNN/</code> 放该讲结业考试 .md，并在该讲最后一课加入口块。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

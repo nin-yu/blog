@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 26 — 检索器：BM25 与 DPR</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week3 · Lecture03 · Lesson 26</span>
+  <h1>两代检索器：词频统计 BM25 vs 稠密向量 DPR</h1>
+  <div class="meta">第 26 课（Week3 第 4 课）· 来源：lecture03.pdf p40-48 + DPR 论文（Karpukhin et al., 2020）· 本课成果：看懂 BM25 公式每一项在干嘛、理解 DPR 的对比学习训练，以及"混合检索"为什么是工程标配</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+两类检索器各有死穴：<strong>BM25（词重叠）</strong>几十年仍是使用最广的——它精确匹配关键词，抓得住 ID/错误码/专有名词，但<strong>抓不住同义改写</strong>；<strong>DPR（稠密向量）</strong>把 query 和段落都编码成向量算点积，<strong>懂语义</strong>，但要标注配对数据、且<strong>抓不住罕见字面量</strong>。两者失败方式不同 → <strong>混合检索（BM25 + 稠密）</strong>是工程标配。<br><br>
+工程含义：一个数字说明问题——DPR 只要有 <strong>1000 对问答</strong>就能超过 BM25。
+</div>
+
+<h2>BM25：词重叠之王（p41-42）</h2>
+<p>使用最广的稀疏检索（至今）。打分公式（p41）：</p>
+<pre class="loop">score(D, Q) = Σ_{i=1..n}  IDF(q_i) · [ f(q_i,D)·(k1+1) / ( f(q_i,D) + k1·(1 − b + b·|D|/avgdl) ) ]
+
+IDF(q_i) = ln( (N − n(q_i) + 0.5) / (n(q_i) + 0.5) )</pre>
+<table>
+  <tr><th>项</th><th>含义（大白话）</th></tr>
+  <tr><td>IDF(q_i)</td><td>词越罕见越重要（"the"几乎没用，"ERROR_4021"很关键）</td></tr>
+  <tr><td>f(q_i, D)</td><td>该词在文档里出现了几次</td></tr>
+  <tr><td>k1</td><td>词频饱和参数：出现 10 次不比出现 3 次强多少</td></tr>
+  <tr><td>b 与 |D|/avgdl</td><td>文档长度归一化：长文档不该仅因长就得分高</td></tr>
+  <tr><td>N / n(q_i)</td><td>总文档数 / 含该词的文档数</td></tr>
+</table>
+<p>p42 图：IDF 对比 + <strong>词频饱和</strong>——同一个词反复出现，边际增益递减。</p>
+
+<h2>DPR：稠密段落检索（p43-48）</h2>
+<p>双编码器（bi-encoder）：query 和段落<strong>各自</strong>过 BERT 成向量，算点积：</p>
+<pre class="loop">p(z|x) ∝ exp( d(z)ᵀ · q(x) )
+d(z) = BERT_d(z)      # 段落编码器
+q(x) = BERT_q(x)      # 查询编码器
+top-k: 用 MIPS（最大内积搜索）求解——可预先算好所有段落向量</pre>
+<h3>训练：对比学习（p47）</h3>
+<p>用<strong>in-batch negatives（批内负例）+ BM25 硬负例</strong>做对比损失——正例是标注的"问题-正确段"对，负例是同批其他段与 BM25 检索到的"像但不对"的段。</p>
+<h3>效果（p47-48）</h3>
+<ul>
+  <li>DPR 在 5 个数据集中的 <strong>4 个上超过 BM25</strong>（top-20 / top-100 检索准确率）。</li>
+  <li><strong>1000 对 QA 就够超过 BM25</strong>；无需额外预训练，端到端也超过 ORQA、REALM。</li>
+</ul>
+
+<h2>BM25 vs DPR 一张表</h2>
+<table>
+  <tr><th></th><th>BM25（稀疏）</th><th>DPR（稠密）</th></tr>
+  <tr><td>原理</td><td>词重叠 + IDF 加权</td><td>向量点积（语义相似）</td></tr>
+  <tr><td>擅长</td><td>精确字面：ID、错误码、人名</td><td>语义匹配、同义改写</td></tr>
+  <tr><td>死穴</td><td>改写/同义词</td><td>罕见字面量；需标注配对</td></tr>
+  <tr><td>训练数据</td><td>无需训练（统计）</td><td>需配对（1000 对起步）</td></tr>
+</table>
+
+<h2>为什么用混合检索（p49，下节细讲）</h2>
+<p>正因为两者失败方式不同，工程上常<strong>同时跑两个检索器再融合排序</strong>——embedding 抓语义、BM25 抓精确词。</p>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>错误码/设备 ID 必须靠 BM25</strong>：稠密向量对"ERROR_4021"这种罕见字面量不敏感，纯向量检索会漏。这是很多"检索不到错误码"事故的根因。</li>
+  <li><strong>语义问题靠 DPR 类</strong>："怎么处理标定失败"要匹配到写着"重新采集标定板"的段落——字面不同、语义相同。</li>
+  <li><strong>结论：直接上混合</strong>。别在 BM25 和 DPR 里二选一，两个都跑再融合（下节课给 RRF 公式）。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. BM25 里 IDF 的作用是什么？举一个你会遇到的例子。</p>
+  <details><summary>展开答案</summary><p>IDF 让罕见的词权重更高。例："ERROR_4021"很罕见、IDF 高，命中它比命中"的/是"这类高频词更有信息量。</p></details>
+  <p>Q2. BM25 和 DPR 各自的死穴是什么？</p>
+  <details><summary>展开答案</summary><p>BM25 抓不住同义改写/语义匹配；DPR 抓不住罕见字面量（ID/错误码），且需要标注配对数据训练。</p></details>
+  <p>Q3. DPR 的对比学习用了哪两类负例？为什么需要硬负例？</p>
+  <details><summary>展开答案</summary><p>批内负例（in-batch negatives，同批其他段落）+ BM25 硬负例（BM25 检索到但实际不对的段）。硬负例更难、更接近正例，能逼模型学到更细的区分边界。</p></details>
+  <p>Q4. 你的设备排查 RAG，为什么必须上混合检索而不是纯向量？</p>
+  <details><summary>展开答案</summary><p>因为排查里大量查询含精确字面量（错误码、设备 ID、参数名），纯稠密向量会漏掉这些罕见词；BM25 负责精确匹配、稠密负责语义，两者融合才能都覆盖。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week3 · Lecture03 · 段三 检索</span><br>
+  ← 上一课 <a href="lecture03-0025-contextual-retrieval.html">0025 · 上下文检索</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture03-0027-colbert-late-interaction.html">0027 · ColBERT：晚期交互，按 token 打分</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件（源文件夹 week2-9.30） p40-48（BM25 公式 / DPR, Karpukhin et al. 2020 / Hit@k 等指标见下节）+ DPR 论文。<br>
+Lesson 26 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

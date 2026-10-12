@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0011 — 开放题库新增精选题 02（"LLM 时代 vs RL 时代"）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>0011 — 开放题库新增精选题 02（&quot;LLM 时代 vs RL 时代&quot;）</h1>
+<p>用户提出第二道精选题，要求加入开放题库。与精选01 构成同一主题簇。</p>
+<h2>题目</h2>
+<p><strong>&quot;LLM 时代&quot;相比&quot;RL 时代&quot;，给 agent 带来的最本质变化是什么？</strong></p>
+<h2>落点</h2>
+<ul>
+<li>文件：<code>综合题/开放题库/精选02-LLM时代vsRL时代.md</code>（★★★）</li>
+<li>沿用精选题格式：精选理由 / 题目 / 我的作答 / 参考解析 / 评判关注点 / 延伸关联网。</li>
+</ul>
+<h2>内容要点（核心答案）</h2>
+<ul>
+<li><strong>根</strong>：agent 的&quot;策略/能力&quot;从<strong>必须训练进参数</strong> → 变成<strong>可用自然语言在运行时指定</strong>。
+一句话：&quot;RL 时代&#39;学会&#39;= 更新参数；LLM 时代&#39;学会&#39;= 改上下文。&quot;</li>
+<li><strong>连锁效应</strong>（对比维度）：能力获得方式、策略载体、换任务成本、泛化、交互原语、人的介入、门槛。</li>
+<li><strong>精确补刀</strong>（本题区分度所在）：LLM 时代<strong>没有淘汰 RL</strong>——
+RL 从&quot;agent 的构造手段&quot;<strong>退位为&quot;模型的训练手段&quot;</strong>。答&quot;淘汰 RL&quot;扣分。</li>
+<li><strong>落项目</strong>：Bps Copilot 的策略在 system prompt + ToolRegistry + 运行时判断三处，
+改行为 = 改 prompt/加工具，<strong>不训练</strong>。</li>
+<li><strong>深一层加分</strong>：能力获取的接口从&quot;梯度&quot;变成&quot;上下文&quot;。</li>
+</ul>
+<h2>与精选01 的关系</h2>
+<p>同源主题簇——都在回答&quot;能力从哪来、存在哪&quot;：</p>
+<ul>
+<li>精选01：记忆从哪来（无状态 → 上下文管理）</li>
+<li>精选02：策略/能力从哪来（RL 训练 → 上下文装配）</li>
+<li>待补：推理从哪来（pretrain + CoT + RL）——&quot;聊天模式为何能推理&quot;，用户问答过，尚未入库。</li>
+</ul>
+<h2>同步更新</h2>
+<ul>
+<li><code>综合题/开放题库/README.md</code>：目录 + 精选题一览表新增精选02。</li>
+<li><code>综合题/README.md</code>：三、开放题库·精选题表新增精选02。</li>
+<li>本记录。</li>
+</ul>
+<h2>Status</h2>
+<p>active</p>
+
+  </div>
+</div>
+</body>
+</html>

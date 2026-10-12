@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0002 — 教学空间 v2 重建：概念先行 + 综合题 Markdown 作答制</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>0002 — 教学空间 v2 重建：概念先行 + 综合题 Markdown 作答制</h1>
+<p>用户要求&quot;重新生成整个教学空间的内容，并把开放式综合题按 md 形式给出方便记录作答&quot;。v1 的问题：判定课放在第 1 课（跳过了概念内化），综合题是单文件、无作答结构。v2 重建决定：</p>
+<ol>
+<li><strong>顺序重排</strong>：13 课全部概念先行（模型vs系统 → LLM 缺口 → 历史 → 五组件+loop → 推理四招 → 记忆 → RAG → 工具/MCP → 可靠性 → 长程/安全），&quot;Workflow vs Agent 判定&quot;降为第 12 课（毕业判定课），第 13 课总复习+领题。这兑现了 0001 学习记录&quot;覆盖≠领会、概念先讲透&quot;的修正。</li>
+<li><strong>自测答案折叠</strong>：所有课内自测用 <code>&lt;details&gt;</code> 折叠答案，强制&quot;先答后看&quot;（desirable difficulty / retrieval practice）。</li>
+<li><strong>综合题 md 作答制</strong>：teaching/综合题/ 目录，README + 6 题，每题一个 .md，题目在上、&quot;我的作答&quot;区在下，用户直接编辑保存；每题末尾附&quot;评判关注点&quot;（我评卷用）。题目全部锚定 SGRT 真实场景（故障排查/四问法/loop 走位/配准质检混合/验收协议/反套路批评）。</li>
+<li>旧版 11 课存档于 lessons-v4-old/（用户拍板保留）。</li>
+</ol>
+<p>Evidence: 用户原话&quot;重新生成整个教学空间的内容，并把开放式综合题按照md的形式给出，我方便记录下我的作答&quot;；用户拒绝删除 lessons-v4-old 并选择&quot;留着作存档&quot;。</p>
+<p>Implications: 下一步 = 用户作答综合题 → 我按各题评判关注点评卷 → 评卷结果写入新的 learning-record（作为&quot;领会证据&quot;）→ 通过后进入 MISSION Success 2（亲手搭最小可评估 workflow/agent，从日常 QA 起步）。</p>
+<p>Status: active</p>
+
+  </div>
+</div>
+</body>
+</html>

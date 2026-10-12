@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 11 — 长程上下文 + 安全红线（任务成功 ≠ 安全）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lesson 11</span>
+  <h1>长程与安全：任务跑成了，不代表它安全</h1>
+  <div class="meta">第 11 课（共 13 课）· 重建 v3 · 本课成果：能说出长程任务的两个病根，并背出 87% 弹窗攻击，能据此列出你的护栏 · 上线前必读</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+两条独立的问题：<strong>① 长程</strong>——上下文持续增长会“膨胀 + 漂移”，相关性下降；<strong>② 安全</strong>——<strong>任务成功 ≠ 安全合规</strong>。agent 可能“达成目标”却以破坏安全约束为代价。<br>安全评估必须<strong>单独设限、单独测</strong>，不能只看“任务完成率”。
+</div>
+
+<h2>一、长程上下文：为什么越跑越糊</h2>
+<p>agent 跑久了，上下文会持续增长，带来两个病根：</p>
+<ol>
+  <li><strong>膨胀（grows）</strong>：历史越堆越多，最终超过窗口被截断。</li>
+  <li><strong>漂移（drifts)</strong>：早期目标/约束在后面淹没，模型注意力被无关信息稀释，行为开始偏离。</li>
+</ol>
+<p>解法方向：<strong>记忆分层</strong>（第 7 课）——把历史压缩/提炼，只把当前相关的取回上下文；以及定期“回读目标”，防止目标漂移。</p>
+
+<h2>二、安全：任务成功 ≠ 安全（课件 p63-70）</h2>
+<table>
+  <tr><th>风险</th><th>说明</th><th>对你项目的含义</th></tr>
+  <tr><td>任务成功≠安全</td><td>HarnessAudit Bench：agent“达成目标”可能靠违背安全约束实现</td><td>评估要单列“安全合规”一栏，而非只看完成率</td></tr>
+  <tr><td>弹窗攻击</td><td>恶意弹窗可把计算机 agent 带偏，<strong>攻击成功率 87%</strong></td><td>外部内容（网页/弹窗/工具返回）必须白名单过滤，不能直接当指令吃进去</td></tr>
+  <tr><td>隐私</td><td>PrivacyLens：评估 LLM 行动中的隐私规范意识</td><td>工具权限按最小必要开放；敏感数据脱敏/隔离</td></tr>
+  <tr><td>失调与谄媚</td><td>misalignment &amp; sycophancy：模型迎合用户而非坚持正确</td><td>别让它“顺着你的猜测说”；关键结论要以证据为准</td></tr>
+  <tr><td>多智能体合谋</td><td>多个 agent 协作可能互相配合越过约束（metr 事故调查）</td><td>本课程暂不涉及多 agent；若未来引入，需设跨 agent 的硬约束</td></tr>
+</table>
+<blockquote>87% 这个数最该记：<strong>只要 agent 会读外部内容并据此行动，就默认它会被诱导。</strong>护栏要在系统侧，而不是指望模型“自己把持住”。</blockquote>
+
+<h2>三、护栏清单（照这个设计你的系统）</h2>
+<ol>
+  <li><strong>工具默认只读</strong>：先给读日志/查手册这类无副作用工具；写操作单独审批。</li>
+  <li><strong>白名单外部内容</strong>：网页/弹窗/第三方返回一律过滤，绝不直接当指令执行。</li>
+  <li><strong>关键动作人审</strong>：涉及改变设备状态、下发参数的动作，必须人工确认。</li>
+  <li><strong>安全合规单独评估</strong>：指标里明确一条“越权/违规动作次数 = 0”。</li>
+  <li><strong>可审计**：所有工具调用、结论、出处留痕，事后可复盘（医疗场景硬要求）。</li>
+</ol>
+
+<h2>自测</h2>
+<div class="quiz">
+  <p>Q1. 长程任务的两个病根是什么？对应第几课的解法？</p>
+  <details><summary>展开答案</summary><p>膨胀 + 漂移。对应第 7 课的记忆分层：压缩/提炼历史、按需取回、定期回读目标。</p></details>
+  <p>Q2. “87%”指的是什么？它对你的护栏设计意味着什么？</p>
+  <details><summary>展开答案</summary><p>恶意弹窗把计算机 agent 带偏、导致原任务完不成的<strong>攻击成功率 87%</strong>。含义：只要 agent 读外部内容并据此行动，就要默认会被诱导，必须对输入做白名单/过滤，把护栏放在系统侧。</p></details>
+  <p>Q3. 为什么“任务完成率”不能作为安全评估的唯一指标？</p>
+  <details><summary>展开答案</summary><p>因为任务可能以违背安全约束的方式被“完成”（HarnessAudit Bench 已证实）。必须把“安全合规”作为独立指标（如越权动作次数），否则会奖励危险行为。</p></details>
+  <p>Q4. 给你设想的 SGRT 故障排查助手列 2 条最关键的护栏。</p>
+  <details><summary>展开答案</summary><p>参考：① 工具全部只读（只查日志/手册/历史，不碰设备参数）；② 外部内容白名单 + 关键结论人审，且全程留痕可审计。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">第四段 · 挑战与上线</span><br>
+  ← 上一课 <a href="lecture01-0010-reliability-and-evaluation.html">0010 · 可靠性 + 评估</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture01-0012-workflow-or-agent.html">0012 · 毕业课：判 Workflow 还是 Agent ★判定</a>
+</div>
+
+<p class="foot">一手来源：CS329Z 课件（源文件夹 week1-9.23） p63-70（安全 / 弹窗攻击 Zhang et al. 2024 / PrivacyLens / sycophancy / 多 agent 合谋）。<br>
+Lesson 11 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

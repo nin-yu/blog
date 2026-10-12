@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 39 — 什么叫"工程化"Agent：三支柱与框架谱系</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture05 · Lesson 39</span>
+  <h1>"工程化"一个 Agent：从"能跑"到"可维护"</h1>
+  <div class="meta">第 39 课（Lecture05 第 1 课）· 来源：lecture05.pdf p4-18 · 本课成果：理解"工程化 agent"的四个环节，记住三支柱 Data/System/Eval，并能把框架对照到"模型→workflow→agent"这条能力谱系上</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+本讲主题是<strong>框架与编排（Frameworks &amp; Orchestration）</strong>。核心判断：框架帮你抽象掉底层细节（就像 PyTorch 之于手写反向传播），<strong>方便上手、但会掩盖 system 细节</strong>——所以用框架的同时必须知道"底层在发生什么"。<br><br>
+两条主线：<strong>(1) 三支柱 Data / System / Eval</strong>——任何 AI 系统都绕不开；<strong>(2) 能力谱系</strong>——模型 → workflow（复合系统）→ agent，框架对每一档都有对应工具。
+</div>
+
+<h2>框架的定位：像 PyTorch 之于反向传播（p4-5, p6）</h2>
+<table>
+  <tr><th></th><th>手写 Backprop</th><th>用 PyTorch</th></tr>
+  <tr><td>优点</td><td>完全掌控细节</td><td>抽象掉底层、上手快</td></tr>
+  <tr><td>代价</td><td>繁琐</td><td>看不清底层在干什么</td></tr>
+</table>
+<p>课件的态度：<strong>框架抽象掉一些系统细节；但本课程要求你"实现/理解系统细节"，今天的目标是理解这些抽象</strong>。</p>
+
+<h3>学习目标（p6）</h3>
+<ol>
+  <li>识别 agent 系统工程中常见的框架；</li>
+  <li>把这些框架引入的<strong>抽象，对应回课程里讲过的底层系统设计</strong>；</li>
+  <li>（以及本讲后续）在实践中做出工程取舍。</li>
+</ol>
+
+<h2>三支柱：Data / System / Eval（p10-12）</h2>
+<table>
+  <tr><th>支柱</th><th>包含</th></tr>
+  <tr><td><strong>Data</strong></td><td>训练数据、rollouts（执行轨迹）、示范、人类反馈…</td></tr>
+  <tr><td><strong>System / Model</strong></td><td>语言模型、复合 AI 系统/workflow、agentic 系统…</td></tr>
+  <tr><td><strong>Eval</strong></td><td>指标与评测（本课程反复强调的"评估先于建设"）</td></tr>
+</table>
+<blockquote>这张图是全课程的总纲——它和 Week1 第 5 课的"三层抽象"（系统层/数据层/评估层）是同一件事，只是换了个名字。框架再花哨，也绕不开这三根柱子。</blockquote>
+
+<h2>本课程地图（p13）</h2>
+<p>课件列出课程主线：Introduction（什么是 agentic systems）→ LLMs for Builders → RAG → Tool Use &amp; Function Calling → <strong>Frameworks &amp; Orchestration（本讲）</strong> → Agent Design Patterns &amp; Scaffolds → Agent Memory Architecture → …</p>
+
+<h2>框架谱系（p14-17）</h2>
+<pre class="loop">Model  ────────►  Workflow / Compound AI System  ────────►  Agent
+"逻辑与编排            "逻辑与编排               "控制流的角色
+ 在程序外部"            在程序里"                 归 AI 模型"
+OpenAI API 等           DSPy, LangGraph…          各种 agent harness</pre>
+<ul>
+  <li><strong>Model 档</strong>：模型只是更大系统的一小部分，逻辑/编排在程序外部（如直接调 OpenAI API）。</li>
+  <li><strong>Workflow 档</strong>：逻辑与编排"活在程序里"（DSPy、LangGraph）。</li>
+  <li><strong>Agent 档</strong>：控制流的角色归 AI 模型（各种 harness）。</li>
+</ul>
+<p>p17 抛出问题："这些框架真的被用吗？"——引出后面 DSPy/LangGraph/harness 的实际讨论。</p>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>先问"要不要框架"</strong>：你的标定 QA 是固定管线，可能要的不是框架而是几十行代码（Week2 第 22 课"最简优先"）。</li>
+  <li><strong>用框架就查底层</strong>：如果用了 LangGraph/DSPy，务必知道它每次调用到底发了什么提示——否则排障时会瞎。</li>
+  <li><strong>三支柱都要有</strong>：别只搭 System，忘了 Data（评测集）和 Eval（指标）。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 课件用什么类比说明"框架"的作用？代价是什么？</p>
+  <details><summary>展开答案</summary><p>类比 PyTorch 之于手写反向传播：框架抽象掉底层系统细节、上手快；代价是看不清底层在发生什么，所以必须理解这些抽象背后的系统细节。</p></details>
+  <p>Q2. 三支柱是哪三个？各含什么？</p>
+  <details><summary>展开答案</summary><p>Data（训练数据/rollouts/示范/人类反馈）、System or Model（语言模型/复合系统/agentic 系统）、Eval（指标与评测）。</p></details>
+  <p>Q3. 框架谱系三档分别是什么？控制流归谁？</p>
+  <details><summary>展开答案</summary><p>Model（逻辑在程序外部，如 OpenAI API）→ Workflow/复合系统（逻辑在程序里，如 DSPy/LangGraph）→ Agent（控制流归 AI 模型，各种 harness）。</p></details>
+  <p>Q4. 你的标定 QA 系统，要不要上框架？怎么判断？</p>
+  <details><summary>展开答案</summary><p>先判范式：固定管线（步骤已知）用几十行代码可能就够，不必上框架；只有确实需要复杂编排/优化时才引入，并确保理解框架底层发了什么。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture05 · 段一 什么是"工程化"Agent</span><br>
+  ← 上一课 <a href="lecture04-0038-tool-failure-modes.html">0038 · 工具调用的失败模式（Lecture04 收官）</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture05-0040-dspy.html">0040 · DSPy：签名 / 模块 / 优化器</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture05 课件（源文件夹 week3-10.7）p4-18（What does it mean to Engineer Agents? / Three Pillars / Framework Landscape）。<br>
+Lesson 39 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

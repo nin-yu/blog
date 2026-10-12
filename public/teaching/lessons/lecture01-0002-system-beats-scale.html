@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 2 — 改系统 &gt; 换更大模型：迭代到底值多少钱</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lesson 2</span>
+  <h1>改系统 &gt; 换更大模型：迭代到底值多少钱</h1>
+  <div class="meta">第 2 课（共 13 课）· 重建 v3 · 本课成果：用一组硬数字算出“迭代循环”的收益，并能把它换算成你的工程排期 · 对应你 MISSION 第 1 条</div>
+</header>
+
+<h2>先给结论（这四个数背下来）</h2>
+<div class="takeaway">
+同一道编程题（HumanEval）：<strong>GPT-3.5 零样本 48.1% → GPT-4 零样本 67.0% → GPT-3.5 套上智能体迭代循环 95.1%</strong>。<br>
+换更强模型：+18.9 个百分点；给老模型套一层“迭代循环”：<strong>+47 个百分点</strong>。后者完爆前者。—— Andrew Ng《Four AI Agent Strategies》（本课一手来源）
+</div>
+<p>大白话：<strong>“怎么调用模型”带来的提升，可以大于“模型本身变强”。</strong>这就是第 1 课主张的最生动证据，本课把它拆开算清楚。</p>
+
+<h2>“迭代循环”是什么（先看懂再谈钱）</h2>
+<p>零样本（zero-shot）= 让模型一口气写到底、不许回头改。迭代 = 分步、能回头：先列提纲 → 判断要不要去查资料 → 写初稿 → 通读找漏洞 → 修订。<br>对照你自己：<strong>一次成像的标定算法</strong> vs <strong>“算→看残差→重加权→再算”的迭代配准</strong>。后者为什么强？因为它把“这一步错在哪”的反馈用上了。</p>
+
+<h2>三种“改系统”的手段（都已验证过）</h2>
+<table>
+  <tr><th>手段</th><th>做法</th><th>效果（官方数）</th></tr>
+  <tr><td>多次采样 + 筛选</td><td>AlphaCode 2：生成上百万候选解 → 过滤 / 打分 / 聚类</td><td>竞赛编程约 30% → 约 80%（人类前 15%）</td></tr>
+  <tr><td>检索 + 构造示例</td><td>Medprompt：检索相似样例拼 few-shot + 模型自生成 CoT + 多次采样评判</td><td>胜过 Med-PaLM</td></tr>
+  <tr><td>同一模型多次投票</td><td>Gemini 的 CoT@32：采样 32 条思维链，多数一致才取</td><td>MMLU 90.04%（GPT-4 5-shot 为 86.4%）</td></tr>
+</table>
+<blockquote>共同点：<strong>模型没换，只是“怎么用”变了。</strong>CoT@32 和单次调用用的是同一个 Gemini，分差却是一大截。</blockquote>
+
+<h2>把收益换算成排期（工程视角）</h2>
+<ol>
+  <li><strong>迭代系统的成本是“工程小时”，换模型的成本是“等几个月 / 烧一轮训练预算”。</strong>前者你今天就能做，后者要立项、要算力、要等。</li>
+  <li><strong>系统收益可叠加。</strong>检索、鲁棒化、多次投票能一层层加；模型换代是一次性的、且不可控（你决定不了厂商什么时候发新模型）。</li>
+  <li><strong>系统能针对你的数据调，模型不能。</strong>你的 SGRT 证据链（残差图、门控时机、错误码）只有系统能接进去。</li>
+</ol>
+<p>工程桥：你从没指望“换个更好的相机”解决所有跟踪问题，而是靠<br><strong>门控时机 + 鲁棒核 + ROI 裁剪 + 失败拒判</strong>这套组合把残差压下去。LLM 系统同理——先把管线做对，再考虑要不要换更贵的模型。</p>
+
+<h2>自测</h2>
+<div class="quiz">
+  <p>Q1. 哪组数据最能说明“改系统 &gt; 换更大模型”？</p>
+  <details><summary>展开答案</summary><p>GPT-3.5 零样本 48.1% → <strong>同一模型</strong>套智能体循环 95.1%。模型没换、分数翻倍，直接排除“模型变强”这一解释。</p></details>
+  <p>Q2. CoT@32 和 GPT-4 5-shot 比 MMLU（90.04% vs 86.4%），说明什么？</p>
+  <details><summary>展开答案</summary><p>说明“多次采样 + 取一致”这种系统手段，能让较弱/同级的模型超过更强的单次调用。方法 > 单纯堆模型。</p></details>
+  <p>Q3. 为什么说“系统收益可叠加，模型换代不可控”？</p>
+  <details><summary>展开答案</summary><p>系统里的检索/鲁棒化/多次投票能一层层叠上去，边际收益由你掌握；而新模型什么时候发布、涨价、改接口，你决定不了。所以工程上先把系统做扎实。</p></details>
+  <p>Q4. 用你自己的话：如果把“迭代循环”类比到你的配准管线，它最像哪一步？</p>
+  <details><summary>展开答案</summary><p>像“算→看残差→重加权/剔除离群→再算”的迭代配准（IRLS/鲁棒 ICP）。核心都是：<strong>把上一步的反馈喂回下一步</strong>，而不是一步定生死。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">第一段 · 打地基</span><br>
+  ← 上一课 <a href="lecture01-0001-model-vs-system.html">0001 · 模型与系统</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture01-0003-llm-brain-not-worker.html">0003 · LLM 是大脑，不是执行者（三座桥）</a>
+</div>
+
+<p class="foot">一手来源：Andrew Ng《Four AI Agent Strategies That Improve GPT-4 and GPT-3.5 Performance》（The Batch, 2024-03）+ BAIR 博客。<br>
+来源文件夹：week1-9.23 · Lesson 2 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

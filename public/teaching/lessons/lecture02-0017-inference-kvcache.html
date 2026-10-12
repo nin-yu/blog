@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 17 — 推理与 KV Cache：Prefill vs Decode</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week2 · Lecture02 · Lesson 17</span>
+  <h1>模型怎么吐字：Prefill / Decode 与 KV Cache 的账本</h1>
+  <div class="meta">第 17 课（Week2 第 4 课）· 来源：lecture02.pdf p119-137（p133 KV Cache 为矢量图，可精确读）· 本课成果：说清"首字慢、后续快"的原因、KV Cache 为什么省算力又吃显存，以及投机解码怎么再提速</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+模型回答分两阶段：<strong>Prefill（预填充）</strong>——把你给的整段提示一次性算完，<em>计算密集</em>、决定"首字延迟（TTFT）"；<strong>Decode（解码）</strong>——一个字一个字往外吐，每步只算一个新 token，<em>显存带宽密集</em>、决定"吐字速度（TPS）"。<br><br>
+<strong>KV Cache</strong> 是两阶段的桥梁：把已算过的 K、V 缓存下来，Decode 每步就不用重算历史——省算力，但缓存随对话变长而膨胀（吃显存）。<strong>投机解码</strong>再用一个小的草稿模型猜几个字、大模型一次校验，进一步提速。
+</div>
+
+<h2>Prefill 与 Decode（p120-135）</h2>
+<table>
+  <tr><th></th><th>Prefill（预填充）</th><th>Decode（解码）</th></tr>
+  <tr><td>输入</td><td>整段提示（prompt）一次算</td><td>每步 1 个新 token</td></tr>
+  <tr><td>瓶颈</td><td>计算密集（GPU 算力）</td><td>显存带宽密集（搬运 KV）</td></tr>
+  <tr><td>影响指标</td><td>首字延迟 TTFT</td><td>吞吐/吐字速度 TPS</td></tr>
+  <tr><td>并行度</td><td>高（全序列并行）</td><td>低（逐步串行）</td></tr>
+</table>
+<p>p123 的"prefill+decode 并发请求"图说明：一个服务里 prefill 与 decode 交替，二者争抢资源——这解释了"为什么长提示会让所有人都变慢"。</p>
+
+<h2>Roofline 模型：为什么两阶段瓶颈不同（p122、p134-135）</h2>
+<p>Roofline（屋顶线）模型把任务分成"算力受限"和"带宽受限"两类：</p>
+<ul>
+  <li><strong>Prefill</strong>：一次处理很多 token，矩阵大 → 算力受限（靠近屋顶的水平线）。</li>
+  <li><strong>Decode</strong>：每次只 1 个 token，矩阵小 → 显存带宽受限（斜坡段）。</li>
+</ul>
+<blockquote>大白话：Prefill 是"搬很多砖，工人（算力）忙不过来"；Decode 是"每次只搬一块砖，但仓库门（带宽）太窄"。优化手段因此不同——前者堆算力/批处理，后者靠 KV Cache、投机解码。</blockquote>
+
+<h2>KV Cache（p133，矢量图）</h2>
+<p>Decode 每生成一个字，若都把历史重算一遍，代价巨大。KV Cache 的做法：<strong>缓存每个已处理 token 的 K、V</strong>，新 token 只算自己的 Q 去和缓存的 K、V 交互。</p>
+<pre class="loop">已生成: The class was about …
+缓存:   [K][V] for "The" "class" "was" "about"   ← 全部留存，不再重算
+新 token: 只需算自己的 Q → 拼上缓存 → 出下一个词</pre>
+<ul>
+  <li><strong>省的是算力</strong>：避免 O(n²) 的重复计算。</li>
+  <li><strong>吃的是显存</strong>：缓存大小 ≈ 层数 × 头数 × 维度 × 序列长度。对话越长越占显存。</li>
+  <li><strong>关键约束</strong>：缓存跟"前缀"绑定——所以 p168-169 才强调"顺序追加，避免让 KV Cache 失效"（一旦前缀改动，缓存全作废重算）。</li>
+</ul>
+
+<h2>投机解码 Speculative Decoding（p136-137）</h2>
+<p>思路：用一个便宜的小"草稿模型"先猜出后面几个 token，再让大模型<strong>一次并行校验</strong>这几个猜测（对的接受、错的回退）。</p>
+<pre class="loop">草稿模型: Once upon a time → 猜 "there" "upon" "a"
+大模型:   一次前向校验 4 个位置 → 接受前缀，回退错误处
+收益: 某些领域（可预测性强）每一步能一次吐多个字，速度提升明显</pre>
+<p>p137 配套论文点明：<strong>有些领域更可预测</strong>，猜中率高，提速更显著。</p>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>首字延迟 vs 吐字速度要分开测</strong>：你的日志排查 agent，若提示很长（大段日志），TTFT 会明显拉长——这就是要"检索压缩上下文"的直接原因（少喂 → 少 prefill）。</li>
+  <li><strong>KV Cache 是显存预算</strong>：想本地常驻跑一个长对话助手，得按会话长度估显存，不能只看模型参数大小。</li>
+  <li><strong>不要频繁改动前缀</strong>：系统提示/工具定义放在固定位置、按顺序追加，才能让 KV Cache 命中、避免重算。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. Prefill 和 Decode 的瓶颈分别是什么？各影响哪个指标？</p>
+  <details><summary>展开答案</summary><p>Prefill 是算力受限，影响首字延迟 TTFT；Decode 是显存带宽受限，影响吞吐/吐字速度 TPS。</p></details>
+  <p>Q2. KV Cache 省了什么、代价是什么？</p>
+  <details><summary>展开答案</summary><p>省了算力（避免每步重算历史的 K、V）；代价是显存——缓存随对话长度线性增长（层数×头数×维度×长度），长对话吃显存。</p></details>
+  <p>Q3. 为什么"尽量让前缀保持不变、顺序追加"很重要？</p>
+  <details><summary>展开答案</summary><p>KV Cache 与前缀 token 序列绑定；一旦前缀改动（中间插入、重排），缓存失效需重算，白付一次 prefill 成本。所以系统提示/工具定义放固定位置、顺序追加。</p></details>
+  <p>Q4. 投机解码怎么提速？什么样的领域收益更大？</p>
+  <details><summary>展开答案</summary><p>用小草稿模型先猜几个 token，大模型一次并行校验（接受对的、回退错的），从而一步吐多个字。可预测性强的领域（如格式化输出、固定代码模板）猜中率高，收益更大。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week2 · Lecture02 · 段三 模型怎么跑起来</span><br>
+  ← 上一课 <a href="lecture02-0016-training-three-stages.html">0016 · 训练三阶段</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture02-0018-inference-time-scaling.html">0018 · 推理期扩展：CoT / 重复采样 / 自洽</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件（源文件夹 week2-9.28） p119-137（Prefill/Decode / Roofline / KV Cache / Speculative Decoding, arXiv 2302.01318）。p133 KV Cache 图为矢量图，可精确读。<br>
+Lesson 17 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

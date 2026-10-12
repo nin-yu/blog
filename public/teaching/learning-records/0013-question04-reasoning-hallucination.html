@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0013 — 精选题 04 入库（推理是解药还是帮凶）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>0013 — 精选题 04 入库（推理是解药还是帮凶）</h1>
+<p>用户提题：&quot;大模型为啥需要推理能力，推理能力带来了什么好处？和坏处？&quot;，并自答。
+经校准后入库为精选题 04。</p>
+<h2>落点</h2>
+<ul>
+<li>文件：<code>综合题/开放题库/精选04-推理是解药还是帮凶.md</code>（★★★）</li>
+<li>题面重构成有冲突感的问题：&quot;推理是治幻觉的解药，还是帮凶？&quot;</li>
+</ul>
+<h2>用户自答的评卷注记（保留在题内&quot;用户原始设想&quot;节）</h2>
+<ul>
+<li>✅ 好处②&quot;小模型+多思考≈大模型&quot; → 正确，即 <strong>inference-time scaling</strong>（L2）。</li>
+<li>✅ 坏处&quot;循环、烧 token&quot; → 正确。</li>
+<li>⚠️ 好处①&quot;推理减少幻觉&quot; → <strong>需校准</strong>：推理改善&quot;多步逻辑&quot;，通常<strong>不减少幻觉</strong>，
+甚至因 <strong>coherence trap（自洽陷阱）</strong> 加重——把错误包装成&quot;有理有据&quot;。
+这是本题核心区分点。</li>
+<li>➕ 漏项：简单题强制推理变差、推理高原/反转、自洽陷阱。</li>
+</ul>
+<h2>核心答案要点</h2>
+<ul>
+<li>分野：推理补&quot;过程&quot;（多步逻辑/分解），不补&quot;知识&quot;（事实/幻觉）。</li>
+<li>反直觉：推理不改变&quot;续写&quot;机制，只把续写拉长 → 为错误编自洽解释 → 幻觉更危险。</li>
+<li>好处：分解降低单步错率；<strong>inference-time scaling</strong>（推理时扩展，小模型+多思考换大模型准确率）；
+可解释性。→ 关联 L2「inference-time scaling」。</li>
+<li>坏处：烧 token、循环/过度思考、简单题变差、推理高原/反转、自洽陷阱放大错误。</li>
+<li>工程决策：推理=串逻辑，工具=给事实，二者不可互替（与精选03 同构）。</li>
+<li>深一层：<strong>推理是能力放大器，不是事实来源。</strong></li>
+</ul>
+<h2>主题簇（四题成形）</h2>
+<p>精选01 记忆从哪来 · 精选02 策略从哪来 · 精选03 可信度从哪来 · 精选04 推理从哪来/值不值。</p>
+<h2>同步更新</h2>
+<ul>
+<li><code>综合题/开放题库/README.md</code>：目录 + 一览表 + 主题簇（三→四题）。</li>
+<li><code>综合题/README.md</code>：精选题表新增精选04。</li>
+<li>本记录。</li>
+</ul>
+<h2>Status</h2>
+<p>active</p>
+
+  </div>
+</div>
+</body>
+</html>

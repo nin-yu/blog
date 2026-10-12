@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 18 — 推理期扩展：CoT / 重复采样 / 自洽</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week2 · Lecture02 · Lesson 18</span>
+  <h1>推理期扩展：让模型"多想几步、多试几次"</h1>
+  <div class="meta">第 18 课（Week2 第 5 课）· 来源：lecture02.pdf p138-148（p143 推理档位为矢量图，可精确读）· 本课成果：分清"训练时扩展"与"推理时扩展"，掌握 CoT / 重复采样 / 自洽三招及其成本</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+不动模型参数，也能提升效果的办法叫<strong>推理期扩展（test-time scaling）</strong>。三招：<strong>CoT</strong>（让它把推理过程写出来）、<strong>重复采样</strong>（同一题跑很多次，用验证器挑对的）、<strong>自洽</strong>（跑很多次取多数答案，没有验证器也行）。<br><br>
+工程含义：这是<strong>用钱换准确率</strong>的旋钮。理解它，你才能回答"这个排查任务值不值得让它多想几遍"——有可验证答案的任务（如"哪个参数越界"）适合重复采样；开放式判断更适合 CoT + 人审。
+</div>
+
+<h2>1) Chain of Thought（p139-140）</h2>
+<p>让模型"先写推理步骤，再给答案"，显著提升推理类任务。例（p140）：</p>
+<pre class="loop">问: 一件夹克 $80，先涨价 25%，再打 25% 折，最终价多少？
+CoT: 涨价后 = 80 × 1.25 = 100；
+     打折后 = 100 × 0.75 = 75。
+答: $75</pre>
+<p>要点：CoT 把"一步到位"变成"分步推导"，让模型在新情况上更稳、行为更可解释。</p>
+
+<h2>2) 推理档位 Reasoning Level（p141-143）</h2>
+<p>推理模型把 CoT 内化成"可调档的思考预算"（p143 矢量图，精确读出结构）：</p>
+<pre class="loop">[System Prompt] + [Reasoning: low]    → [User Prompt: Solve this math problem...]
+[System Prompt] + [Reasoning: medium] → [User Prompt]
+[System Prompt] + [Reasoning: high]   → [User Prompt]</pre>
+<p>同样的 system + user 提示，只换 reasoning 档位，控制"想多久"（p142 展示 Low/Medium/Max）。p144 两种实现：<strong>Inkling</strong> 用调 λ 控制努力程度；<strong>Kimi K3</strong> 的奖励=对得 1、错得 0、超预算又错得 -1（用小奖励塑造思考纪律）。</p>
+
+<h2>3) 重复采样（p145-146）</h2>
+<p>《Large Language Monkeys》：对同一题独立采样多次，<strong>只要有验证器能挑出正确答案</strong>，覆盖率随采样次数上升——"多试"就能提升解决率。前提：你要有判对错的验证器。</p>
+
+<h2>4) 没有验证器怎么办？自洽 Self-Consistency（p147-148）</h2>
+<p>没有自动判分时，让模型用 CoT 采样多条不同推理路径，<strong>取出现次数最多的答案（多数投票）</strong>。机制：正确答案往往被多条不同思路同时到达，比单条路径更可信。</p>
+
+<h2>四招对照</h2>
+<table>
+  <tr><th>方法</th><th>怎么做</th><th>需要验证器？</th><th>成本</th></tr>
+  <tr><td>CoT</td><td>写出推理步骤</td><td>否</td><td>低（多些 token）</td></tr>
+  <tr><td>推理档位</td><td>调 low/medium/high 思考预算</td><td>否</td><td>中高（思考越长越贵）</td></tr>
+  <tr><td>重复采样</td><td>多次独立采样 + 验证器挑选</td><td><strong>是</strong></td><td>高（N 倍）</td></tr>
+  <tr><td>自洽</td><td>多次 CoT 采样 + 多数投票</td><td>否</td><td>高（N 倍）</td></tr>
+</table>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>可验证任务用重复采样</strong>：如"日志里哪个参数越界/标定残差是否超 2mm"——能自动判对错，多试几次提升可靠性，值得多花钱。</li>
+  <li><strong>开放式判读用 CoT + 人审</strong>："这片残差异常像呼吸伪影还是遮挡"没有唯一答案，适合 CoT 展开推理 + 人工确认，而不是投票。</li>
+  <li><strong>档位是可调的预算旋钮</strong>：日常 QA 用 low 省成本，疑难故障排查临时调到 high。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. "推理期扩展"和"训练时扩展"的区别是什么？</p>
+  <details><summary>展开答案</summary><p>训练时扩展是加大模型/更多数据再训练；推理期扩展是<strong>不动参数</strong>，在推理时多花算力（多写几步、多试几次）来提升效果，是"用钱换准确率"的旋钮。</p></details>
+  <p>Q2. 重复采样和自洽的关键区别？</p>
+  <details><summary>展开答案</summary><p>重复采样需要<strong>验证器</strong>挑出正确答案；自洽在<strong>没有验证器</strong>时用"多条 CoT 路径多数投票"来近似。前者更可靠，后者更通用。</p></details>
+  <p>Q3. 你的日志排查任务，哪种情况适合重复采样、哪种不适合？</p>
+  <details><summary>展开答案</summary><p>有客观判据的（如"哪个参数越界"）适合重复采样——可自动验证；开放式判读（异常归因）没有唯一答案，投票无意义，适合 CoT + 人审。</p></details>
+  <p>Q4. 推理档位（low/medium/high）是什么？怎么用它省钱？</p>
+  <details><summary>展开答案</summary><p>控制模型"思考预算"的开关（p142-143）。日常固定流程的 QA 用 low 档省成本，遇到疑难故障排查再调 high 多思考。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week2 · Lecture02 · 段三 模型怎么跑起来</span><br>
+  ← 上一课 <a href="lecture02-0017-inference-kvcache.html">0017 · 推理与 KV Cache</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture02-0019-structured-io.html">0019 · 结构化输出：约束解码与 DSPy 签名</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件（源文件夹 week2-9.28） p138-148（CoT, arXiv 2201.11903 / Self-Consistency, arXiv 2203.11171 / Large Language Monkeys, arXiv 2407.21787）。p143 推理档位为矢量图，可精确读。<br>
+Lesson 18 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 40 — DSPy：签名 / 模块 / 优化器</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture05 · Lesson 40</span>
+  <h1>DSPy：把"手写提示"换成"声明签名 + 自动优化"</h1>
+  <div class="meta">第 40 课（Lecture05 第 2 课）· 来源：lecture05.pdf p21-51 + DSPy 论文（Khattab et al.）· 本课成果：理解 DSPy 三件套（Signatures 声明 What / Modules 组合 How / Optimizers 按指标自动改进），以及"编译器"如何自动优化 pipeline</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+传统做法是"手写一长串试出来的提示模板"（脆弱、难维护）。<strong>DSPy 的转向：把 LM pipeline 抽象成"文本变换图"</strong>——用 <strong>Signatures</strong> 声明输入/输出契约（What）、用 <strong>Modules</strong> 组合程序逻辑（How）、用 <strong>Optimizers（编译器）</strong> 按给定指标自动改进提示或权重。<br><br>
+论文结论（本地 DSPy 论文）：<strong>几行 DSPy + 编译几分钟，就让 GPT-3.5 / llama2-13b-chat 自举出超过标准 few-shot 的 pipeline（通常超 25%/65%）</strong>。
+</div>
+
+<h2>DSPy 三件套（p22，原文）</h2>
+<table>
+  <tr><th>组件</th><th>一句话</th><th>回答的问题</th></tr>
+  <tr><td><strong>Signatures 签名</strong></td><td>严格定义模型的输入/输出</td><td><strong>What</strong>（要什么）</td></tr>
+  <tr><td><strong>Modules 模块</strong></td><td>把签名和程序逻辑组合成可调用函数</td><td><strong>How</strong>（怎么做）</td></tr>
+  <tr><td><strong>Optimizers 优化器</strong></td><td>按指标改进程序的提示或权重</td><td><strong>改进</strong>（怎么更好）</td></tr>
+</table>
+
+<h3>Signatures（p24-28）</h3>
+<p>把输入/输出约定成签名——而不用手写整段提示。课件 p26 的注解点出痛点："<strong>这些没遵循同一格式，不好</strong>"——即手写输出格式易乱；签名强制契约一致。</p>
+<pre class="loop">示意：question -&gt; answer          （一个问答签名：输入 question，输出 answer）
+系统会根据签名自动生成提示，并把输出解析回结构字段。</pre>
+
+<h3>Modules（p29-34）</h3>
+<p>把签名 + 程序逻辑组合成<b>可调用</b>的函数。常见内置模块（p51）：<code>dspy.Predict</code>、<code>dspy.ChainOfThought</code>、<code>dspy.BestOfN</code>…</p>
+
+<h3>Optimizers / 编译器（p35-44）</h3>
+<p>优化器在给定 <strong>Data（数据）</strong> 和 <strong>Metric（指标）</strong> 下，改进程序的提示或权重。论文称其为"<b>编译器（compiler）</b>"——把任何 DSPy pipeline 优化到最大化某个指标。</p>
+<pre class="loop">原始 pipeline（签名 + 模块）
+      │  给定 Data + Metric
+      ▼
+   Optimizer / Compiler
+      │
+      ▼
+优化后的 pipeline（提示/权重被自动调好）</pre>
+
+<h2>DSPy 也能表达 agent（p45-50, p51）</h2>
+<p>p45-50 展示用 DSPy 搭 Agents；p49-50 提到 ReAct 与 RLM。p51 总结：</p>
+<blockquote>
+• Signatures 定义输入/输出契约；<br>
+• Modules 组合并规定"如何履行签名契约"（<code>dspy.Predict</code>、<code>dspy.ChainOfThought</code>、<code>dspy.BestOfN</code>…）；<br>
+• Optimizers 能在给定数据与指标下改进提示/权重；<br>
+• DSPy 内置让 agent 履行签名的模块：<code>dspy.ReAct</code>、<code>dspy.RLM</code>。
+</blockquote>
+
+<h2>DSPy 论文的关键主张（本地论文摘要）</h2>
+<ul>
+  <li>把 LM pipeline 抽象为 <strong>文本变换图（text transformation graphs）</strong>——LM 通过<strong>声明式模块（declarative modules）</strong>被调用。</li>
+  <li>模块是<strong>参数化的</strong>：能"学会"如何组合提示、微调、增强与推理技巧（通过创建和收集示范 demonstrations）。</li>
+  <li>设计了一个<strong>编译器</strong>，优化任意 DSPy pipeline 以最大化给定指标。</li>
+  <li>案例：几行 DSPy 就能表达并优化"数学应用题推理、多跳检索、复杂问答、控制 agent loop"的 pipeline；几分钟编译后超过标准 few-shot（通常 +25% / +65%）。</li>
+</ul>
+
+<h2>对你 SGRT 系统的含义</h2>
+<ol>
+  <li><strong>别再维护一长串手写提示</strong>：把"残差报告生成"拆成签名（输入：残差统计+阈值；输出：结论+依据），逻辑交给模块，格式由签名保证。</li>
+  <li><strong>有指标就能自动调</strong>：你若有"判定准不准"的评测集（Week3 第 28 课），DSPy 优化器能替你调提示——省手工试错。</li>
+  <li><strong>框架即抽象，要懂底层</strong>：DSPy 自动生成的提示要看懂（Week2 第 19 课 DSPy 签名的 prompt 形态），否则排障困难。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. DSPy 三件套各回答什么问题？</p>
+  <details><summary>展开答案</summary><p>Signatures 签名：What（严格定义输入/输出契约）；Modules 模块：How（把签名与程序逻辑组合成可调用函数）；Optimizers 优化器：按数据与指标改进提示/权重。</p></details>
+  <p>Q2. DSPy 的"编译器"做什么？需要哪两样输入？</p>
+  <details><summary>展开答案</summary><p>编译器（optimizer）把任意 DSPy pipeline 优化到最大化某个指标，输入是 Data（数据）和 Metric（指标）。</p></details>
+  <p>Q3. DSPy 论文声称的核心收益是什么？给数字。</p>
+  <details><summary>展开答案</summary><p>几行 DSPy + 几分钟编译，让 GPT-3.5/llama2-13b-chat 自举出超过标准 few-shot 的 pipeline，通常 +25%（GPT-3.5）和 +65%（llama2-13b）以上。</p></details>
+  <p>Q4. 你的标定报告用 DSPy 改，最需要先准备什么？</p>
+  <details><summary>展开答案</summary><p>先准备 Data（一批示例/示范）和 Metric（判"报告对不对"的客观指标）。没有指标，优化器无从下手——呼应 Week1"评估先于建设"。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture05 · 段二 Workflow/程序框架</span><br>
+  ← 上一课 <a href="lecture05-0039-engineer-agents.html">0039 · 什么叫工程化 Agent</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture05-0041-langgraph.html">0041 · LangGraph：State / Node / Edge</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture05 课件（源文件夹 week3-10.7）p21-51 + DSPy 论文《DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines》(Khattab et al.)。注：DSPy 代码细节页多为位图，本课据 p22/p51 定义与论文摘要。<br>
+Lesson 40 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

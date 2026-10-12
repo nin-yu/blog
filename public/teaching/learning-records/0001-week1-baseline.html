@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0001 — 起点：SGRT 领域专家，但 agent 设计零基础</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body img { max-width: 100%; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>0001 — 起点：SGRT 领域专家，但 agent 设计零基础</h1>
+<p>用户是 SGRT（放疗表面追踪）工程专家，对自身系统了如指掌（相机随机架转动、标定板±30°、外参 X/轴/δ 求解、床板QA 2mm/1°、ICP胸腹表面配准）。但<strong>在 agent 领域是小白</strong>：只用 agent 写过代码，不懂得系统化&quot;设计&quot;。目标：学会设计 agent，用于 SGRT 的标定引导/自动标定、故障排查、日常 QA。</p>
+<p>Evidence: 用户自述&quot;我就是个小白……只用来写代码，不知道该怎么设计……想学会设计agent系统然后用于SGRT的标定引导/自动标定、故障排查、日常QA等环节&quot;。早期&quot;写了笔记=已掌握&quot;的判断已被用户纠正（覆盖≠领会）。</p>
+<p>Implications（决定教学怎么走）:</p>
+<ul>
+<li>从&quot;设计 agent 的整套思维&quot;零基础教起，不预设理论功底。</li>
+<li>理论讲完必须立刻落到 SGRT 环节，否则对用户无意义。</li>
+<li>先教&quot;判断 task → 选 workflow/agent → 选组件 → 搭最小可评估原型 → 评估&quot;这条设计主线。</li>
+<li>用户既有工程直觉极强：用他熟悉的 SGRT 术语做桥，能大幅降低学习门槛（呼应 NOTES.md 的偏好）。</li>
+<li>第一个实战对象建议挑结构化、易出成果的：SGRT 标定 QA 或日常 QA（先 workflow），故障排查作为&quot;真 agent&quot;进阶目标。</li>
+</ul>
+
+  </div>
+</div>
+</body>
+</html>

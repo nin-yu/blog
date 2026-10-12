@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 9 — 工具调用四步 + Toolformer/Gorilla + MCP</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lesson 9</span>
+  <h1>工具调用：一次调用的四步，和 MCP 到底省了什么</h1>
+  <div class="meta">第 9 课（共 13 课）· 重建 v3 · 本课成果：能画出一“次”工具调用的完整流程，并解释 MCP 把 M×N 集成变成 M+N 的含义 · 对应第 3 课“没手”那座桥</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+工具调用一次分四步：<strong>Select（选工具）→ Arguments（填参数）→ Validate（校验）→ Execute（沙箱执行）</strong>。<br>
+模型只负责前两步（决定用哪个、填什么参数），真正的校验和执行在系统侧。工具越多越杂，集成成本越高——这正是 <strong>MCP（Model Context Protocol）</strong>要解决的：把“模型↔工具”的接口标准化，使 <strong>M×N 的对接成本降成 M+N</strong>。
+</div>
+
+<h2>一次工具调用的解剖（课件 p58，配例子看）</h2>
+<p>任务：<em>“test.py 里写了什么？”</em></p>
+<table>
+  <tr><th>步</th><th>做什么</th><th>这个例子里</th></tr>
+  <tr><td>① Select 选</td><td>从上下文给出的工具 schema 里挑一个</td><td>选中 <code>read_file</code></td></tr>
+  <tr><td>② Arguments 填参</td><td>按任务的类型化字段填参数</td><td><code>{"path": "test.py"}</code></td></tr>
+  <tr><td>③ Validate 校验</td><td>执行前做 schema 检查 / 受限解码（constrained decoding）</td><td>确认 <code>path</code> 是 string</td></tr>
+  <tr><td>④ Execute 执行</td><td>在沙箱里跑，结果返回上下文</td><td>返回文件内容</td></tr>
+</table>
+<blockquote>划重点：<strong>模型出“意图”（调用哪个、给什么参），系统做“把关”（校验合法性、限制权限、沙箱执行）。</strong>这条分工线，就是后面安全设计（第 11 课）的抓手——你可以只在系统侧收紧权限，而不用担心模型“想干嘛”。</blockquote>
+
+<h2>让模型自己学会用工具（两条历史线）</h2>
+<ul>
+  <li><strong>Toolformer（2023）</strong>：训练 LM 自己判断——调用哪些 API、何时调、传什么参数、怎么把结果用进回答（工具：计算器/问答/搜索引擎/翻译/日历）。</li>
+  <li><strong>Gorilla（Patil 2023）</strong>：让 LLM 对接海量 API，解决“工具成千上万时怎么选、怎么填对参数”的问题。</li>
+</ul>
+
+<h2>MCP：把 M×N 变 M+N（这一节是重点）</h2>
+<p>没有统一协议时：M 个模型 × N 个工具/数据源 = <strong>M×N 套对接</strong>，每加一个都要改一遍。有了 MCP 这种标准接口：每个模型接一次协议、每个工具实现一次协议 = <strong>M+N</strong>。</p>
+<pre class="loop">无 MCP：  模型A ─X─ 工具1   模型A ─X─ 工具2   模型B ─X─ 工具1   …（M×N 条线）
+有 MCP：  模型A/模型B ── MCP协议 ── 工具1/工具2/数据源        （M+N 条线）</pre>
+<p>大白话：像给所有设备统一了电源插头和插座规格——你不用为每台电器配一种插头，也不用为每个插座改线。</p>
+
+<h2>对照你熟悉的东西（工程桥）</h2>
+<ul>
+  <li>工具 = 你给测试台写的<strong>设备接口函数</strong>（只读的优先），普通代码，只是“谁来调”变成了 LLM 决定。</li>
+  <li>Validate = 接口层的<strong>参数检查与权限约束</strong>——医疗场景里，这一层是硬安全边界。</li>
+  <li>MCP ≈ 你们内部的<strong>统一通信协议</strong>（把“模型↔工具”想象成一组标准化的 RPC 接口）。</li>
+</ul>
+
+<h2>自测</h2>
+<div class="quiz">
+  <p>Q1. 工具调用四步是哪四步？模型中哪几步由模型负责、哪几步由系统负责？</p>
+  <details><summary>展开答案</summary><p>Select → Arguments → Validate → Execute。模型负责 Select + Arguments（出意图），系统负责 Validate + Execute（校验与执行）。</p></details>
+  <p>Q2. “constrained decoding（受限解码）”用在哪一步？作用是什么？</p>
+  <details><summary>展开答案</summary><p>Validate 步（更准确说是在生成参数时就施加约束）。作用：强制生成的参数符合 schema，从源头减少非法调用。</p></details>
+  <p>Q3. 用一句话解释 MCP 为什么把 M×N 变成 M+N。</p>
+  <details><summary>展开答案</summary><p>因为它把“模型↔工具”的接口标准化了：模型只要实现一次协议就能接所有工具，工具也只要实现一次协议就能被所有模型调用，于是成对适配的组合数从 M×N 降到 M+N。</p></details>
+  <p>Q4. 医疗设备场景下，为什么“模型的意图”和“系统的把关”必须分开？</p>
+  <details><summary>展开答案</summary><p>因为安全约束不能交给模型自觉。模型可能被诱导或幻觉出危险动作，但只要系统侧的 Validate/权限/沙箱足够严（只读、白名单、需人审），就能把风险挡在执行之前。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">第三段 · 复合系统</span><br>
+  ← 上一课 <a href="lecture01-0008-rag.html">0008 · RAG</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture01-0010-reliability-and-evaluation.html">0010 · 可靠性与评估：能力高 ≠ 可靠</a>
+</div>
+
+<p class="foot">一手来源：CS329Z 课件（源文件夹 week1-9.23） p58-59（工具调用四步 / MCP）+ Toolformer (2023) / Gorilla (Patil 2023) + modelcontextprotocol.io。<br>
+Lesson 9 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 30 — RAG 失败模式全景（Week3 收官）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week3 · Lecture03 · Lesson 30（Week3 收官课）</span>
+  <h1>RAG 会在哪儿翻车：三侧失败清单 + 工程对策</h1>
+  <div class="meta">第 30 课（Week3 第 8 课 · 收官）· 来源：lecture03.pdf p63（Issues with RAG）· 本课成果：拿到一张"检索侧/阅读侧/循环侧"的失败清单，每一条配 SGRT 场景的检查点与对策，作为你自建 RAG 的验收表</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+RAG 的失败<strong>不在一个地方</strong>——课件把它分成三侧：<strong>检索侧</strong>（召回天花板、索引过期、权限泄漏）、<strong>阅读侧</strong>（"迷失在中间"位置偏置、干扰、证据冲突）、<strong>循环侧</strong>（错误复合、无停止规则、提示注入）。<br><br>
+工程含义：<strong>每建一个 RAG，就照这张表逐条问"我会不会踩、怎么防"</strong>。它和 Week1 第 10-11 课的可靠性/安全直接接上——RAG 只是把那些风险换了个具体战场。
+</div>
+
+<h2>失败清单（p63 原文，逐条）</h2>
+
+<h3>一、检索侧 Retrieval-side</h3>
+<table>
+  <tr><th>失败</th><th>含义</th><th>SGRT 场景的检查点与对策</th></tr>
+  <tr><td><strong>Recall ceiling 召回天花板</strong></td><td>检索不到=证据缺失，直接限制 agent 上限</td><td>建 Hit@k/Recall@k 评测集；上混合检索；分块与上下文检索（24-25 课）</td></tr>
+  <tr><td><strong>Stale index 索引过期</strong></td><td>文档改了但 embedding 没更新</td><td>SOP/错误码表修订后要重建索引；加"文档时间戳 + 重建流程"</td></tr>
+  <tr><td><strong>Permission leak 权限泄漏</strong></td><td>检索到并使用了"不该访问"的内容</td><td>索引前做权限分区；检索时按用户/工位过滤（医疗数据红线）</td></tr>
+</table>
+
+<h3>二、阅读侧 Reader-side</h3>
+<table>
+  <tr><th>失败</th><th>含义</th><th>SGRT 场景的检查点与对策</th></tr>
+  <tr><td><strong>Lost in the middle 迷失在中间</strong></td><td>长上下文里中间位置的信息被忽略（位置偏置）</td><td>把最关键证据放开头/结尾；别把 100 篇全塞进去，先重排</td></tr>
+  <tr><td><strong>Distraction 干扰</strong></td><td>"像但无关"的内容分散注意力</td><td>用重排（ColBERT/cross-encoder）提高精度，减少噪声块</td></tr>
+  <tr><td><strong>Evidence conflict 证据冲突</strong></td><td>来源之间或与模型知识冲突</td><td>给来源标注与优先级；冲突时以最新/权威规范为准并显式提示</td></tr>
+</table>
+
+<h3>三、循环侧 Loop-side（agentic RAG 特有）</h3>
+<table>
+  <tr><th>失败</th><th>含义</th><th>SGRT 场景的检查点与对策</th></tr>
+  <tr><td><strong>Compounding error 错误复合</strong></td><td>早期失误影响后续决策（呼应 Week1 第 10 课 0.95^10）</td><td>关键节点设校验/人审；限制轮数</td></tr>
+  <tr><td><strong>No stopping rule 无停止规则</strong></td><td>没有清晰的"何时算完成"条件</td><td>设最大轮数/收敛判据（如 critic 分数达标即停）</td></tr>
+  <tr><td><strong>Prompt injection 提示注入</strong></td><td>检索到的文本反过来操纵 agent</td><td>外部内容白名单过滤；区分"数据"与"指令"（呼应 Week1 第 11 课 87% 弹窗攻击）</td></tr>
+</table>
+
+<h2>三侧一句话串起来</h2>
+<pre class="loop">检索侧: 找不到 / 找的是旧的 / 找了不该看的        → 建评测 + 重建流程 + 权限分区
+阅读侧: 塞太多忽略中间 / 被相似噪声带偏 / 证据打架  → 重排 + 位置策略 + 来源标注
+循环侧: 错误滚雪球 / 不知道该停 / 被检索内容操纵     → 校验点 + 停止规则 + 注入防护</pre>
+
+<h2>去建你的 RAG 前的验收清单</h2>
+<ol>
+  <li><strong>检索有没有天花板</strong>？先跑 Hit@k（第 28 课）——检索查不到，后面全白搭。</li>
+  <li><strong>索引会不会过期</strong>？写下"文档改了就重建索引"的流程。</li>
+  <li><strong>权限分不分区</strong>？哪些内容不能对该用户/工位检索。</li>
+  <li><strong>证据放哪</strong>？最关键的放首尾，别全靠模型自己找。</li>
+  <li><strong>有没有停止规则</strong>？最大轮数 + 收敛判据。</li>
+  <li><strong>注入防不防</strong>？检索文本一律当"数据"，不当"指令"。</li>
+</ol>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. RAG 失败分哪三侧？各举一例。</p>
+  <details><summary>展开答案</summary><p>检索侧（召回天花板/索引过期/权限泄漏）、阅读侧（迷失在中间/干扰/证据冲突）、循环侧（错误复合/无停止规则/提示注入）。</p></details>
+  <p>Q2. "Lost in the middle"是什么？怎么缓解？</p>
+  <details><summary>展开答案</summary><p>长上下文里中间位置的信息容易被忽略（位置偏置）。缓解：把最关键证据放开头/结尾，并先重排减少塞入的噪声块。</p></details>
+  <p>Q3. 为什么"提示注入"在 RAG 里格外危险？</p>
+  <details><summary>展开答案</summary><p>因为检索回来的文本会直接进上下文，恶意/意外内容可反过来操纵 agent。对策：外部内容白名单过滤，严格区分"数据"与"指令"（呼应 87% 弹窗攻击）。</p></details>
+  <p>Q4. 你要给设备排查 RAG 定"停止规则"，可以是什么？</p>
+  <details><summary>展开答案</summary><p>例如：最大检索轮数（如 3 轮）+ 收敛判据（critic 相关性分达标即停），并在此之上加人审点。避免无限查下去（无停止规则）和错误滚雪球（错误复合）。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week3 · Lecture03 · 段五 Week3 收官</span><br>
+  ← 上一课 <a href="lecture03-0029-agentic-rag.html">0029 · Agentic RAG</a> · <a href="../index.html">课程大纲</a> · 回顾 <a href="lecture02-0022-building-effective-agents.html">Week2-0022 · workflow 五模式</a><br>
+  Week3 完结 → 回到 <a href="../index.html">课程大纲</a>（下周预告：函数调用 / 工具使用）
+</div>
+
+<h2>综合结业考试题</h2>
+<div class="takeaway">
+<strong>Lecture03 结业考试</strong>（把本讲当一个整体来考）：RAG 全链路设计与验收。<br>
+<strong>→ 领取结业考试题</strong>：<a href="../综合题/Lecture03/结业考试-Lecture03-RAG全链路.md">结业考试-Lecture03-RAG全链路.md</a>（Markdown 作答制，作答区就在题目下方；答完对我说"评卷"）。
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件（源文件夹 week2-9.30） p63（Issues with RAG：检索侧/阅读侧/循环侧）+ 本讲全部论文（RAG / DPR / ColBERT / Self-RAG / CRAG / Search-R1）。<br>
+Lesson 30 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 21 — 上下文工程（下）：长程任务三招</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Week2 · Lecture02 · Lesson 21</span>
+  <h1>上下文工程（下）：任务比窗口长的时候怎么办</h1>
+  <div class="meta">第 21 课（Week2 第 8 课）· 来源：Anthropic《Effective context engineering》(2025-09) + lecture02.pdf p171-173 + p168-169 · 本课成果：掌握三招（压缩 / 结构化笔记 / 子智能体）与"即时检索"，并知道各自适合什么任务</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+当任务长到超过上下文窗口（几十分钟到几小时的连续工作），不能指望"窗口再大点"——<strong>所有窗口都会被污染</strong>。Anthropic 给三招：<strong>压缩 Compaction</strong>（把快满的对话总结后重开）、<strong>结构化笔记</strong>（把关键状态写到窗口外的文件）、<strong>子智能体</strong>（子任务在干净窗口里深挖，只回传摘要）。另加一招日常的：<strong>即时检索（just-in-time）</strong>——不提前加载全部，边做边按需取。<br><br>
+工程含义：这是把你的"设备排查长任务"做成能跑几小时而不崩的关键设计。
+</div>
+
+<h2>为什么不能"等窗口更大就好"</h2>
+<p>Anthropic 明确：可预见未来，<strong>任何规模的窗口都会有上下文污染与信息相关性下降的问题</strong>（context rot，上一课）。所以必须主动管理，而不是被动加长。</p>
+
+<h2>即时检索 vs 预先检索（p160 那一节）</h2>
+<p>两种取上下文的方式：</p>
+<table>
+  <tr><th></th><th>预先检索（pre-inference / embedding）</th><th>即时检索（just-in-time）</th></tr>
+  <tr><td>做法</td><td>推理前先把相关数据检索进来</td><td>只留轻量标识（文件路径、查询、链接），运行时用工具按需加载</td></tr>
+  <tr><td>优点</td><td>快（数据已备好）</td><td>省 token、信息新鲜（绕开过期索引）</td></tr>
+  <tr><td>缺点</td><td>可能过时/无关</td><td>慢一些；需要好的工具和引导</td></tr>
+</table>
+<p>Claude Code 用<strong>混合</strong>：CLAUDE.md 预先放进上下文，同时用 glob/grep 即时导航取文件。元数据（文件名、目录、时间戳）本身就是信号——<code>tests/test_utils.py</code> 和 <code>src/core_logic/test_utils.py</code> 用途不同，人靠目录层级理解，agent 也靠它。</p>
+
+<h2>长程三招（Anthropic 原文）</h2>
+
+<h3>① 压缩 Compaction（p171 课件也讲）</h3>
+<p>做法：把临近窗口上限的对话<strong>总结压缩</strong>，用摘要重开一个新窗口。Claude Code 保留"架构决策、未解决 bug、实现细节"，丢掉冗余工具输出。</p>
+<ul>
+  <li>p171 要点：到该压缩时上下文已极长；关键决策是<strong>新窗口里留什么</strong>——留太多很快又要压缩，丢太多会丢失后来才显得关键的信息。</li>
+  <li>最"轻手"的形式是<strong>清工具结果</strong>：深历史里那些原始工具输出，agent 何须再看一遍。</li>
+  <li>调参建议：先在复杂轨迹上<strong>最大化召回</strong>（别漏），再迭代提升<strong>精确率</strong>（去冗余）。</li>
+</ul>
+
+<h3>② 结构化笔记（Structured note-taking / agentic memory）</h3>
+<p>做法：agent 定期把笔记<strong>写到窗口外的记忆里</strong>，之后按需读回。像 Claude Code 的 to-do 清单、或自定义 agent 的 NOTES.md。</p>
+<blockquote>招牌案例：Claude 玩 Pokémon——跨上千步精确记账（"最近 1234 步我在 1 号路练级，皮卡丘涨了 8 级、目标 10 级"），自发画地图、记成就、记战斗策略；上下文重置后<strong>读自己的笔记</strong>继续多小时的训练/探索。这就是"跨窗口的连贯性"。</blockquote>
+
+<h3>③ 子智能体 Sub-agent 架构</h3>
+<p>做法：主 agent 只握高层计划，把深挖型子任务交给<strong>独立、干净窗口</strong>的子智能体；子智能体可能烧掉几万 token 探索，但<strong>只回传 1,000–2,000 token 的浓缩摘要</strong>。</p>
+<ul>
+  <li>好处：关注点分离——细节搜索的上下文隔离在子体里，主 agent 专注综合。</li>
+  <li>证据：Anthropic 多智能体研究系统在复杂研究任务上显著优于单 agent（对应 Week1 的多智能体）。</li>
+</ul>
+<blockquote>注意：子智能体 = 你的"分布式传感/独立标定单元"思路——各单元在本地原始数据上做重活，只向主控回传结构化摘要，而不是把原始点云全上传。</blockquote>
+
+<h2>三招怎么选（Anthropic 原文）</h2>
+<table>
+  <tr><th>方法</th><th>最适合</th></tr>
+  <tr><td>压缩 Compaction</td><td>需要大量来回的对话式长任务（保持对话流）</td></tr>
+  <tr><td>结构化笔记</td><td>有清晰里程碑的迭代式开发</td></tr>
+  <tr><td>子智能体</td><td>复杂研究/分析，并行探索有收益</td></tr>
+</table>
+
+<h2>加餐：别让 KV Cache 失效（p168-169）</h2>
+<p>p168-169 两页讲"顺序追加、避免让 KV Cache 失效"：如果中途改动前面的位置编码/提示，缓存全部作废（Invalidated），白付一次 prefill。含义：<strong>系统提示与工具定义放在固定位置、只做追加</strong>，是省成本又省延迟的实操习惯（呼应第 17 课）。</p>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 长程三招分别是什么？各最适合什么任务？</p>
+  <details><summary>展开答案</summary><p>压缩（总结重开窗口）—适合大量来回的对话；结构化笔记（写窗口外文件）—适合有里程碑的迭代开发；子智能体（干净窗口深挖、只回摘要）—适合复杂研究/分析。</p></details>
+  <p>Q2. 压缩的"艺术"在哪？最轻手的形式是什么？</p>
+  <details><summary>展开答案</summary><p>艺术在于"留什么 vs 丢什么"：留太多很快要再压缩，丢太多会丢失后见之明重要的信息。最轻手的形式是清除工具调用结果（深历史里的原始输出通常不必再看）。</p></details>
+  <p>Q3. 即时检索比预先检索强在哪？代价是什么？</p>
+  <details><summary>展开答案</summary><p>强在省 token、信息新鲜（绕开过期索引）、可渐进发现；代价是运行时探索更慢，且需要工程上给模型配好工具与启发式引导，否则会乱用工具、跑进死胡同。</p></details>
+  <p>Q4. 为什么"系统提示与工具定义放在固定位置、只追加"很重要？</p>
+  <details><summary>展开答案</summary><p>因为 KV Cache 与前缀绑定（第 17 课）。中途改动前缀会让缓存失效、触发重算，白付 prefill 成本与延迟。固定位置 + 顺序追加能保住缓存命中。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Week2 · Lecture02 · 段四 接口与上下文</span><br>
+  ← 上一课 <a href="lecture02-0020-context-engineering.html">0020 · 上下文工程（上）</a> · <a href="../index.html">课程大纲</a><br>
+  下一课 → <a href="lecture02-0022-building-effective-agents.html">0022 · 构建高效 agent：五种模式（毕业课）</a>
+</div>
+
+<p class="foot">一手来源：Anthropic《Effective context engineering for AI agents》(2025-09)（compaction / note-taking / sub-agents / just-in-time 检索）+ CS329Z lecture02 课件（源文件夹 week2-9.28） p168-169、p171-173。<br>
+Lesson 21 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>
