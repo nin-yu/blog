@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0010 — Transformer 与注意力：为什么是 O(n²)，为什么能并行</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture02 · Lesson 0010</span>
+  <h1>Transformer 与注意力：为什么是 O(n²)，为什么能并行</h1>
+  <div class="meta">第 0010 课（Lecture02 第 2 课）· 来源：lecture02.pdf p24-62 · 来源文件夹：week2-9.28 · 本课成果：理解 Transformer 的注意力机制如何工作，掌握 O(n²) 的代价来源，以及为什么它对并行训练是关键</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件把 Transformer 的胜负手压成两点（p61）：<br><br>
+<strong>O(1) 顺序操作</strong>——这是 GPU 并行训练的关键<br>
+<strong>O(n²) 序列长度</strong>——这是长上下文昂贵的根源<br><br>
+用一句话概括：<strong>Transformer 用"每步都能看全部历史"换来了并行性，代价是平方级的计算和线性增长的 KV Cache。</strong>
+</div>
+
+<h2>一、架构演进（p25）</h2>
+<pre class="loop">语言模型架构的历史：
+  · N-gram 模型（2010s 之前）——只看前 N 个词
+  · 第一个神经语言模型（2003）
+  · RNN 语言模型（2010）
+  · LSTM（1997 发明，2014 在 LM 上普及）
+  · Transformer（2017）← 现在的标准
+</pre>
+<p>从 N-gram 到 Transformer 的主线是：<strong>能看多远的上下文</strong>。</p>
+<pre class="loop">N-gram:      看前 N 个（N 通常是 3-5）
+RNN/LSTM:    理论上能看全部，但信息会衰减、且必须串行
+Transformer: 能直接看到全部，且可以并行
+</pre>
+
+<h2>二、Decoder-only Transformer 的数据流（p28-60）</h2>
+<p>课件用 30 多页逐步画出这个流程。核心步骤：</p>
+<pre class="loop">输入 token
+    ↓
+① Embedding —— token → 向量
+    ↓
+② 加位置信息
+    ↓
+③ ┌─────────────────────────┐
+   │ Attention Layer         │  ← 核心
+   │  Q = X·W_Q              │
+   │  K = X·W_K              │
+   │  V = X·W_V              │
+   │  Attention = softmax(QKᵀ/√d)·V │
+   └─────────────────────────┘
+    ↓
+④ Feed Forward（前馈网络）
+    ↓
+⑤ 重复 N 层
+    ↓
+⑥ 输出层 → 下一个 token 的概率分布
+</pre>
+
+<h2>三、注意力在做什么（p35-44）</h2>
+<pre class="loop">Q（Query）：当前 token 想找什么
+K（Key）：  每个历史 token 能被怎么找到
+V（Value）：每个历史 token 实际提供的信息
+
+计算：
+  ① Q 和每个 K 做点积 → 得到"相关性分数"
+  ② 除以 √d → 防止数值过大（让 softmax 不至于饱和）
+  ③ softmax → 转成权重（和为 1）
+  ④ 用权重对 V 加权求和 → 当前 token 的新表示
+
+直觉：
+  "The animal didn't cross the street because it was too tired"
+  当处理 "it" 时，注意力权重会大量分配给 "animal"
+  → 所以 "it" 的表示里包含了 "animal" 的信息
+</pre>
+<p>Multi-Head Attention（p45-48）：<strong>并行做多组注意力</strong>，每组学不同的关注模式（一组看语法、一组看指代、一组看语义）。</p>
+
+<h2>四、为什么 O(1) 顺序操作是关键（p61）</h2>
+<blockquote>
+<strong>O(1) sequential operations is a huge deal for parallel training on GPUs!</strong>
+</blockquote>
+<pre class="loop">对比 RNN：
+  RNN 处理第 t 个 token 时必须等第 t-1 个处理完
+  → 1000 个 token 要串行 1000 步
+  → GPU 有几千个核心，但只能用一个
+
+对比 Transformer：
+  所有 token 的注意力可以同时计算（因为 Q、K、V 都是一次矩阵乘法）
+  → 1000 个 token 在 GPU 上是并行的
+  → 这才是能训练超大模型的前提
+
+代价：每个 token 都要和所有历史 token 算相关性
+     → O(n²)
+</pre>
+
+<h2>五、O(n²) 的工程后果（p61-85）</h2>
+<pre class="loop">序列长度 n 增长时：
+  计算量：n²   （注意力矩阵是 n×n）
+  显存：  n²   （要存注意力分数）+ n（KV Cache）
+
+实际数字感受：
+  n = 1,000   → 注意力矩阵 100 万个元素
+  n = 10,000  → 1 亿个
+  n = 100,000 → 100 亿个  ← 装不下了
+
+→ 这就是"上下文窗口为什么有限"的物理原因
+→ 也是 Lecture02 后面要讲 KV Cache、线性注意力的动机
+</pre>
+
+<h2>SGRT 工程桥：O(n²) 对你的实际影响</h2>
+<pre class="loop">【场景：你想让 agent 读完整份 100 页的故障日志】
+
+  100 页 ≈ 5 万 token
+  → 注意力矩阵 5万 × 5万 = 25 亿个元素
+  → 即使只算不存，也是巨大的计算量
+  → 首 token 延迟会很长（prefill 阶段）
+
+【实际工程对策】
+  ① 不要把全部日志塞进去
+     → 先用规则/脚本筛选出异常段（这不需要 LLM）
+     → 只把异常段给模型看
+     
+  ② 分级读取
+     → 先给摘要（几百 token）让模型判断要不要深入
+     → 需要时再读具体段落
+     
+  ③ 明确预算
+     → 每次排查给一个 token 上限（比如 8k）
+     → 超了就压缩或分批
+
+【关键认知】
+  O(n²) 不是"技术上可以优化的问题"
+  而是"物理上有个成本曲线"
+  → 你的系统设计必须在这条曲线内工作
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>注意力</strong>：Q 找什么、K 怎么被找到、V 提供什么；softmax(QKᵀ/√d)·V。<br>
+<strong>Multi-Head</strong>：并行多组注意力，各学不同的关注模式。<br>
+<strong>O(1) 顺序</strong>：所有 token 同时算——GPU 并行训练的前提。<br>
+<strong>O(n²)</strong>：每个 token 看全部历史——长上下文昂贵的根源。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. Q、K、V 分别代表什么？注意力权重的计算过程是什么？</p>
+  <details><summary>展开答案</summary><p>Q（Query）是当前 token 想找什么，K（Key）是每个历史 token 能被怎么找到，V（Value）是每个历史 token 实际提供的信息。计算：① Q 和每个 K 做点积得到相关性分数；② 除以 √d 防止数值过大导致 softmax 饱和；③ softmax 转成和为 1 的权重；④ 用权重对 V 加权求和，得到当前 token 的新表示。</p></details>
+  <p>Q2. 为什么说 O(1) 顺序操作对 GPU 训练是"a huge deal"？</p>
+  <details><summary>展开答案</summary><p>因为 RNN 必须串行处理——算第 t 个 token 要等第 t-1 个算完，1000 个 token 就是 1000 步串行，GPU 几千个核心只能用上一个。Transformer 的所有 token 注意力可以通过矩阵乘法一次并行算出，1000 个 token 在 GPU 上同时处理。这是能训练超大模型的前提条件。</p></details>
+  <p>Q3. O(n²) 的代价体现在哪两处？给一个数量级的感受。</p>
+  <details><summary>展开答案</summary><p>体现在计算量（注意力矩阵是 n×n）和显存（要存注意力分数，加上线性增长的 KV Cache）。数量级：n=1000 时注意力矩阵 100 万个元素，n=10000 时 1 亿个，n=100000 时 100 亿个——已经装不下。这就是上下文窗口有限的物理原因。</p></details>
+  <p>Q4. 面对 O(n²)，你的排查助手该怎么设计才不会被日志撑爆？</p>
+  <details><summary>展开答案</summary><p>三条对策：① 不要塞全部日志——先用规则/脚本筛出异常段（不需要 LLM），只把异常段给模型；② 分级读取——先给几百 token 的摘要让模型判断是否深入，需要时再读具体段落；③ 设明确 token 预算（如每次 8k），超了就压缩或分批。关键认知是 O(n²) 不是"可优化掉的问题"而是一条物理成本曲线，系统设计必须在曲线内工作。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture02 · 段二 架构 · Transformer</span><br>
+  ← 上一课 <a href="lecture02-0009-what-is-lm.html">0009 · 语言模型是什么</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture02-0011-linear-attention.html">0011 · 线性注意力与混合架构</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件《LLMs for Builders》· 源文件夹 week2-9.28 · p24-62；Attention Is All You Need (arXiv:1706.03762)<br>
+Lesson 0010 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

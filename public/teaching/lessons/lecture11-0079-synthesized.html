@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0079 — 来源三：合成轨迹与合成环境</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture11 · Lesson 0079</span>
+  <h1>来源三：合成轨迹与合成环境</h1>
+  <div class="meta">第 0079 课（Lecture11 第 5 课）· 来源：lecture11.pdf p38-51 · 来源文件夹：week6-10.28 · 本课成果：掌握两种合成轨迹的方向差异、三种合成环境（SWE-smith/R2E-Gym/AgentScaler）的机制，理解「造题目优于编答案」并能设计本项目的故障注入方案</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+合成的两个层次，价值递增：<br><br>
+<strong>① 合成轨迹（p38-45）</strong>——给定任务或环境，让模型写或跑出步骤<br>
+　Synatra（p40）：LLM 改写 wikiHow 教程 → 纯文本合成<br>
+　OS-Genesis（p43）：<strong>先探索应用，再反推每个探索轨迹对应什么任务</strong><br><br>
+<strong>② 合成任务与环境（p46-51）</strong>——自动构建沙箱、任务和检查器<br>
+　SWE-smith（p48）：<strong>注入会让已有测试失败的 bug</strong><br>
+　R2E-Gym（p50）：<strong>把普通 commit 变成 8.1K 个可执行[任务]</strong><br>
+　AgentScaler（p51）：构建可验证的模拟环境<br><br>
+最关键的区分：<strong>合成轨迹是"编故事"，合成环境是"造题目"——后者的验证是真实的</strong>。
+</div>
+
+<h2>一、合成轨迹：两种方向（p38-45）</h2>
+
+<h3>1.1 给定任务 → 生成步骤（Synatra，p40-42）</h3>
+<blockquote>
+Synatra【Web】：一个 LLM 改写 wikiHow 教程和随机的[任务]
+</blockquote>
+<pre class="loop">做法：
+  wikiHow 教程（人类写的操作说明）
+  → LLM 改写成一个"看起来像 agent 轨迹"的文本
+  → 得到 (task, steps) 对
+
+和 AgentTrek 的差别（p42 的 Case Study 就在问这个）：
+  AgentTrek：教程 → agent 真的在网站上跑一遍
+  Synatra：  教程 → LLM 直接写出步骤文字
+  → 前者有环境约束，后者没有
+
+风险：
+  LLM 写的步骤可能根本跑不通
+  → 因为它没真的操作过
+  → 纯文本合成 = 高质量幻觉
+</pre>
+<h3>1.2 先探索环境 → 反推任务（OS-Genesis，p43-44）</h3>
+<blockquote>
+OS-Genesis【CUA】：<strong>先探索应用，然后推断每条探索轨迹对应什么任务</strong>
+</blockquote>
+<pre class="loop">这个方向很聪明，顺序反过来了：
+
+传统：先定任务 → 再执行 → 得轨迹
+OS-Genesis：先随便探索 → 记录轨迹 → 事后反推"这可以算什么任务"
+
+为什么这个思路好：
+  · 探索得到的轨迹保证"可执行"（因为真跑过）
+  · 反推任务只是给轨迹贴标签，不影响轨迹真实性
+  → 解决了 Synatra 的"跑不通"问题
+
+代价：
+  · 探索是无目的的，效率低
+  · 反推的任务可能牵强（"这算个任务吗"）
+  · 覆盖范围取决于探索策略
+</pre>
+<h2>二、合成任务与环境（p46-51）——价值更高的一层</h2>
+<blockquote>
+<strong>自动构建沙箱、任务和检查器。</strong>
+</blockquote>
+<p>这句是本讲的枢纽。它意味着：<strong>连"验证器"都能合成</strong>，而合成出来的验证器是真实的（因为跑的是真代码/真测试）。</p>
+
+<h3>2.1 SWE-smith：注入 bug（p48-49）</h3>
+<blockquote>
+SWE-smith【代码】：<strong>注入会让已有测试失败的 bug</strong>
+</blockquote>
+<pre class="loop">做法：
+  ① 拿一个正常能通过的仓库
+  ② 自动注入 bug（改代码）
+  ③ 跑已有测试 → 确认测试现在失败了
+  ④ 这个仓库状态就是一个任务
+     · 任务描述：让测试通过
+     · 验证器：那些已有的测试
+
+精髓：
+  bug 是"合成的"，但验证是"真实的"
+  → 不需要人工写测试
+  → 不需要人工写任务描述（可以自动生成"修复失败的测试"）
+
+→ 这解决了人类示范的规模天花板
+</pre>
+<h3>2.2 R2E-Gym：把 commit 变成任务（p50）</h3>
+<blockquote>
+R2E-Gym【代码】：<strong>把普通 commit 变成 8.1K 个可执行[任务]</strong>
+</blockquote>
+<pre class="loop">做法：
+  一个普通 commit（改了点代码）
+  → 回退它
+  → 但保留"改动后的行为"作为期望
+  → 任务：让代码恢复到改动后的行为
+  
+  或者换个角度：
+    用 commit 生成测试 → 回退代码 → 用测试当验证器
+
+为什么比 SWE-rebench 更进一步：
+  SWE-rebench 挖 PR（依赖有测试的仓库 + 真实 bug 修复）
+  R2E-Gym 用任意 commit（不依赖有测试，自己造测试）
+  → 规模上限大大提高
+</pre>
+<h3>2.3 AgentScaler：可验证的模拟环境（p51）</h3>
+<blockquote>
+AgentScaler【工具】：<strong>构建可验证的模拟环境</strong>
+</blockquote>
+<pre class="loop">思路：
+  真实 API 有限（有些付费、有些不可改、有些不能生成失败）
+  → 造一个模拟服务
+  → 但要保证"可验证"（能判断任务是否完成）
+  
+用途：
+  · 造出真实世界里罕见的情况（失败、限流、脏数据）
+  · 大规模并行（不需要真实 API 配额）
+</pre>
+<h2>三、两个层次的对比</h2>
+<table>
+  <tr><th></th><th>合成轨迹</th><th>合成环境</th></tr>
+  <tr><td>造什么</td><td>步骤文本 / 轨迹</td><td>任务 + 沙箱 + 检查器</td></tr>
+  <tr><td>代表</td><td>Synatra、OS-Genesis</td><td>SWE-smith、R2E-Gym、AgentScaler</td></tr>
+  <tr><td>验证可靠性</td><td>弱（文本可能跑不通）</td><td><strong>强（跑的是真代码/真测试）</strong></td></tr>
+  <tr><td>可复用性</td><td>一次一条</td><td><strong>可反复 rollout</strong></td></tr>
+  <tr><td>规模上限</td><td>取决于 LLM 产能</td><td>取决于造环境的能力</td></tr>
+</table>
+<pre class="loop">这个对比解释了 0076 课的那句话：
+  "环境在上游，轨迹是副产品"
+
+合成环境 = 造题目（题目可以反复做）
+合成轨迹 = 编答案（答案只能抄一次）
+
+→ 优先合成环境
+→ 只有当环境造不出来时才合成轨迹
+</pre>
+<h2>四、合成的根本风险：看起来对</h2>
+<pre class="loop">三种合成方式的"真实性"递减：
+
+SWE-smith（注入真 bug + 真测试）
+  ✔ 完全真实：bug 真实、验证真实
+  → 唯一不真实的是"bug 是人造的"（分布可能不同于真实 bug）
+
+OS-Genesis（真探索 + 事后贴任务）
+  ✔ 轨迹真实（跑过）、任务标签可能牵强
+
+Synatra（纯文本合成）
+  ✘ 都可能不真实：步骤可能跑不通、任务可能是编的
+  → 这就是 0081 课 p68 说的
+    "learned to look right rather than be right"
+</pre>
+<h2>SGRT 工程桥：你能合成什么</h2>
+<pre class="loop">【最有价值：合成故障场景（SWE-smith 式）】
+
+你是设备软件团队，有一个天然优势：
+  ✔ 你能在测试环境里人为制造故障
+
+  具体做法：
+  ① 拿一台设备（或仿真器）在正常状态
+  ② 人为注入一种故障：
+       · 遮挡部分标定板 → 模拟角点丢失
+       · 修改呼吸垫压力记录 → 模拟基线漂移
+       · 摆歪床板 → 模拟机械偏移
+       · 改日志时间戳 → 模拟时钟不同步
+  ③ 确认现象确实出现（残差升高 / 报警触发）
+  ④ 这个状态就是一个任务：
+       任务：找出残差升高的原因
+       验证器：根因标签（你知道注入的是什么）
+  
+  → 注入的故障是合成的，但验证是真实的（你确实注入了）
+  → 和 SWE-smith 完全同构
+
+【为什么这比挖历史记录更好】
+  历史记录：有什么算什么，覆盖不全、类型不平衡
+  合成故障：可以按需要造，且能控制难度和组合
+
+【规模估算】
+  5 类故障 × 3 个严重程度 × 3 个设备状态 = 45 个任务
+  → 加上组合故障（呼吸 + 机械同时）= 更多
+  → 一天能造 10-15 个
+  → 两周就能有 50+ 个可控任务
+
+【关键纪律】
+  ① 注入的故障必须有记录（哪个任务注入的是什么）
+     → 否则验证器没有 ground truth
+  ② 合成任务要定期用真实故障校准
+     → 防止"模型只学会对付人造故障"（分布偏移）
+  ③ 保留一批真实历史记录做最终验证
+     → 就是"训练集/测试集"分离的思想
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>合成轨迹</strong>：Synatra（LLM 改写教程，纯文本）／OS-Genesis（先探索再反推任务）。<br>
+<strong>合成环境</strong>：SWE-smith（注入会破坏测试的 bug）／R2E-Gym（commit → 8.1K 任务）／AgentScaler（可验证模拟环境）。<br>
+<strong>关键区分</strong>：合成轨迹是编答案，合成环境是造题目——后者验证真实、可反复 rollout。<br>
+<strong>风险递减</strong>：注入真 bug（最真）＞ 真探索+贴标签 ＞ 纯文本合成（最假）。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 合成轨迹的两种方向是什么？哪个更可靠、为什么？</p>
+  <details><summary>展开答案</summary><p>① 给定任务→生成步骤（Synatra：LLM 改写 wikiHow 教程成轨迹文本）；② 先探索环境→反推任务（OS-Genesis：先随便探索记录真实轨迹，再事后推断这算什么任务）。后者更可靠，因为它保证轨迹「可执行」（真跑过），反推任务只是贴标签不影响轨迹真实性；而 Synatra 的文本可能根本跑不通，是「高质量幻觉」。</p></details>
+  <p>Q2. SWE-smith 的精髓是什么？为什么它解决了人类示范的规模问题？</p>
+  <details><summary>展开答案</summary><p>精髓是：拿一个正常能通过的仓库，自动注入 bug（改代码），跑已有测试确认现在失败了——这个状态就是一个任务（任务=让测试通过，验证器=已有测试）。bug 是合成的但验证是真实的：不需要人工写测试、不需要人工写任务描述、不需要人亲手做一遍。所以规模不再受人力线性限制，只受算力和造环境能力限制。</p></details>
+  <p>Q3. 合成轨迹与合成环境的本质差别是什么？为什么说「优先合成环境」？</p>
+  <details><summary>展开答案</summary><p>合成轨迹是编答案（生成步骤文本/轨迹，一次一条，验证弱）；合成环境是造题目（生成任务+沙箱+检查器，可反复 rollout，验证强因为跑真代码/真测试）。优先合成环境因为环境在上游：一个环境既能产出 SFT 数据（筛选成功轨迹）又能产出 RL 信号（打分加权），轨迹只是副产品；而且环境可复用、可评估可靠性（Pass^k），轨迹是一次性的。</p></details>
+  <p>Q4. 你的团队能合成什么？具体怎么造、有什么纪律？</p>
+  <details><summary>展开答案</summary><p>能合成故障场景（与 SWE-smith 同构）：拿设备/仿真器在正常状态，人为注入故障（遮挡标定板=角点丢失、改呼吸垫记录=基线漂移、摆歪床板=机械偏移、改时间戳=时钟不同步），确认现象出现（残差升高），这就是一个任务——任务=找原因，验证器=你知道注入了什么。规模：5 类故障×3 严重度×3 状态=45 个，一天能造 10-15 个。纪律：① 注入必须记录（否则无 ground truth）；② 定期用真实故障校准（防分布偏移）；③ 保留一批真实历史记录做最终验证（训练/测试分离）。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture11 · 段三 数据来源 · 合成</span><br>
+  ← 上一课 <a href="lecture11-0078-mining-web.html">0078 · 从网页挖掘</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture11-0080-simulated-users.html">0080 · 来源四：模拟用户与环境</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture11 课件《What Data Do Agents Need?》· 源文件夹 week6-10.28 · p38-51；Synatra、OS-Genesis (arXiv:2502.14643)、SWE-smith (arXiv:2504.21798)、R2E-Gym<br>
+Lesson 0079 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

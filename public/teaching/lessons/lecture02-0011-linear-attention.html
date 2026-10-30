@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0011 — 线性注意力：把 O(n²) 压成 O(n) 的代价</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture02 · Lesson 0011</span>
+  <h1>线性注意力：把 O(n²) 压成 O(n) 的代价</h1>
+  <div class="meta">第 0011 课（Lecture02 第 3 课）· 来源：lecture02.pdf p63-91 · 来源文件夹：week2-9.28 · 本课成果：理解线性注意力如何把 O(n²) 压成 O(n)、代价是什么，以及为什么实践中要混合两种注意力</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件给的对比（p87）最清楚：<br><br>
+| | Full Softmax Attention | Linear Attention |<br>
+| 复杂度 | <strong>O(n²)</strong> | <strong>O(n)</strong> |<br>
+| 能否回看全部历史 | 能，所有 token 可参考所有先前 token | 不能，新 token 只与<strong>压缩后的状态</strong>交互 |<br>
+| 显存 | KV Cache 增长 O(n) | 状态表示<strong>常数内存</strong> |<br><br>
+一句话：<strong>线性注意力用"记住一切"换"记住一个压缩摘要"，于是复杂度从平方降到线性——但长上下文变难了。</strong>
+</div>
+
+<h2>一、核心思想：不要保存所有 K 和 V，只保存一个状态（p63-82）</h2>
+<pre class="loop">Full Attention：
+  保存所有历史 token 的 K 和 V
+  每次算新 token 的注意力 → 要遍历全部历史
+  → 历史越长，算得越久，存得越多
+
+Linear Attention：
+  把历史压缩成一个固定大小的"状态" S
+  S 随着每个新 token 更新：S ← S + (KᵀV)
+  新 token 只需要和 S 作用：output = Q·S
+  → 不管历史多长，S 的大小不变
+  → 计算量和内存都是 O(n)
+</pre>
+<p>p72-82 用十几页动画演示了这个更新过程：每读一个 token，状态 S 就被"累加"一次。这就是它像 RNN 的地方——<strong>本质上是"可并行的 RNN"</strong>。</p>
+
+<h2>二、代价：压缩必然丢信息（p83-84）</h2>
+<blockquote>
+<strong>p83</strong>：线性注意力快得多，内存占用也更好<br>
+<strong>p84</strong>：<strong>但是……它在长上下文上表现更吃力</strong>
+</blockquote>
+<pre class="loop">为什么长上下文会吃力：
+
+  Full Attention 可以回答：
+    "第 37 页第 2 段提到的那台设备的序列号是多少？"
+    → 直接回到第 37 页看
+
+  Linear Attention 只能回答：
+    "整体的主题是什么？"
+    → 它只有压缩状态，没有原文
+    → 细节已经混在状态里，取不出来
+
+这就是"压缩"的本质代价：
+  摘要能抓住主旨，但抓不住细节位置
+</pre>
+
+<h2>三、关于"上下文长度"的一个澄清（p85）</h2>
+<blockquote>
+<strong>无论是 Transformer 还是线性注意力，都没有强制限制上下文长度……除了训练长度。</strong>
+</blockquote>
+<pre class="loop">意思是：
+  · 架构本身不限制能塞多长
+  · 限制来自"训练时见过的最长序列"
+  · 超过训练长度的部分，模型没学过怎么处理
+  
+  → 所以"支持 1M 上下文"这种说法，
+    要看训练时用了多长的序列
+  → 不是架构赋予的能力，是训练赋予的
+</pre>
+<p>这一点很重要：<strong>很多人以为"换个架构就能支持无限上下文"，实际上训练数据决定了模型能不能处理那么长。</strong></p>
+
+<h2>四、实践：混合架构（p88-90）</h2>
+<blockquote>
+<strong>实践中人们会混合全局注意力和线性注意力。</strong>
+</blockquote>
+<pre class="loop">典型做法（如 Kimi K3 等，p90）：
+
+  大部分层 → 线性注意力（便宜，处理长距离粗粒度信息）
+  少数层   → 全局注意力（昂贵，但保留精确回看能力）
+
+  例如：每 4 层线性注意力插 1 层全局注意力
+  → 主体成本是线性的
+  → 但保留了关键位置的全精度回看
+
+比例是关键工程参数：
+  全局层越多 → 越准、越贵
+  全局层越少 → 越省、细节召回越差
+</pre>
+
+<h2>五、为什么这对 agent 重要（p91）</h2>
+<blockquote>
+<strong>· agent 要能处理极长的上下文<br>
+· 推理效率是[关键]</strong>
+</blockquote>
+<pre class="loop">两个需求同时存在：
+  ① 长上下文  → agent 需要读大量日志、文档、历史
+  ② 高推理效率 → agent 要跑很多轮，每轮都慢则无法接受
+
+线性注意力改善 ②，但损害 ①
+全注意力保证 ①，但损害 ②
+→ 混合架构是折中
+
+对使用者的意义：
+  你不需要自己实现，但要知道
+  "为什么有些模型长文本便宜、细节却记不住"
+  → 因为它用了更多线性层
+</pre>
+
+<h2>SGRT 工程桥：这对你选模型有什么指导</h2>
+<pre class="loop">【两类任务，需求相反】
+
+① 需要精确定位细节
+   "上次标定是哪天做的？那次用的什么参数？"
+   → 需要在长日志里精确找到特定记录
+   → 需要"能回看"的注意力
+
+② 需要理解长文档主旨
+   "这份 200 页的设备手册讲了什么？"
+   → 需要整体理解，不需要逐字
+   → 线性注意力即可
+
+【实践建议】
+  · 精确检索类任务 → 不要依赖模型"记住"
+                     → 用 RAG/数据库查出来再给它看
+                     → 这比换模型有效得多
+  · 理解类任务 → 长文档直接喂，混合架构够用
+
+【一个容易踩的坑】
+  你以为模型"支持 1M 上下文"就什么都能记住
+  实际上细节召回率在长上下文里会显著下降
+  → 关键数据永远要显式放进上下文，不要指望它从 50 万 token 前捞出来
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>机制</strong>：把历史压缩成固定大小的状态 S，新 token 只与 S 交互。<br>
+<strong>收益</strong>：O(n²) → O(n)，显存从增长变常数。<br>
+<strong>代价</strong>：只能抓主旨不能精确定位——压缩必然丢信息。<br>
+<strong>澄清</strong>：上下文长度限制来自<strong>训练长度</strong>，不是架构。<br>
+<strong>实践</strong>：混合全局 + 线性注意力，比例是关键工程参数。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 线性注意力如何把 O(n²) 降到 O(n)？核心机制是什么？</p>
+  <details><summary>展开答案</summary><p>核心是不再保存所有历史 token 的 K 和 V，而是把历史压缩成一个固定大小的状态 S。每读一个新 token 就更新 S（S ← S + KᵀV），新 token 只需要和 S 作用（output = Q·S）。因为 S 大小固定，不管历史多长，计算量和内存都是 O(n)——本质上它变成了一个可并行训练的 RNN。</p></details>
+  <p>Q2. 线性注意力在长上下文上为什么"更吃力"？给一个具体例子。</p>
+  <details><summary>展开答案</summary><p>因为压缩必然丢信息。Full Attention 可以回答"第 37 页第 2 段那台设备的序列号是多少"——直接回到第 37 页看原文；Linear Attention 只有压缩状态，细节已经混在状态里取不出来，只能回答"整体主题是什么"这类主旨问题。摘要能抓主旨但抓不住细节位置。</p></details>
+  <p>Q3. "架构不限制上下文长度，限制来自训练长度"——这句话怎么理解？对选模型有什么影响？</p>
+  <details><summary>展开答案</summary><p>意思是 Transformer 和线性注意力的架构本身都能接受任意长的输入，但模型只学过训练时见过的最长序列；超过那个长度的部分模型没学过怎么处理，能力会急剧下降。所以"支持 1M 上下文"要看训练时用了多长序列——那是训练赋予的能力，不是架构赋予的。</p></details>
+  <p>Q4. 混合架构为什么成为主流？对你的"精确检索"需求意味着什么？</p>
+  <details><summary>展开答案</summary><p>因为长上下文（需要全注意力）和高推理效率（需要线性注意力）两个需求同时存在且相反，混合架构（多数层线性 + 少数层全局）在成本和能力间取得折中。对你的精确检索需求意味着：不要依赖模型从长上下文里"记住"细节（细节召回率会随长度下降），而应该用 RAG/数据库先把精确数据查出来再给模型看——这比换模型有效得多。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture02 · 段二 架构 · 线性注意力</span><br>
+  ← 上一课 <a href="lecture02-0010-transformer-attention.html">0010 · Transformer 与注意力</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture02-0012-training-stages.html">0012 · 训练三阶段：预训练、中训练、后训练</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件《LLMs for Builders》· 源文件夹 week2-9.28 · p63-91；Transformers are RNNs (arXiv:2006.16236)、RULER、Kimi K3 (arXiv:2607.24653)<br>
+Lesson 0011 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0045 — Lecture06 总结：三个维度、三组判断</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture06 · Lesson 0045</span>
+  <h1>Lecture06 总结：三个维度、三组判断</h1>
+  <div class="meta">第 0045 课（Lecture06 第 8 课Lecture06 收官）· 来源：lecture06.pdf p84-86 · 来源文件夹：week3-10.12 · 本课成果：把 workflow 设计、推理行动设计、上下文设计三个维度串成一条线，掌握三组核心判断与三张速查表（Lecture06 收官）</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+Lecture06 的全部内容压缩成<strong>三个维度 × 两组积木</strong>：<br><br>
+<strong>Workflow 设计</strong>（5 种）：Chaining／Routing／Parallelization／Orchestrator-Workers／Evaluator-Optimizer<br>
+<strong>推理/行动设计</strong>（4 种）：ReAct／Reflexion／CodeAct／先规划再执行<br>
+<strong>上下文设计</strong>（5 种）：事件日志／记忆卸载／压缩／观察遮蔽／上下文隔离<br><br>
+而这一切的前提是 0038 课那个判断：<strong>workflow 与 agent 的分界，在于控制流在代码还是在模型。</strong><br>
+最后一个案例（Pi）告诉你：<strong>每一个可选项都是可以「不要」的，但每一处「不要」都有代价。</strong>
+</div>
+
+<h2>七个维度串成一条线</h2>
+<pre class="loop">0038 分界：控制流在代码(workflow) vs 在模型(agent)
+      ↓
+0039 Workflow 设计（5 种）
+      Chaining 拆步骤 / Routing 分派 / Parallelization 并行
+      Orchestrator-Workers 动态子任务 / Evaluator-Optimizer 迭代
+      ↓
+0040 推理模式一
+      ReAct（行动前推理）
+      Reflexion（反思靠外部反馈，自评有害）
+      ↓
+0041 推理模式二
+      CodeAct（代码是动作的好形式）
+      先规划再执行（规划把 agent 变回 workflow）
+      ↓
+0042 上下文管理（2 原则 + 5 模式）
+      Focus / Preserve Continuity
+      事件日志 / 卸载 / 压缩 / 遮蔽 / 隔离
+      ↓
+0043 上下文隔离
+      子 agent + 渐进披露
+      ↓
+0044 案例 Pi：极简 harness 的收益与代价
+      ↓
+0045 总结（本课）
+</pre>
+
+<h2>三组最有价值的判断</h2>
+
+<h3>判断一：规划让 agent 变回 workflow（0041）</h3>
+<pre class="loop">这是全讲最反直觉、也最实用的一条。
+
+  纯 ReAct：每步依赖上步观察 → 决策分散 → 不可复现
+  先规划：一次生成完整计划 → 执行按剧本 → 可复现、可并行、可审查
+
+工程含义：
+  当你想同时要「agent 的灵活性」和「workflow 的可控性」
+  → 答案不是折中，是「规划 + 执行」两段分开
+  → 规划段用 agent（一次决策，可回顾）
+  → 执行段用 workflow（确定路径，可并行）
+
+对医疗系统的价值：
+  计划能打印给人看 → 医生能事前审核「它要查什么」
+  → 这是 agent 唯一能在医疗场景被接受的方式
+</pre>
+
+<h3>判断二：自评有害，外部反馈才有效（0040）</h3>
+<pre class="loop">课件引的发现：让 LLM 评估自己的回答会导致性能下降
+
+由此推出的实践原则：
+  ✘ 不要在 prompt 里写「请反思你的答案是否正确」
+  ✔ 要给客观信号：测试结果、数值指标、历史事实
+
+今天的变化：
+  推理模型把自纠能力训进了推理过程
+  → 不需要显式 Reflexion
+  → 但仍需要外部反馈来支撑推理的依据
+
+你的场景：
+  有 RMS、角点率、历史结论 → 天然的反馈源
+  → 这是你比通用场景更有优势的地方
+</pre>
+
+<h3>判断三：每个可选项都可以不要，但都有代价（0044）</h3>
+<pre class="loop">Pi 证明了「极简也能是一个完整可用的 agent」：
+  4 个工具、1 个 ReAct 循环、3 个上下文机制
+
+但它同时证明了代价：
+  没有子 agent → 长文档撑爆上下文
+  没有 plan mode → 复杂任务跑偏
+  没有权限检查 → 出错无边界
+  没有待办清单 → 长任务忘目标
+  没有后台 bash → 长命令阻塞
+
+【关键判断法】
+  不要问「要不要这个机制」
+  要问「不要它，出问题时的后果我能不能承受」
+  
+  能承受 → 不要（省成本省延迟）
+  不能承受 → 必须要（不管多麻烦）
+</pre>
+<h2>三张速查表</h2>
+
+<h3>表一：五种 workflow 模式何时用</h3>
+<table>
+  <tr><th>模式</th><th>什么时候用</th><th>代价</th></tr>
+  <tr><td>Prompt Chaining</td><td>任务复杂、可拆成有先后的步骤</td><td>N 倍延迟</td></tr>
+  <tr><td>Routing</td><td>输入有几类、需分别处理；或想省钱</td><td>路由本身要准</td></tr>
+  <tr><td>Parallelization</td><td>子任务独立（Sectioning）或多采样投票（Voting）</td><td>Voting 是 N 倍成本</td></tr>
+  <tr><td>Orchestrator-Workers</td><td>子任务数量和性质难以预判</td><td>数量不可控，需设上限</td></tr>
+  <tr><td>Evaluator-Optimizer</td><td>反馈可表述 + 评估者有能力 + 生成器能改进</td><td>三条件缺一则空转</td></tr>
+</table>
+
+<h3>表二：四种推理模式的核心洞见</h3>
+<table>
+  <tr><th>模式</th><th>洞见</th><th>代价</th></tr>
+  <tr><td>ReAct</td><td>行动前先推理</td><td>多轮往返</td></tr>
+  <tr><td>Reflexion</td><td>反思有用——但必须靠外部反馈</td><td>需多轮尝试 + 有客观信号</td></tr>
+  <tr><td>CodeAct</td><td>代码是动作的好形式</td><td>需沙箱、安全风险</td></tr>
+  <tr><td>先规划再执行</td><td>规划把 agent 变回 workflow</td><td>计划错了全错</td></tr>
+</table>
+
+<h3>表三：五种上下文模式成本排序</h3>
+<table>
+  <tr><th>模式</th><th>成本</th><th>优先用</th></tr>
+  <tr><td>Observation Masking</td><td><strong>零</strong>（规则截断）</td><td>⭐⭐⭐ 最先用</td></tr>
+  <tr><td>Persistent Event Log</td><td>低（存盘）</td><td>⭐⭐⭐ 必做（合规）</td></tr>
+  <tr><td>Memory Offloading</td><td>低（存外部）</td><td>⭐⭐ 中期</td></tr>
+  <tr><td>Context Isolation</td><td>中（子 agent 跑一轮）</td><td>⭐⭐ 按需</td></tr>
+  <tr><td>Compaction</td><td>高（LLM 总结）</td><td>⭐ 最后用</td></tr>
+</table>
+
+<h2>SGRT 工程桥：把 Lecture06 落成一张设计清单</h2>
+<pre class="loop">【你的排查助手：完整配置】
+
+控制流（0038）
+  workflow 为主，agent 嵌在诊断点
+  → 采集/检测/求解/评估/写配置 = workflow
+  → 根因诊断 = agent
+
+Workflow 模式（0039）
+  Chaining    ✔ 排查主流程是链
+  Routing     ✔ 报警分流（分类器）
+  Parallel    ✔ Sectioning 并行查四项数据
+  Orchestrator ⚠️ 只用于"开放故障"场景，设 5 子任务上限
+  Evaluator    ⚠️ 只做客观检查（必填字段、出处），不做主观判断
+
+推理模式（0040-0041）
+  ReAct       ✔ 诊断阶段用
+  先规划       ✔ 排查前先生成计划，打印给人看，再并行执行
+  Reflexion   ✔ 用 RMS/历史结论做反馈，不做自我评估
+  CodeAct     ✘ 不用（Windows 环境、无沙箱、工具已结构化）
+
+上下文（0042-0043）
+  事件日志     ✔ 必做（审计 + 调试）
+  观察遮蔽     ✔ 工具返回摘要而非原始日志（最先做）
+  渐进披露     ✔ 技能写成 4 个文件按需读
+  隔离         ✔ 读长文档时派子 agent
+  压缩         ⚠️ 15 步内不需要
+
+案例对照（0044）
+  学 Pi：工具合并、树形上下文、三件套上下文管理
+  反 Pi：必须有权限检查
+
+【最后一条】
+  这套配置不是一次定好的
+  → 按 Lecture05 的铁律三：拿 30 个历史案例跑，看哪里错，再改
+  → 每一处"要不要这个机制"都由数据回答，不由直觉回答
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>三个维度</strong>：Workflow 设计（5）／推理行动设计（4）／上下文设计（5）。<br>
+<strong>判断一</strong>：规划把 agent 变回 workflow——决策集中一次，执行变可复现可并行可审查。<br>
+<strong>判断二</strong>：自评有害，外部反馈才有效；推理模型已内置自纠。<br>
+<strong>判断三</strong>：每个机制都可以不要，但要看「不要它的后果能不能承受」。<br>
+<strong>方法论</strong>：每一处取舍都用数据回答，不用直觉回答。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. Lecture06 的三个设计维度各有哪些模式？</p>
+  <details><summary>展开答案</summary><p>① Workflow 设计 5 种：Prompt Chaining（拆步骤）、Routing（分派）、Parallelization（并行/Sectioning+Voting）、Orchestrator-Workers（动态子任务）、Evaluator-Optimizer（迭代）；② 推理/行动设计 4 种：ReAct（行动前推理）、Reflexion（外部反馈反思）、CodeAct（代码作为动作）、先规划再执行（ReWOO/LLMCompiler）；③ 上下文设计 5 种：持久事件日志、记忆卸载、压缩、观察遮蔽、上下文隔离。</p></details>
+  <p>Q2. 为什么「先规划再执行」对医疗场景特别有价值？</p>
+  <details><summary>展开答案</summary><p>因为规划让 agent 变回 workflow——决策集中一次、执行按剧本走，因此可复现、可并行、可审查。对医疗场景最有价值的是「可审查」：计划能打印出来给人看，医生可以事前审核「它打算查哪些项、用什么参数、按什么顺序」，如果有不该做的操作可以事前拦截。这是 agent 能在医疗场景被接受的必要形式——不能让系统跑完 20 步才让人看到它做了什么。</p></details>
+  <p>Q3. 三张速查表里，上下文模式的成本排序是什么？为什么必须先做观察遮蔽？</p>
+  <details><summary>展开答案</summary><p>成本排序（低到高）：Observation Masking（零成本，规则截断）→ Persistent Event Log（低，存盘）→ Memory Offloading（低，存外部）→ Context Isolation（中，子 agent 跑一轮）→ Compaction（高，LLM 总结）。必须先做观察遮蔽因为它是唯一零成本的模式——不需要调 LLM、不需要额外基础设施，只改工具返回的内容（把 5000 行日志变成「共 5000 行，ERROR 12 行，前 3 条」），就能把最大膨胀源消掉。</p></details>
+  <p>Q4. 「每个机制都可以不要，但都有代价」——你该怎么判断某个机制要不要？</p>
+  <details><summary>展开答案</summary><p>不要问「要不要这个机制」，要问「不要它，出问题时的后果我能不能承受」。能承受就不要（省成本省延迟），不能承受就必须要（不管多麻烦）。例如：不要子 agent → 长文档时上下文爆掉 → 可承受（可以重开）→ 可以不要；不要权限检查 → 误改照射参数导致患者受照 → 不可承受 → 必须要有。这个判断法把抽象的技术取舍转成具体的风险判断。</p></details>
+</div>
+
+<h2>综合结业考试题</h2>
+<div class="takeaway">
+<strong>Lecture06 结业考试</strong>（把本讲当一个整体来考）：给一个真实的复杂流程，要求你划分 workflow/agent 段、为每段选设计模式、设计上下文管理方案、并对每个「不做的机制」给出后果分析。<br>
+<strong>→ 领取结业考试题</strong>：<a href="../综合题/Lecture06/结业考试-Lecture06-设计模式.html">结业考试-Lecture06-设计模式.md</a>（Markdown 作答制，作答区就在题目下方；答完对我说「评卷」）。
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture06 · 段六 总结 · Lecture06 收官</span><br>
+  ← 上一课 <a href="lecture06-0044-case-pi.html">0044 · 案例 Pi</a> · <a href="../index.html">课程大纲</a> · 回顾 <a href="lecture06-0038-workflows-vs-agents.html">0038 · workflow 与 agent 的分界</a><br>Lecture06 完结 → 回到 <a href="../index.html">课程大纲</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture06 课件《Agent Design Patterns and Scaffolds》· 源文件夹 week3-10.12 · p84-86<br>
+Lesson 0045 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

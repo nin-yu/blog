@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0036 — 编排与遥测：Temporal 持久执行与可观测性</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture05 · Lesson 0036</span>
+  <h1>编排与遥测：Temporal 持久执行与可观测性</h1>
+  <div class="meta">第 0036 课（Lecture05 第 5 课）· 来源：lecture05.pdf p90-122 · 来源文件夹：week3-10.7 · 本课成果：理解为什么 agent 需要持久执行、Temporal 的 Activity/Workflow 模型、重试应配置在哪一层，以及 evals+监控+持久执行这条分界线</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+为什么需要编排与遥测（p93）：<br>
+<strong>① agent 会运行很长时间，支撑它的基础设施必须可靠</strong><br>
+<strong>② 有日志和可观测工具才方便调试</strong><br>
+<strong>③ 这些是软件工程里"难教会的教训"，同样适用于 agent</strong><br><br>
+课件的点睛句（p122）：<strong>设置好 evals、监控、持久执行，正是"搭 agent"和"工程化 agent"的分界线</strong>。
+</div>
+
+<h2>一、为什么 agent 需要这套东西（p92-93）</h2>
+<pre class="loop">p92 引 METR 的 time-horizons 图：agent 能自主完成的任务时长在快速增长
+
+含义：
+  · agent 一次运行可能持续几十分钟到几小时
+  · 中途可能：进程崩溃、网络断开、API 限流、机器重启
+  · 如果从头重跑，代价极高
+
+课件原话（p93）：
+  Agents run for long periods of time, and the infra supporting
+  them must be reliable.
+</pre>
+<h2>二、Temporal 的执行模型（p95-98）</h2>
+<p>这是本课的核心概念，理解它就理解了"持久执行"：</p>
+<pre class="loop">三个角色：
+
+  Your Code (Client)
+       ↓ 发起
+  Server  ← 记录所有状态
+       ↓ 调度
+  Activity Workers / Workflow Workers
+
+两个基本单元：
+  Activity —— 功能单元，会失败
+  Workflow —— 把 activity 串起来
+
+关键：Workflow 的执行历史存在 Server 上
+     → 进程崩了，可以从历史恢复
+</pre>
+<h3>为什么这个模型对 agent 有意义</h3>
+<pre class="loop">设想一个 30 步的排查流程：
+
+【不用持久执行】
+  第 25 步时进程崩溃
+  → 前面的 24 步白做
+  → 重跑要重新调 24 次 API、花 24 次的钱和时间
+
+【用 Temporal】
+  第 25 步崩溃
+  → Server 上有前 24 步的历史
+  → 重启后从第 25 步继续
+  → 已完成的 activity 不重复执行
+
+→ 这是"durable execution"（持久执行）的核心价值
+</pre>
+<h2>三、重试机制（p107-111）</h2>
+<pre class="loop">课件讲了"重试不稳定的 activity"：
+
+  典型场景：调外部 API 偶发超时
+  → Activity 层面配重试策略（次数、退避、超时）
+  → 失败自动重试，不需要 Workflow 层处理
+
+对 agent 的意义：
+  工具调用失败是常态（网络、限流、临时错误）
+  → 不该让模型来决定"要不要重试"
+  → 应该在基础设施层做（确定性、可配置）
+  
+这和 Lecture04 的"Recovery 失败模式"直接对应：
+  模型倾向于"重试同一个调用"
+  正确的做法是在 activity 层配置退避重试
+</pre>
+<h2>四、服务端计时（p112-117）</h2>
+<pre class="loop">课件演示了"服务端计时"：
+
+  不用自身的 sleep/定时器
+  而是由 Server 记录"什么时候该继续"
+  → 即使 worker 进程重启，定时仍然有效
+
+为什么重要：
+  agent 可能"等待 30 分钟后再检查"
+  如果这个等待在你的进程里，进程一重启就丢了
+  → 放在 Server 侧，等待状态是持久的
+</pre>
+<h2>五、三个可观测性框架（p118-121）</h2>
+<table>
+  <tr><th>工具</th><th>定位</th></tr>
+  <tr><td><strong>MLflow</strong></td><td>实验追踪、指标记录（Databricks 生态）</td></tr>
+  <tr><td><strong>LangSmith</strong></td><td>LangChain 生态的追踪与评测</td></tr>
+  <tr><td><strong>LangFuse</strong></td><td>开源的可观测平台</td></tr>
+</table>
+<p>它们的共同作用：<strong>把 agent 的执行过程变成可查询的轨迹</strong>。</p>
+<pre class="loop">可观测性在 agent 里具体要看什么（p125 的清单）：
+  · Trace 模型调用
+  · Trace 工具调用
+  · Trace 状态变化
+  · Trace 错误
+  · 超时 / 重试上限 / 执行预算
+  · 记录输出、诊断失败
+  · 监控系统状态
+
+→ 前四项是"记录发生了什么"
+→ 后三项是"控制与预警"
+</pre>
+<h2>六、Recap（p122）</h2>
+<blockquote>
+· 编排让 agent 保持可靠<br>
+· 可观测性让调试和监控成为可能<br>
+· 把软件工程的最佳实践和工具搬过来，同样适用于 agent 工程<br>
+· <strong>设置好 evals、监控、持久执行，正是"搭 agent"和"工程化 agent"的分界线</strong>
+</blockquote>
+
+<h2>SGRT 工程桥：你需要多少编排能力</h2>
+<pre class="loop">【先说结论：你大概率不需要 Temporal】
+
+判断依据：
+  · 如果你的排查助手一次运行 < 2 分钟
+  · 且失败后重跑成本可接受
+  → 不需要持久执行
+
+【什么情况下需要】
+  · 如果排查要跑几十步、耗时 > 10 分钟
+  · 或者要"等条件满足再继续"（如等设备空闲）
+  · 或者要跨天（今晚的检查明早继续）
+  → 这时持久执行有价值
+
+【你现在该做的三件事（不需要 Temporal）】
+
+① 结构化日志（最基础，也最重要）
+   每次 agent 运行记录：
+     - 输入（用户问题）
+     - 每一步的 action + observation
+     - 最终结论
+     - 耗时、token 数
+   → 存成 JSON，一天一个文件
+   → 这就是你的"事件日志"，也是合规要求
+
+② 显式的超时与预算
+   · 单次工具调用超时（如 30s）
+   · 整个排查的总时长上限（如 5 分钟）
+   · 最大轮数上限（如 15 轮）
+   → 防止失控
+
+③ 可恢复的检查点
+   每完成几个关键步骤，把 state 存一份
+   → 崩了能从这里继续
+   → 不需要 Temporal，一个 JSON 文件就够
+
+【从 Temporal 学到的思想】
+  "Activity 会失败，Workflow 负责串联"
+  → 即使不用它的产品，也该这样划分你的代码：
+     可失败的单元（查数据、调模型）
+     与串联逻辑（决定下一步）
+  → 这样重试策略能加在正确的层次上
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>为什么</strong>：agent 运行时间长，基础设施必须可靠；日志和可观测是调试前提。<br>
+<strong>Temporal</strong>：Activity（会失败）+ Workflow（串联）+ Server 存执行历史 → 崩溃可恢复。<br>
+<strong>重试</strong>：在 activity 层配置退避重试，不要让模型决定"要不要重试"。<br>
+<strong>三个可观测工具</strong>：MLflow／LangSmith／LangFuse。<br>
+<strong>分界线</strong>：evals + 监控 + 持久执行 = 搭 agent 与工程化 agent 的区别。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 为什么 agent 特别需要编排和持久执行？</p>
+  <details><summary>展开答案</summary><p>因为 agent 一次运行可能持续几十分钟到几小时（METR 显示 agent 能自主完成的任务时长在快速增长），过程中可能遇到进程崩溃、网络断开、API 限流、机器重启。如果每次都从头重跑，代价极高——重跑 24 步要重新调 24 次 API，既花钱又费时。持久执行让崩溃后能从已完成的位置继续。</p></details>
+  <p>Q2. Temporal 的 Activity 和 Workflow 分别是什么？Server 起什么作用？</p>
+  <details><summary>展开答案</summary><p>Activity 是功能单元（会失败，如调外部 API）；Workflow 把 activity 串起来定义流程。Server 的作用是持久化记录 Workflow 的执行历史——进程崩溃后可以从这份历史恢复执行，已完成的 activity 不会重复执行。这就是 durable execution 的核心机制。</p></details>
+  <p>Q3. 为什么重试应该在 activity 层配置，而不是让模型决定？</p>
+  <details><summary>展开答案</summary><p>因为工具调用失败是常态（网络、限流、临时错误），应该是确定性的、可配置的基础设施行为，而不是模型的主观判断。模型倾向于"重试同一个失败的调用"（Lecture04 讲的 Recovery 失败模式），既无退避也不换方法。在 activity 层配置重试次数、退避策略、超时，既可靠又可审计，模型只需处理"重试后仍然失败"的情况。</p></details>
+  <p>Q4. 你现在需要 Temporal 吗？不需要的话该做哪三件事？</p>
+  <details><summary>展开答案</summary><p>大概率不需要——如果排查一次运行 < 2 分钟且失败重跑成本可接受。只有跑几十步、耗时 >10 分钟、要等条件满足、或跨天继续时才需要。该做三件事：① 结构化日志（每步 action+observation、最终结论、耗时 token，存 JSON）——这既是调试基础也是合规要求；② 显式超时与预算（单次工具 30s、总时长 5 分钟、最大 15 轮）；③ 可恢复检查点（每几个关键步骤存 state 快照），一个 JSON 文件就够，不需要引入 Temporal。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture05 · 段四 编排与遥测</span><br>
+  ← 上一课 <a href="lecture05-0035-agent-harnesses.html">0035 · Agent Harness 对比</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture05-0037-best-practices.html">0037 · 四条工程铁律（收官）</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture05 课件《Frameworks & Orchestration》· 源文件夹 week3-10.7 · p90-122；Temporal、MLflow、LangSmith、LangFuse、METR time-horizons<br>
+Lesson 0036 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

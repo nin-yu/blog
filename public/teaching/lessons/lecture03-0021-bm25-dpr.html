@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0021 — 检索器：BM25 与 DPR，以及怎么评估</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture03 · Lesson 0021</span>
+  <h1>检索器：BM25 与 DPR，以及怎么评估</h1>
+  <div class="meta">第 0021 课（Lecture03 第 4 课）· 来源：lecture03.pdf p39-48 · 来源文件夹：week2-9.30 · 本课成果：掌握 BM25 的三要素、DPR 的训练方式，以及四个检索指标的适用场景与选错指标的后果</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+三种检索器（p40），按"匹配什么"区分：<br><br>
+<strong>BM25（词重叠）</strong>——最强的传统方法，至今仍广泛使用（p41）<br>
+<strong>DPR（向量检索）</strong>——语义匹配，用 BERT 编码成向量比相似度（p43-44）<br>
+<strong>ColBERT（晚期交互）</strong>——按 token 打分，兼顾精度和速度（下一课）<br><br>
+评估用 <strong>Hit@k / MRR@k / Recall@k / nDCG@k</strong>（p45-46）。
+</div>
+
+<h2>一、BM25（p41-42）</h2>
+<pre class="loop">评分公式：
+  score(D,Q) = Σᵢ IDF(qᵢ) · [ f(qᵢ,D)·(k₁+1) / (f(qᵢ,D) + k₁·(1-b+b·|D|/avgdl)) ]
+
+三个组成部分：
+  ① IDF(qᵢ) —— 词 qᵢ 有多稀有（ln[(N-n+0.5)/(n+0.5)]）
+     越稀有越重要（"的"几乎没用，"标定"很有信息量）
+  ② 词频 f(qᵢ,D) —— 这个词在文档里出现几次
+     但有饱和：出现 10 次不比出现 5 次重要一倍（k₁ 控制）
+  ③ 文档长度归一化 —— |D|/avgdl
+     b 参数控制"长文档惩罚"的强度
+</pre>
+<p>课件给了两个关键直觉（p42）：</p>
+<ul>
+  <li><strong>IDF 对比</strong>：稀有词权重高，常见词权重低</li>
+  <li><strong>词频饱和</strong>：同一个词出现次数增加到一定程度后，收益递减</li>
+</ul>
+<pre class="loop">为什么 BM25 至今仍广泛使用：
+  · 无需训练
+  · 精确术语匹配极强（错误码、型号、人名）
+  · 倒排索引查询极快（62ms 量级，p54）
+  · 可解释（能说清为什么这个文档得分高）
+</pre>
+<h2>二、DPR：稠密段落检索（p43-44）</h2>
+<pre class="loop">做法：
+  · 用两个 BERT 分别编码 query 和 passage
+  · 相似度 = 两个向量的内积
+  · 用 MIPS（最大内积搜索）找 top-k
+
+训练：
+  · 对比学习（contrastive loss）
+  · in-batch negatives + BM25 挖出的 hard negatives
+  · 论文发现：1000 对 QA 数据就足以打败 BM25（p48）
+</pre>
+<p>课件给的两个重点结论（p47-48）：</p>
+<blockquote>
+· <strong>DPR 在 5 个数据集中的 4 个上打败 BM25</strong><br>
+· <strong>1000 对 QA 就够</strong>；不需要额外预训练，端到端也超过 ORQA 和 REALM
+</blockquote>
+
+<h2>三、怎么评估检索器（p45-46）——本课重点</h2>
+<pre class="loop">Hit@k：top-k 里有没有任何相关段落（有=1，无=0）
+  Hit@k = (1/Q) Σ 1[R_q ∩ Top_k(q) ≠ ∅]
+  → 最粗的指标：只要捞到一个就算成功
+  → 不关心位置
+
+Failed@k = 1 - Hit@k
+  → 完全没捞到的比例
+
+MRR@k：第一个相关段落的位置的倒数
+  MRR@k = (1/Q) Σ 1/rank_q
+  → 排第 1 得 1.0，排第 2 得 0.5，排第 3 得 0.33
+  → 不在 top-k 里算 0
+  → 关心"第一个相关的排多前"
+
+Recall@k：捞到的相关段落 / 全部相关段落
+  Recall@k = (1/Q) Σ |R_q ∩ Top_k(q)| / |R_q|
+  → 关心"该捞的是不是都捞到了"
+
+nDCG@k：按位置打折的排序质量
+  DCG@k = Σ rel_i / log₂(i+1)
+  → 排越后权重越低
+  → 再用理想排序的 DCG 归一化
+  → 最全面，但最复杂
+</pre>
+<table>
+  <tr><th>指标</th><th>关心什么</th><th>什么时候用</th></tr>
+  <tr><td>Hit@k</td><td>有没有捞到</td><td>粗筛，快速看行不行</td></tr>
+  <tr><td>MRR@k</td><td>第一个相关的排多前</td><td>只要一个正确答案的场景（问答）</td></tr>
+  <tr><td>Recall@k</td><td>相关的是否都捞到</td><td>多段落答案（综述、多文档综合）</td></tr>
+  <tr><td>nDCG@k</td><td>排序整体质量</td><td>需要多级相关性判断时</td></tr>
+</table>
+
+<h2>四、为什么选对指标很重要</h2>
+<pre class="loop">假设检索目标是"让下游生成答案更准"：
+
+  如果答案只要有 1 个正确段落 → 看 Hit@k 或 MRR@k
+  如果答案需要综合 5 个段落 → 必须看 Recall@5
+                              Hit@5 会骗你
+                              （捞到 1 个也算 1）
+
+这个错误很常见：
+  系统报 Hit@10 = 95%，看起来很好
+  但改成需要综合多段的任务，实际 Recall@10 = 40%
+  → 60% 的答案缺证据
+</pre>
+<h2>SGRT 工程桥：你的场景该用哪种检索器、看哪个指标</h2>
+<pre class="loop">【检索器选择】
+
+查具体记录型 → BM25 优先
+  "TX-204 上次标定时间" → 型号是精确字面
+  → BM25 直接命中，embedding 可能匹配到别的型号
+
+查概念/现象型 → DPR 优先
+  "残差升高一般有哪些原因" → 语义匹配
+  → BM25 可能因为用词不同而漏掉
+
+混合 → 两个都跑再融合（0020 讲过）
+
+【指标选择】
+
+你的场景多数是"综合多段"：
+  排查建议需要综合：图像质量 + 呼吸信号 + 机械状态 + 历史案例
+  → 必须看 Recall@5
+  → 只看 Hit@5 会严重高估
+
+【一个实测建议】
+  建 30 个真实查询的评测集：
+    每个查询标注"哪些段落是对的"
+    算 Recall@5 和 MRR@5
+  → 这两个数字直接决定下游诊断准确率的上限
+  → 检索上限 40%，后面再优化生成也没用
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>BM25</strong>：IDF × 词频饱和 × 长度归一化；无需训练、精确匹配强、查询快。<br>
+<strong>DPR</strong>：双 BERT 编码 + 内积；1000 对 QA 就够训练；5 个数据集赢 4 个。<br>
+<strong>四个指标</strong>：Hit@k（有没有）／MRR@k（排多前）／Recall@k（捞全没）／nDCG@k（排序质量）。<br>
+<strong>易犯错</strong>：需要综合多段却只看 Hit@k，会严重高估。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. BM25 的三个组成部分是什么？各自的作用？</p>
+  <details><summary>展开答案</summary><p>① IDF(qᵢ) 词稀有度——越稀有的词权重越高（"标定"比"的"有信息量）；② 词频 f(qᵢ,D)——词在文档中出现几次，但有饱和控制（出现 10 次不比 5 次重要一倍，k₁ 参数控制）；③ 文档长度归一化 |D|/avgdl——b 参数控制长文档惩罚的强度，防止长文档因为词多而虚高。</p></details>
+  <p>Q2. Hit@k 和 Recall@k 有什么本质区别？什么时候看后者？</p>
+  <details><summary>展开答案</summary><p>Hit@k 只关心"top-k 里有没有任何相关段落"（有=1），不关心有几个、也不关心位置；Recall@k 关心"捞到的相关段落占全部相关段落的多少"。当任务需要综合多个段落时（如综述、多文档综合、需要多源证据的排查）必须看 Recall@k——此时 Hit@k 会严重高估，因为捞到 1 个就算成功。</p></details>
+  <p>Q3. MRR@k 的值域和含义是什么？为什么它适合问答场景？</p>
+  <details><summary>展开答案</summary><p>MRR@k 是"第一个相关段落位置的倒数"的平均值，值域 0-1：排第 1 得 1.0、第 2 得 0.5、第 3 得 0.33，不在 top-k 里算 0。适合问答场景是因为问答通常只有一个正确答案，用户关心的是"这个答案排在多前"——排第 1 说明检索器很确信，排第 8 则可能要翻很久。</p></details>
+  <p>Q4. 你的排查场景为什么必须看 Recall@5 而不是 Hit@5？</p>
+  <details><summary>展开答案</summary><p>因为排查建议需要综合多个来源的证据：图像质量、呼吸信号、机械状态、历史案例，缺任何一类都可能导致误判。Hit@5 只要捞到其中一个就算成功，会显示 95% 的高分；但实际 Recall@5 可能只有 40%，意味着 60% 的排查缺少证据。而检索上限直接决定下游诊断准确率的上限——检索只有 40%，后面优化生成也没用。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture03 · 段三 检索器</span><br>
+  ← 上一课 <a href="lecture03-0020-contextual-retrieval.html">0020 · 上下文检索</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture03-0022-colbert.html">0022 · ColBERT 与混合检索</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件《RAG + Agents》· 源文件夹 week2-9.30 · p39-48；BM25、DPR (Karpukhin et al. 2020, arXiv:2004.04906)<br>
+Lesson 0021 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

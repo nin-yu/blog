@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0062 — Few-shot 优化：示例顺序、推理自举与 DSPy 采样</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture09 · Lesson 0062</span>
+  <h1>Few-shot 优化：示例顺序、推理自举与 DSPy 采样</h1>
+  <div class="meta">第 0062 课（Lecture09 第 2 课）· 来源：lecture09.pdf p12-22 · 来源文件夹：week5-10.21 · 本课成果：理解 few-shot 优化的两条主线（示例顺序的敏感性、推理链自举），掌握 DSPy 用拒绝采样自动挑 few-shot 的思路</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+Context Optimization 的第一条线：<strong>Few-shot 优化</strong>。<br><br>
+两个反直觉的发现：<br>
+<strong>① 示例的顺序会显著影响结果</strong>（p15-18）——同样的例子换个顺序，准确率能差很多。<br>
+<strong>② 标注示例通常没有推理过程</strong>（p19）——但我们又需要 CoT，所以要<strong>自举</strong>（bootstrap）出推理链。<br><br>
+DSPy 的做法（p21）：<strong>不用微调，用拒绝采样选出成功的推理，再在 devset 上搜索最佳 few-shot 组合。</strong>
+</div>
+
+<h2>一、Few-shot 是什么，为什么能优化（p13-14）</h2>
+<pre class="loop">Few-shot prompting：
+  在 prompt 里放几个「输入 → 输出」的例子，让模型照着做
+
+  例：
+    Q: 2+2=?      A: 4
+    Q: 5×3=?      A: 15
+    Q: 英国首都?   A: 伦敦
+    Q: 法国首都?   A: ← 模型在这里补
+</pre>
+<p>课件引 GPT-3 论文（p14）说明 few-shot 早在 2020 年就是核心能力。但<strong>能 few-shot ≠ few-shot 用得好</strong>——选哪些例子、什么顺序、要不要带推理，都是优化空间。</p>
+
+<h2>二、示例顺序居然影响这么大（p15-18）</h2>
+<p>Lu et al. 2022 的论文标题就很直白：《Fantastically Ordered Prompts and Where to Find Them》。</p>
+<pre class="loop">实验设置（p15）：
+  · 在训练集上试很多种 prompt 顺序
+  · 测这些顺序对 probing set 上标签的影响
+  · 有意思的是：他们扔掉了 probing set 的真实标签
+    → 说明他们找的不是"最准的顺序"，而是"最确定的顺序"</pre>
+<p>关键机制（p17）：<strong>局部熵（Local Entropy）</strong>。</p>
+<pre class="loop">高局部熵：模型对某个样本的输出概率分散
+  例："the ending is universally panned" → P(负面)=0.55, P(正面)=0.45
+      在 probing set 上平均后，logprobs 分布很宽
+
+低局部熵：模型输出很确定
+  例：同一个样本 → P(负面)=0.95, P(正面)=0.05</pre>
+<p>结论：<strong>有些顺序能让模型更"确定"，有些让模型更"犹豫"</strong>。论文的方法是找让模型最确定的那个顺序。</p>
+<div class="takeaway">
+这一页的工程含义很重要：<strong>如果你随手排 few-shot 例子，你的系统可能因为"顺序不好"而表现差——但你会以为是模型能力不够。</strong><br>
+这也解释了为什么同一个 prompt 换个人写，效果差很多。
+</div>
+
+<h2>三、Bootstrap Reasoning：没有推理链怎么办（p19-20）</h2>
+<pre class="loop">问题（p19）：
+  · 我们知道 CoT（思维链）很重要
+  · 但标注的 few-shot 例子通常只有「问题 → 答案」，没有推理过程
+
+需求：想要带推理的示例，但没有
+
+方案：Bootstrap（自举）——自己造推理链
+
+  STaR 的做法（p20）：
+    1. 让模型对训练问题生成「推理 + 答案」
+    2. 如果答案对了 → 保留这条推理作为示例
+    3. 用保留下来的示例去训下一轮
+    → 逐步积累"自己造的高质量推理"</pre>
+
+<h2>四、DSPy：不用微调，拒绝采样就行（p21-22）</h2>
+<p>课件明确对比了 STaR 和 DSPy 的差异：</p>
+<blockquote>
+<strong>「我们甚至不需要微调；只要拒绝采样出成功的推理即可。」</strong>
+</blockquote>
+<pre class="loop">DSPy 的流程（p21）：
+
+  ┌──────────────────────────────────────────┐
+  │ 训练输入                                  │
+  └────────────┬─────────────────────────────┘
+               ▼
+         ┌──────────┐
+         │   Model  │ ──► 生成「推理 + 输出」
+         └──────────┘
+               ▼
+         ┌──────────┐
+         │  Metric  │ ──► 打分（对不对）
+         └──────────┘
+          ┌────┴────┐
+        Keep      Discard
+          │           │
+          ▼           ▼
+     保留这条推理   丢掉
+          │
+          ▼
+  ┌────────────────────────────────┐
+  │ 在 devset 上试各种组合，          │
+  │ 找出表现最好的 few-shot 示例集     │
+  └────────────────────────────────┘</pre>
+<p><strong>和 STaR 的关键差别</strong>：STaR 把好推理拿去<strong>微调</strong>（进权重），DSPy 把好推理拿去<strong>当 prompt 里的示例</strong>（进上下文）。后者零训练成本。</p>
+
+<h2>五、Context Optimization 第一部分的总结（p69 前半）</h2>
+<blockquote>
+<strong>Fewshot Optimization Takeaway：自举推理/输出 + 搜索有用的 few-shot 示例，是一个强有力的 prompt 优化模式。</strong>
+</blockquote>
+<p>拆开就是两件事：</p>
+<ol>
+  <li><strong>自举</strong>——用模型自己生成推理链，用 metric 筛（替代人工标注）</li>
+  <li><strong>搜索</strong>——在验证集上试不同组合，选最好的（替代手工排序）</li>
+</ol>
+
+<h2>SGRT 工程桥：你手里的"标注"其实很便宜</h2>
+<pre class="loop">【你的场景】
+  有大量历史案例，但大多只有「现象 → 最终处理」，没有「推理过程」
+
+  ❌ 直接拿来当 few-shot：
+     示例 = "残差 2.3mm → 重新标定"
+     模型学不到"为什么"
+
+  ✔ Bootstrap 自举：
+     1. 拿 50 个历史案例，让模型生成「推理 + 结论」
+     2. 用真实的历史结论当 metric 筛：
+        模型说"呼吸基线漂移"，历史结论也是 → Keep
+        模型说"图像质量"，历史结论是"呼吸" → Discard
+     3. 保留的推理链作为 few-shot 示例
+     
+  【关键】你不需要人工写推理，只需要有"正确答案"来筛
+          而历史 case 的最终处理结论，天然就是答案
+
+【顺序也不能随手排】
+  把"呼吸类案例"和"机械类案例"混排 vs 分组排，效果可能差很多
+  → 用 20 个 case 的验证集实测，别靠直觉
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>Few-shot 能优化</strong>：顺序影响很大（局部熵），别随手排。<br>
+<strong>Bootstrap</strong>：没有推理链就用模型生成 + metric 筛选，自己造。<br>
+<strong>DSPy</strong>：拒绝采样出的成功推理直接当 few-shot 示例，不用微调。<br>
+<strong>两步法</strong>：自举（造样本）+ 搜索（挑组合）——这是 prompt 优化的通用骨架。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. "示例顺序影响结果"这个发现，工程上意味着什么？</p>
+  <details><summary>展开答案</summary><p>意味着如果你随手排 few-shot 例子，系统可能因为顺序不好而表现差，但你会误以为是模型能力不够。同一个 prompt 换个人写效果差很多，原因可能就在顺序。工程做法是用验证集实测不同顺序，或用 DSPy 这类工具自动搜索，而不是靠直觉。</p></details>
+  <p>Q2. 高局部熵和低局部熵分别说明什么？为什么论文要找低熵的顺序？</p>
+  <details><summary>展开答案</summary><p>高局部熵：模型对输出概率分布分散、犹豫（如 P=0.55 vs 0.45）。低局部熵：模型输出很确定（如 P=0.95 vs 0.05）。找低熵顺序是因为"确定"通常意味着模型真的抓住了任务模式，而不是在边界上摇摆；论文甚至不用 probing set 的真实标签，只按确定性来选，说明他们找的是"最稳的顺序"而非"碰巧最准的顺序"。</p></details>
+  <p>Q3. Bootstrap Reasoning 解决什么问题？STaR 和 DSPy 的做法有什么关键差别？</p>
+  <details><summary>展开答案</summary><p>解决"想用 CoT 但标注示例只有问题答案、没有推理过程"的问题——用模型自己生成推理链，答案对了就保留。关键差别：STaR 把好推理拿去微调（进权重，有训练成本）；DSPy 把好推理直接当 prompt 里的 few-shot 示例（进上下文，零训练成本）。</p></details>
+  <p>Q4. 在你的场景里，怎么用历史 case 做 bootstrap？关键是什么？</p>
+  <details><summary>展开答案</summary><p>拿一批有明确最终结论的历史案例，让模型对每个案例生成"推理 + 根因判断"，然后用真实历史结论当 metric 筛——判断一致就保留推理链作为 few-shot 示例，不一致就丢弃。关键点是：你不需要人工撰写推理过程，只需要有正确答案来筛选，而历史案例的最终处理结论天然就是答案。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture09 · 段二 Context 优化 · few-shot</span><br>
+  ← 上一课 <a href="lecture09-0061-conditions-for-optimization.html">0069 · 什么时候该优化</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture09-0063-reflective-optimization.html">0071 · 反思式优化：OPRO/MIPRO/TextGrad/GEPA</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture09 课件《Optimization》· 源文件夹 week5-10.21 · p12-22；参考 Fantastically Ordered Prompts (Lu et al. 2022)、STaR (arXiv:2203.14465)、DSPy (arXiv:2310.03714)<br>
+Lesson 70 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0061 — 什么时候该优化：三支柱与五个判断条件</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture09 · Lesson 0061</span>
+  <h1>什么时候该优化：三支柱与五个判断条件</h1>
+  <div class="meta">第 0061 课（Lecture09 第 1 课）· 来源：lecture09.pdf p7-11 · 来源文件夹：week5-10.21 · 本课成果：理解优化的三根支柱（数据+系统+评估）缺一不可，能判断自己的场景是否具备优化条件，并知道优化能带来哪五种收益</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件开篇一句话（p4）：<strong>「优化让我们通过数据和评估来表达意图，并改进系统。」</strong><br><br>
+三支柱（p8）：<strong>Data + System/Model + Evaluation/Metric —— 要优化一个 AI 系统，三者缺一不可。</strong><br><br>
+什么时候该优化（p10）：<strong>你有适合自己领域的数据和评估</strong>，且<strong>需求难以完全写进 prompt</strong>。
+</div>
+
+<h2>为什么先问"要不要优化"</h2>
+<p>课件 p9 直接把这个问题摆出来：</p>
+<blockquote>
+<strong>「我们真的还需要折腾 prompt 吗？模型不是已经够强了吗？」</strong>
+</blockquote>
+<p>这个问题很实际——现在模型很强，随手写个 prompt 就能跑。但课件的意思是：<strong>随手能跑 ≠ 达到你的领域要求</strong>。差的那部分，就是优化要填的。</p>
+
+<h2>三支柱（p8）</h2>
+<pre class="loop">┌─────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│    Data     │  │  System / Model  │  │ Evaluation+Metric│
+├─────────────┤  ├──────────────────┤  ├──────────────────┤
+│ 训练数据     │  │ 语言模型          │  │ 通过率            │
+│ Rollouts    │  │ Compound AI 系统  │  │ 精确匹配          │
+│ 演示样例     │  │ Workflow         │  │ LLM Judge         │
+│ 人类反馈     │  │ Agentic 系统      │  │ 成本/延迟         │
+└─────────────┘  └──────────────────┘  └──────────────────┘
+        ↓                  ↓                     ↓
+               三根支柱缺一不可
+</pre>
+<p>课件的结论句：<strong>「To optimize an AI System you need all three!」</strong></p>
+<p>三者的角色:</p>
+<table>
+  <tr><th>支柱</th><th>作用</th><th>缺了会怎样</th></tr>
+  <tr><td><strong>Data</strong></td><td>提供"什么算对"的样例和反馈</td><td>无从优化，只能靠猜</td></tr>
+  <tr><td><strong>System/Model</strong></td><td>被优化的对象（prompt、workflow、权重）</td><td>没有可改的东西</td></tr>
+  <tr><td><strong>Eval/Metric</strong></td><td>提供"改好了没有"的量化信号</td><td>优化变成盲改，可能越改越差</td></tr>
+</table>
+
+<h2>五个判断条件（p10）——本课考点</h2>
+<pre class="loop">①「你有适合本领域的数据和评估」
+   → 通用 benchmark 不算，必须是你自己领域的
+
+②「示例和反馈能传达那些难以在 prompt 里完整表达的要求」
+   → 有些东西说不清，但举例子能说清
+     例："标定合格的图像长什么样"——文字描述很难，给 50 张好图和 50 张坏图很简单
+
+③「有时恰当的评估比 prompt 更能表达意图」
+   → 与其写"请给出高质量答案"，不如定义"什么算高质量"
+
+④「系统包含许多复杂组件，手动调不动」
+   → 单点 prompt 可以手调；10 个环节的 pipeline 手调是组合爆炸
+
+⑤（隐含）你有可量化的 metric
+   → 没有 metric 就没有优化，只有"感觉好点了"</pre>
+
+<h2>五种收益（p11）</h2>
+<table>
+  <tr><th>收益</th><th>课件说法</th><th>对应条件</th></tr>
+  <tr><td><strong>Greater reliability</strong> 更可靠</td><td>减少重复出现的错误，提升跨任务一致性</td><td>有 eval 能发现"重复错误"</td></tr>
+  <tr><td><strong>Domain adaptation</strong> 领域适配</td><td>在专业任务、工作流、要求上提升</td><td>有领域数据</td></tr>
+  <tr><td><strong>Lower cost and latency</strong> 降本降延迟</td><td>用更小的模型、更短的 prompt、更少的工具调用维持质量</td><td>有质量和成本的联合 metric</td></tr>
+  <tr><td><strong>Learning from experience</strong> 从经验学习</td><td>把成功轨迹和失败反馈转成持久的改进</td><td>有轨迹数据</td></tr>
+  <tr><td><strong>Adaptability</strong> 适应性</td><td>模型/工具/任务需求变化时能调整</td><td>优化流程可重复跑</td></tr>
+</table>
+
+<h2>三种优化对象（本讲路线图）</h2>
+<pre class="loop">Condition → Context/Prompt → Weights → Which to Use? → Agents
+
+① Context Optimization（p12-69）——改 prompt：few-shot、指令、示例
+② Weight Optimization（p70-104）——改权重：SFT、RL、on-policy 蒸馏
+③ Optimization with Agents（p105-116）——让 agent 自己优化自己
+④ Which Strategy to Use（p117-122）——怎么选
+</pre>
+
+<h2>SGRT 工程桥：你的场景满足条件吗</h2>
+<pre class="loop">逐条对：
+
+① 有领域数据和评估？
+   ✔ 有。两年的排查日志、标定记录、case 库
+   ⚠️ 但有"评估"吗？—— 有客观量（残差 RMS、角点识别率）
+      但"这个诊断结论对不对"缺少标注
+   → 这是最需要补的一块
+
+② 有难以在 prompt 里表达的要求？
+   ✔ 大量。"什么样的残差分布算异常"文字很难说清，
+      但给工程师标注一批"正常/异常"的残差图很容易
+
+③ 恰当的评估比 prompt 更能表达意图？
+   ✔ 是。"请准确判断根因"这句话没用；
+      "在 30 个历史 case 上，根因判断准确率 ≥ 80%" 有用
+
+④ 系统复杂、手动调不动？
+   ✔ 是。从"读数据→判断→建议"有多个环节，
+      每个环节的 prompt 互相影响
+
+⑤ 有可量化 metric？
+   ⚠️ 部分有。需要定义"诊断准确率"和"建议采纳率"
+
+【结论】满足优化条件，但前提是先建评估集
+        —— 这是三支柱里你缺的那一根
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>定义</strong>：优化 = 用数据和评估来表达意图并改进系统。<br>
+<strong>三支柱</strong>：Data + System + Eval，缺一不可。<br>
+<strong>五条件</strong>：有领域数据与评估／要求难以写进 prompt／评估更能表达意图／系统复杂手动调不动／有可量化 metric。<br>
+<strong>五收益</strong>：更可靠／领域适配／降本降延迟／从经验学习／适应性。<br>
+<strong>前提</strong>：没有 eval 就没有优化，只有"感觉好点了"。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 优化 AI 系统的三根支柱是什么？缺一根会怎样？</p>
+  <details><summary>展开答案</summary><p>① Data（训练数据、rollouts、演示样例、人类反馈）——缺了无从优化只能靠猜；② System/Model（语言模型、compound AI 系统、workflow、agentic 系统）——缺了没有可改的对象；③ Evaluation+Metric（通过率、精确匹配、LLM Judge、成本延迟）——缺了优化变成盲改，可能越改越差。三者缺一不可。</p></details>
+  <p>Q2. 课件给的"该不该优化"的判断条件里，为什么强调"适合本领域的数据和评估"而不只是"有数据"？</p>
+  <details><summary>展开答案</summary><p>因为优化的目标是改善你特定领域的需求。通用 benchmark 上的数据无法反映你的场景要求，用它优化出来的系统在领域上可能毫无改进甚至变差。必须是你的领域数据 + 你的领域评估标准，优化才指向正确的方向。</p></details>
+  <p>Q3. "示例和反馈能传达那些难以在 prompt 里完整表达的要求"——举个你的场景例子。</p>
+  <details><summary>展开答案</summary><p>比如"什么样的残差分布算异常"。用文字描述需要写一大堆阈值和条件，还不一定说全；但给工程师标注 50 张正常残差图和 50 张异常图，他们几秒钟就能判断，而这些标注直接把"要求"变成了可学习的信号。类似地"什么算好的排查建议"也是同理。</p></details>
+  <p>Q4. 在你的场景里，三支柱哪一根最缺？该怎么补？</p>
+  <details><summary>展开答案</summary><p>最缺的是 Evaluation/Metric——有数据和系统，但"诊断结论对不对"缺少标注。补法：从两年排查日志里挑 30 个有明确结论的历史 case，人工标注"当时的根因判断是否正确"，形成诊断准确率的评估集。有了这个才能在优化任何 prompt 时知道是不是真的改好了。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture09 · 段一 条件</span><br>
+  <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture09-0062-fewshot-optimization.html">0070 · Few-shot 优化</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture09 课件《Optimization》· 源文件夹 week5-10.21 · p7-11<br>
+Lesson 69 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

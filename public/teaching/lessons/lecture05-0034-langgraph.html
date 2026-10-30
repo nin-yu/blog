@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0034 — LangGraph：State、Node、Edge</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture05 · Lesson 0034</span>
+  <h1>LangGraph：State、Node、Edge</h1>
+  <div class="meta">第 0034 课（Lecture05 第 3 课）· 来源：lecture05.pdf p52-77 · 来源文件夹：week3-10.7 · 本课成果：掌握 LangGraph 三概念的职责、State 中转为何解耦也会膨胀、工作流与 agent 形态的边有何不同，以及它和 DSPy 的分工</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+LangGraph 的三个概念（p53、p76）：<br><br>
+<strong>State 状态</strong>——图共享的工作区，一个会被图修改的对象<br>
+<strong>Node 节点</strong>——读写 state 的函数<br>
+<strong>Edge 边</strong>——定义节点之间的控制流；条件边可以实现分支工作流<br><br>
+一句话：<strong>LangGraph 把"共享状态 + 图"作为编排的抽象</strong>。你和 DSPy 的差别是——DSPy 关心"契约与优化"，LangGraph 关心"状态怎么流动"。
+</div>
+
+<h2>一、State：共享工作区（p53）</h2>
+<blockquote>
+<strong>State 是整个图共享的工作区。你可以把它理解成一个图会去修改的对象。</strong>
+</blockquote>
+<pre class="loop">State 的定位：
+  · 所有节点都能读它
+  · 节点返回的更新会被合并进去
+  · 它贯穿整个图的执行生命周期
+
+State 里通常放什么（p58 提示"可以是消息历史"）：
+  · messages      对话历史
+  · 中间结果      检索到的文档、工具返回值
+  · 控制变量      计数器、当前阶段
+  · 最终输出      待返回的答案
+</pre>
+<p>这个设计的关键：<strong>节点之间不直接传递数据，而是通过 State 中转</strong>。</p>
+<pre class="loop">直接传递（不用 State）：
+  A 的返回值直接传给 B
+  → A、B 强耦合，B 只能拿到 A 的输出
+  → 加一个 C 要读 A 的输出？得再传一次
+
+通过 State：
+  A 写入 state["retrieved"]
+  B 从 state["retrieved"] 读
+  → 任何节点都能读任何已写入的字段
+  → 解耦了，但代价是 state 会膨胀
+</pre>
+<h2>二、Node：读写 State 的函数（p63）</h2>
+<pre class="loop">一个节点就是一个函数：
+  def my_node(state: State) -> dict:
+      # 读 state
+      query = state["messages"][-1]
+      # 做事（调 LLM、调工具、算东西）
+      result = llm.invoke(query)
+      # 返回要更新的字段（不是整个 state）
+      return {"messages": state["messages"] + [result]}
+      
+关键：返回的是"增量"，框架负责合并
+→ 这样多个节点可以同时更新不同字段而不冲突
+</pre>
+<h2>三、Edge 与条件边（p64-69）</h2>
+<pre class="loop">普通边：
+  graph.add_edge("A", "B")        # A 之后固定走 B
+
+条件边：
+  graph.add_conditional_edges("A", route_fn, {"b": "B", "c": "C"})
+  # route_fn(state) 返回 "b" 或 "c"，决定去 B 还是 C
+
+→ 这就是"分支工作流"的实现方式
+</pre>
+<h2>四、两种形态：工作流 vs agent（p53-58）</h2>
+<p>课件用同一套概念画了两个不同的图，这个对比很重要：</p>
+<pre class="loop">【工作流形态】（p53-57）
+  Start → 节点1 → 节点2 → 节点3 → End
+  边是固定的 → 控制流在代码里
+
+【Agent 形态】（p58）
+  Start → LLM ⇄ Tools → End
+          ↑______|
+  边是条件的：LLM 决定要不要调工具、调完回到 LLM 还是结束
+  → 控制流由模型决定
+</pre>
+<pre class="loop">对比 p58 的图和 Lecture06 的 agent 循环：
+  Start → LLM → (要调工具?) → Tools → LLM → (够了?) → End
+                ↖___________________________↙
+  → 这就是 ReAct 循环的图表示
+  → LangGraph 没有发明新的 agent 结构，它把已有的循环画成了图
+</pre>
+<h2>五、LangGraph 总结（p76）</h2>
+<blockquote>
+· LangGraph 在图上操作共享状态<br>
+· 节点读写状态<br>
+· 边定义节点之间的控制流<br>
+· 有些边可以是条件的（实现分支工作流）<br>
+· LangGraph 有内置工具来创建 agent（如 create_agent）
+</blockquote>
+
+<h2>六、DSPy 与 LangGraph 的分工（p77 的 recap）</h2>
+<table>
+  <tr><th></th><th>DSPy</th><th>LangGraph</th></tr>
+  <tr><td>核心抽象</td><td>签名 / 模块 / 优化器</td><td>State / Node / Edge</td></tr>
+  <tr><td>关心什么</td><td><strong>契约与优化</strong></td><td><strong>状态怎么流动</strong></td></tr>
+  <tr><td>强项</td><td>系统性改进 prompt</td><td>复杂控制流、可恢复执行</td></tr>
+  <tr><td>弱项</td><td>控制流表达能力有限</td><td>没有内建的 prompt 优化</td></tr>
+</table>
+<blockquote>
+课件的 recap（p77）：<br>
+· Workflow 把模型调用、工具和程序逻辑组合成更大的 AI 系统<br>
+· 框架暴露不同的抽象：DSPy 用签名和模块；LangGraph 用 state、node、edge<br>
+· <strong>我们设计控制流，并选择在哪里让模型做决策</strong><br>
+· 改进需要数据和评估。DSPy 通过优化器把这一点显式化
+</blockquote>
+
+<h2>SGRT 工程桥：你的标定流程适合 LangGraph 吗</h2>
+<pre class="loop">【标定流程的图】
+
+  Start
+    ↓
+  [采集图像]        ← node
+    ↓
+  [角点检测]        ← node
+    ↓
+  [角点足够?]       ← 条件边
+    ├─ 否 → [报警/重采] → End
+    └─ 是 ↓
+  [求解外参]        ← node
+    ↓
+  [残差 < 阈值?]    ← 条件边
+    ├─ 否 → [调整畸变模型] → 回到求解（有上限）
+    └─ 是 ↓
+  [写配置]          ← node
+    ↓
+  End
+
+用 LangGraph 的价值：
+  · 条件边天然表达"角点不够怎么办"
+  · 循环边（调整畸变模型后重解）有显式上限
+  · State 里放中间结果，每个节点都能读
+  · 整个执行过程可追踪（每个节点的输入输出）
+
+【但现实的权衡】
+  你已经有 C++/Qt 的实现
+  → 用 Python 的 LangGraph 重写 = 推翻重来
+  → 不划算
+
+【更现实的用法】
+  用 LangGraph 做"agent 侧的编排"：
+    · 排查助手的工作流
+    · 数据预处理流水线
+  → 而不是重写标定核心
+
+【值得借鉴的抽象】
+  即使不用 LangGraph，也应该借鉴它的 State 设计：
+    把所有中间结果放在一个显式的结构里
+    而不是散落在各个变量的闭包里
+  → 这样出错时能看到"当时 state 是什么"
+  → 对调试和审计都有用
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>State</strong>：图共享的工作区，节点通过它中转数据（解耦但会膨胀）。<br>
+<strong>Node</strong>：读写 state 的函数，返回增量由框架合并。<br>
+<strong>Edge</strong>：定义控制流；条件边实现分支。<br>
+<strong>两种形态</strong>：固定边 = 工作流；条件边回环 = agent（ReAct 循环的图表示）。<br>
+<strong>与 DSPy 分工</strong>：DSPy 管契约与优化，LangGraph 管状态流动与复杂控制流。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. LangGraph 的三个概念是什么？State 的作用是什么？</p>
+  <details><summary>展开答案</summary><p>State（共享工作区，一个会被图修改的对象）、Node（读写 state 的函数）、Edge（定义节点间的控制流，条件边实现分支）。State 的作用是作为所有节点共享的工作区——节点不直接互相传数据，而是通过 State 中转：A 写入某字段、B 从该字段读，这样解耦了节点依赖，任何节点都能读任何已写入的字段。代价是 State 会随着字段增加而膨胀。</p></details>
+  <p>Q2. 为什么节点返回"增量"而不是整个 State？</p>
+  <details><summary>展开答案</summary><p>因为框架负责合并增量，这样多个节点可以各自更新不同字段而不互相覆盖。如果每个节点都返回整个 State，节点之间会互相干扰——A 写入的字段可能被 B 返回的旧版本覆盖。返回增量（如 {"messages": [...]} 只更新 messages 字段）让更新语义清晰，也便于框架做并行和安全合并。</p></details>
+  <p>Q3. 工作流形态和 agent 形态在 LangGraph 里的差别是什么？</p>
+  <details><summary>展开答案</summary><p>差别在边的性质。工作流形态用固定边（Start→节点1→节点2→End），步骤由代码写死；agent 形态用条件边构成回环（Start→LLM→(要调工具?)→Tools→LLM→(够了?)→End），由模型决定是否调工具、何时结束。后者就是把 ReAct 循环画成图，LangGraph 没有发明新结构，只是把它图表示化了。</p></details>
+  <p>Q4. 你的标定流程该用 LangGraph 重写吗？该借鉴什么？</p>
+  <details><summary>展开答案</summary><p>不该重写。因为已有 C++/Qt 实现，用 Python 重写等于推翻重来、不划算。更现实的用法是用 LangGraph 做 agent 侧编排（排查助手工作流、数据预处理流水线），而不是重写标定核心。该借鉴的是 State 抽象：即使不用 LangGraph，也应把所有中间结果放在显式结构里而非散落在变量闭包中——这样出错时能看到"当时 state 是什么"，对调试和审计都有价值。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture05 · 段二 Workflow 框架 · LangGraph</span><br>
+  ← 上一课 <a href="lecture05-0033-dspy.html">0033 · DSPy</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture05-0035-agent-harnesses.html">0035 · Agent Harness 四种设计对比</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture05 课件《Frameworks & Orchestration》· 源文件夹 week3-10.7 · p52-77；LangGraph (langchain-ai.github.io/langgraph)<br>
+Lesson 0034 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

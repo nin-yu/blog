@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0039 — 五种 workflow 设计模式</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture06 · Lesson 0039</span>
+  <h1>五种 workflow 设计模式</h1>
+  <div class="meta">第 0039 课（Lecture06 第 2 课）· 来源：lecture06.pdf p13-30 · 来源文件夹：week3-10.12 · 本课成果：掌握五种模式的机制与适用条件、Sectioning 与 Voting 的分野、Orchestrator 与 Parallelization 的差别，以及 Evaluator-Optimizer 的三个必要条件</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+五种 workflow 设计模式（p15）：<br>
+<strong>① Prompt Chaining</strong> 提示链——把问题拆成更小的步骤<br>
+<strong>② Routing</strong> 路由——把任务交给合适的 LLM<br>
+<strong>③ Parallelization</strong> 并行——把工作分给多个线程<br>
+<strong>④ Orchestrator-Workers</strong> 编排-工作器——识别子任务并分派工作者<br>
+<strong>⑤ Evaluator-Optimizer</strong> 评估-优化——生成输出、批评或回应、迭代<br><br>
+最后一条（p21）：<strong>真实系统是这些基本模式的组合。</strong>
+</div>
+
+<h2>一、Prompt Chaining 提示链（p16）</h2>
+<blockquote>
+· 把较大的任务拆解成一系列更小的步骤<br>
+· <strong>用延迟换准确率</strong><br>
+· 适用于任务复杂、能从拆解中获益的情况
+</blockquote>
+<pre class="loop">例：
+  步骤1  提取文档中的关键信息
+  步骤2  根据提取结果写大纲
+  步骤3  根据大纲写正文
+  → 每步都能单独检查
+
+代价：
+  3 步 = 3 次模型调用 = 3 倍延迟
+  但每步准确率更高（因为任务更聚焦）
+
+关键设计点：
+  步骤之间要有"门槛检查"
+  → 第 1 步结果不对，第 2 步再准也没用
+  → 所以链式模式的要害是每步都要验证
+</pre>
+<h2>二、Routing 路由（p17）</h2>
+<blockquote>
+· 分类输入，路由到合适的 LLM（可以在模型或 prompt 上变化以处理不同情况）<br>
+· 当一个复杂任务有几个类别、可分别处理时有用<br>
+· 也可用来省钱/省时间（简单情况用更弱的模型）
+</blockquote>
+<pre class="loop">两种路由维度：
+  按能力路由：难 → 大模型；易 → 小模型（省成本）
+  按领域路由：图像问题 → 视觉模型；日志问题 → 文本模型
+
+课件的第二点是关键：
+  "Can also be used to save money/time (weaker model for easier cases)"
+  → 路由不只是"能力匹配"，也是成本优化手段
+
+实现：
+  路由本身通常用一个轻量分类器
+  → 而不是让大模型判断"该用哪个模型"（贵且慢）
+  → 见 Lecture02 第 0015 课的"分类器 vs LLM"
+</pre>
+<h2>三、Parallelization 并行（p18）</h2>
+<blockquote>
+· <strong>Sectioning</strong>：拆分并行的独立工作（如一边标记查询是否安全，一边同时处理该查询）<br>
+· <strong>Voting</strong>：推理期扩展——同样输入处理多次，聚合器做最终结论<br>
+· 让每次调用聚焦于一个单独方面
+</blockquote>
+<pre class="loop">两种并行（本质不同）：
+
+Sectioning（分段）
+  不同子任务同时跑
+  例：同时做"安全检查"和"业务处理"
+  → 子任务之间独立，结果都要
+
+Voting（投票）
+  同一个任务跑多次
+  例：同一个问题生成 5 个答案，投票
+  → 就是 Lecture02 第 0014 课的自洽性
+  → 子任务相同，靠分歧判断可靠性
+
+关键区别：
+  Sectioning 省时间
+  Voting    换准确率（成本 5 倍）
+</pre>
+<h2>四、Orchestrator-Workers 编排-工作器（p19）</h2>
+<blockquote>
+· 一个 LLM 动态地分解任务并分派给 worker LLM<br>
+· 当子任务的性质和数量<strong>难以预判</strong>时有用<br>
+· 类似并行，但这里的子任务是<strong>动态创建</strong>的
+</blockquote>
+<pre class="loop">和 Parallelization 的关键差别（p19 明确说了）：
+
+  Parallelization：子任务是预先知道的（代码里写死几个分支）
+  Orchestrator-Workers：子任务由编排者运行时决定
+
+例子：
+  并行版："同时检查安全性、相关性、版权"（三个固定检查项）
+  编排版："分析这份文档有什么问题"（可能发现 2 个也可能 7 个）
+  → 后者必须用 orchestrator
+</pre>
+<h2>五、Evaluator-Optimizer 评估-优化（p20）</h2>
+<blockquote>
+· 一个 LLM 生成回答，另一个提供评估和反馈，循环<br>
+· <strong>两个必要条件</strong>：<br>
+　(1) 清晰可表述的反馈<br>
+　(2) LLM 有能力提供这种反馈<br>
+· 还必须：生成器能根据反馈改进
+</blockquote>
+<pre class="loop">三个条件缺一不可：
+
+① 反馈可表述
+   ✔ "第 3 段缺少引用来源"（具体可执行）
+   ✘ "写得不够好"（无法执行）
+
+② 评估者有能力
+   ✔ 检查"是否包含所有必填字段"（客观）
+   ✘ 判断"这段医学结论是否正确"（需要领域知识，可能评错）
+
+③ 生成器能改进
+   如果反馈要求的是模型能力之外的事（如"引用 2027 年的论文"）
+   → 循环永远不会收敛
+
+→ 这就是为什么很多 evaluator-optimizer 循环会原地打转
+</pre>
+<h2>六、真实系统是组合（p21-29）</h2>
+<p>课件用两个例子说明组合：</p>
+<h3>STORM（p22-25）</h3>
+<pre class="loop">写维基百科式长文的研究系统
+课件的标注：大约相当于 Evaluator-Optimizer
+实际结构：
+  多视角提问 → 检索 → 大纲 → 分节写作 → 评审迭代
+  → 是 chaining + parallelization + evaluator-optimizer 的组合
+</pre>
+<h3>Archon（p26-29）</h3>
+<blockquote>
+Archon：一个面向推理的架构搜索框架
+</blockquote>
+<pre class="loop">思路：把"该用哪些模式组合"本身变成搜索问题
+  → 候选架构池 = 五种模式的组合
+  → 用数据评估哪个组合最好
+
+这其实是 Lecture09 的"agent 作为优化器"用在架构层
+</pre>
+<h2>七、Recap（p30）</h2>
+<blockquote>
+· Workflow 比 agent <strong>更容易复现和调试</strong><br>
+· 我们覆盖了五种常见 workflow 模式<br>
+· 实践中真实的工作流往往是这些组件的更大组合
+</blockquote>
+
+<h2>SGRT 工程桥：你的流程该用哪些模式</h2>
+<pre class="loop">【按你的实际流程映射】
+
+Prompt Chaining ✔ 直接用
+  采集 → 检测 → 求解 → 评估 → 写配置
+  就是一条链
+  → 关键是每步加验证门槛（角点够不够、残差达标没）
+
+Routing ✔ 值得加
+  报警分流：图像类 / 呼吸类 / 机械类 / 罕见
+  → 用分类器路由到不同的排查路径
+  → 简单情况不启动完整排查（省时间）
+
+Parallelization ⚠️ 有限使用
+  Sectioning：可以并行查"图像质量"和"呼吸信号"（独立）
+  Voting：关键判断点可用（"是不是呼吸问题"跑 3 次）
+  → 但不要整条排查跑 3 遍（成本 3 倍且不必要）
+
+Orchestrator-Workers ⚠️ 谨慎
+  适合：拿到一个新故障，"有什么问题"是开放的
+  风险：子任务数量不可控 → 可能发散
+  → 必须设上限（最多 5 个子任务）+ 总时长预算
+
+Evaluator-Optimizer ⚠️ 需满足三条件
+  可以用的地方：报告生成（评估者检查"是否包含必填章节、是否每段有出处"）
+  不要用的地方：评估"诊断结论对不对"（评估者没有这个能力）
+  → 关键：评估者必须做客观检查，不做主观判断
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>五种模式</strong>：Chaining（拆步骤换准确率）／Routing（分类分派，可省钱）／Parallelization（Sectioning 省时、Voting 换取准确率）／Orchestrator-Workers（动态子任务）／Evaluator-Optimizer（需三个条件）。<br>
+<strong>关键区分</strong>：Parallelization 的子任务是预知的，Orchestrator 的是动态创建的。<br>
+<strong>组合</strong>：真实系统是这些模式的组合（STORM、Archon）。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 五种 workflow 模式是什么？Prompt Chaining 用什么东西换什么东西？</p>
+  <details><summary>展开答案</summary><p>① Prompt Chaining 提示链；② Routing 路由；③ Parallelization 并行（含 Sectioning 和 Voting）；④ Orchestrator-Workers 编排-工作器；⑤ Evaluator-Optimizer 评估-优化。Prompt Chaining 用延迟换准确率——把大任务拆成多个小步骤，每步调用一次模型（N 步 = N 倍延迟），但每步任务更聚焦所以准确率更高。</p></details>
+  <p>Q2. Parallelization 的 Sectioning 和 Voting 本质差别是什么？</p>
+  <details><summary>展开答案</summary><p>Sectioning 是不同子任务同时跑（如一边做安全检查一边做业务处理），子任务之间独立、结果都要，目的是省时间。Voting 是同一个任务跑多次再聚合（推理期扩展），子任务相同，目的是靠分歧判断可靠性换准确率，成本是 N 倍。前者并行的是"不同的事"，后者并行的是"同一件事的多份结果"。</p></details>
+  <p>Q3. Orchestrator-Workers 和 Parallelization 的关键区别是什么？</p>
+  <details><summary>展开答案</summary><p>子任务是否预先知道。Parallelization 的子任务是代码里写死的（如固定三个检查项：安全性、相关性、版权），数量固定；Orchestrator-Workers 的子任务由编排者 LLM 在运行时动态创建，用于"难以预判子任务性质和数量"的场景（如"分析这份文档有什么问题"，可能发现 2 个也可能 7 个）。代价是数量不可控，必须设上限和预算。</p></details>
+  <p>Q4. Evaluator-Optimizer 的三个必要条件是什么？哪个条件最容易不满足？</p>
+  <details><summary>展开答案</summary><p>① 反馈清晰可表述（如"第 3 段缺少引用"而非"写得不够好"）；② 评估者 LLM 有能力提供这种反馈；③ 生成器能根据反馈改进。最易不满足的是②——很多场景评估者没有能力判断（如"这段医学诊断结论是否正确"需要领域知识和真实数据），此时循环会给出错误反馈，生成器跟着改反而更差。所以评估者应只做客观检查（必填字段、引用完整、格式正确），不做主观判断。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture06 · 段二 Workflow 设计模式</span><br>
+  ← 上一课 <a href="lecture06-0038-workflows-vs-agents.html">0038 · workflow 与 agent 的分界</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture06-0040-react-reflexion.html">0040 · 推理模式一：ReAct 与 Reflexion</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture06 课件《Agent Design Patterns and Scaffolds》· 源文件夹 week3-10.12 · p13-30；Building Effective Agents (Anthropic 2024)、STORM (arXiv:2402.14207)、Archon (arXiv:2409.15254)<br>
+Lesson 0039 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

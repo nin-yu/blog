@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0029 — MCP 实战：从 OpenAPI 自动生成工具</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture04 · Lesson 0029</span>
+  <h1>MCP 实战：从 OpenAPI 自动生成工具</h1>
+  <div class="meta">第 0029 课（Lecture04 第 5 课）· 来源：lecture04.pdf p55-56 · 来源文件夹：week3-10.5 · 本课成果：掌握 REST 路由到 MCP 工具的映射规律、inbound/outbound 鉴权分层的代码结构，以及 from_openapi 的自动化价值</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+这一课把前两课串成一个实例：<strong>把课程 LMS 的 REST API 变成 MCP 工具</strong>（p55-56）。<br><br>
+两个核心动作：<br>
+<strong>① REST 路由 → MCP 工具</strong>的映射是机械的（p55）<br>
+<strong>② inbound / outbound 鉴权必须分层</strong>（p56）<br><br>
+最实用的发现：<code>FastMCP.from_openapi()</code> 能从 OpenAPI 规范<strong>自动生成</strong> MCP 工具——几乎零成本。
+</div>
+
+<h2>一、REST 路由 → MCP 工具的映射（p55）</h2>
+<table>
+  <tr><th>REST 路由</th><th>MCP 工具</th></tr>
+  <tr><td><code>GET /assignments</code></td><td><code>list_assignments</code></td></tr>
+  <tr><td><code>GET /submissions</code></td><td><code>get_submissions</code></td></tr>
+  <tr><td><code>POST /submissions</code></td><td><code>create_submission</code></td></tr>
+</table>
+<pre class="loop">命名规律很清晰：
+  GET  + 集合  → list_xxx
+  GET  + 单项  → get_xxx
+  POST + 集合  → create_xxx
+  PUT  + 单项  → update_xxx
+  DELETE + 单项 → delete_xxx
+
+为什么这样命名重要：
+  · 模型靠名字猜语义（"list_"开头就是列举）
+  · 一致的前缀能被检索器按组匹配
+  · 语义化名字比 HTTP 动词 + 路径更容易让模型选对
+</pre>
+<h2>二、inbound vs outbound 鉴权（p56）——本课最关键</h2>
+<pre class="loop">完整链路：
+
+  ┌─────────┐  inbound      ┌──────────────────┐  outbound     ┌──────────────┐
+  │  Agent  │  AGENT_TOKEN  │ Course MCP Server│  LMS_TOKEN    │ LMS REST API │
+  └─────────┘ ────────────► └──────────────────┘ ────────────► └──────────────┘
+                               （FastMCP）
+
+两个 token 各管一件事：
+  AGENT_TOKEN —— 验证"谁在调这个 server"
+                 → StaticTokenVerifier 检查
+  LMS_TOKEN   —— server 用来调 LMS 的凭据
+                 → 放在 httpx client 的 headers
+</pre>
+
+<h3>代码结构（p56）</h3>
+<pre class="loop">import os, httpx
+from fastmcp import FastMCP
+from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
+
+# outbound: server → LMS
+api = httpx.AsyncClient(
+    base_url="https://lms.stanford.edu/api/v1",
+    headers={"Authorization": f"Bearer {os.environ['LMS_TOKEN']}"})
+
+# inbound: agent → server
+who_may_call = StaticTokenVerifier(tokens={
+    os.environ["AGENT_TOKEN"]: {"client_id": "ta-agent"}})
+
+mcp = FastMCP.from_openapi(openapi_spec=spec, client=api,
+                           name="Course MCP", auth=who_may_call)
+mcp.run(transport="http", port=8001)
+</pre>
+<p>这七行代码包含四个关键设计：</p>
+<pre class="loop">① 凭据从环境变量读（不硬编码）
+② outbound client 单独封装（凭据只在这一层）
+③ inbound 验证器单独定义（谁能调）
+④ from_openapi 自动生成工具（不用手写 schema）
+
+→ 第 ④ 点是最大的效率提升：
+  如果你有一个 OpenAPI 规范，
+  全套 MCP 工具就自动有了
+</pre>
+<h2>三、为什么鉴权必须分层</h2>
+<pre class="loop">如果 agent 直接持有 LMS_TOKEN：
+  · agent 的 prompt 里可能泄漏它（被注入攻击诱导输出）
+  · agent 被攻破 → LMS 完全暴露
+  · 无法区分"哪个 agent 做了什么"（都用同一个 token）
+  · 无法细粒度授权（agent 需要读，但不该能删）
+
+分层之后：
+  · agent 只有 AGENT_TOKEN，权限边界在 server
+  · server 可以按 client_id 做细粒度控制
+  · 审计日志能记录"哪个 client 调了什么"
+  · 上游凭据不出现在 agent 侧
+
+这个原则在医疗场景尤其重要：
+  HIS/PACS 的凭据绝不能给 agent
+</pre>
+<h2>四、从 OpenAPI 生成的隐藏好处</h2>
+<pre class="loop">from_openapi 做的事：
+  ① 读 OpenAPI spec
+  ② 为每个 endpoint 生成 MCP 工具
+  ③ 自动从 spec 的 parameters 生成 inputSchema
+  ④ 调用时把 MCP 参数转成 HTTP 请求
+
+好处：
+  · 不用手写 schema（减少不一致）
+  · API 更新后重新生成即可（不会漏改）
+  · 文档和工具永远同步（因为都来自同一份 spec）
+
+前提：
+  · 你的 API 必须有完整的 OpenAPI 规范
+  · 如果没有 → 先补 spec，这是值得投入的基础设施
+</pre>
+<h2>SGRT 工程桥：你的 MCP 该怎么做</h2>
+<pre class="loop">【如果你的 WPF 主程序和 agent 要共享工具】
+
+方案：写一个 MCP server，暴露设备接口
+  inbound：  agent（或 WPF）用 AGENT_TOKEN 调
+  outbound： server 持有设备访问凭据
+
+  server 暴露的工具示例：
+    device_get_status(device_id) → 当前状态
+    device_get_calibration(device_id) → 标定信息
+    log_query(device_id, time_range, level) → 日志
+    recon_get_residual(device_id, date) → 残差统计
+
+【关键设计：outbound 权限最小化】
+  server 访问设备用只读凭据
+  → 即使 agent 被注入攻击，也只能读，不能写
+  → 写操作（如修改阈值）走另一条需要人工确认的路径
+
+【如果你的接口没有 OpenAPI 规范】
+  值得先补一份
+  因为：
+    · 生成 MCP 工具几乎零成本
+    · 顺便得到接口文档
+    · 未来换实现不影响工具定义
+
+【什么时候不值得上 MCP】
+  只有你自己的 agent 调你自己的工具
+  → 直接 function calling 更简单
+  → MCP 要跑一个额外进程，增加部署和调试复杂度
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>REST → MCP 命名</strong>：list_/get_/create_/update_/delete_ + 资源名，语义化便于模型选择。<br>
+<strong>inbound</strong>：AGENT_TOKEN，验证谁在调 server。<br>
+<strong>outbound</strong>：LMS_TOKEN，server 调上游用的凭据，只在这一层。<br>
+<strong>分层理由</strong>：agent 持有上游凭据会被注入攻击泄漏，且无法细粒度授权与审计。<br>
+<strong>效率关键</strong>：FastMCP.from_openapi 自动从 OpenAPI 生成工具，schema 永不与文档脱节。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. REST 路由转 MCP 工具时，命名有什么规律？为什么语义化命名重要？</p>
+  <details><summary>展开答案</summary><p>规律：GET + 集合 → list_xxx，GET + 单项 → get_xxx，POST + 集合 → create_xxx，PUT + 单项 → update_xxx，DELETE + 单项 → delete_xxx。语义化命名重要因为：① 模型靠名字猜语义（list_ 开头就知道是列举）；② 一致的前缀能被检索器按组匹配；③ 语义化名字比 HTTP 动词 + 路径更容易让模型选对工具，减少选错概率。</p></details>
+  <p>Q2. inbound 和 outbound 各用什么 token、各验证什么？</p>
+  <details><summary>展开答案</summary><p>inbound 用 AGENT_TOKEN，验证"谁在调这个 MCP server"——由 StaticTokenVerifier 检查调用方身份（如 client_id="ta-agent"）。outbound 用 LMS_TOKEN，是 server 调用上游 REST API 时的凭据，放在 httpx client 的 headers 里。两者回答不同问题：inbound 管谁进来，outbound 管 server 用什么身份出去。</p></details>
+  <p>Q3. 如果让 agent 直接持有上游 API 的凭据，会有哪些风险？</p>
+  <details><summary>展开答案</summary><p>① 凭据可能被提示注入攻击诱导输出（prompt 里泄漏）；② agent 被攻破则上游系统完全暴露；③ 所有 agent 共用一个 token，无法区分"谁做了什么"，审计失效；④ 无法做细粒度授权（agent 只需读，但持有的是全权限 token）。分层后 agent 只有自己的 token，权限边界和凭据都在 server 层。</p></details>
+  <p>Q4. FastMCP.from_openapi 的最大好处是什么？前提条件是什么？</p>
+  <details><summary>展开答案</summary><p>最大好处是自动从 OpenAPI 规范为每个 endpoint 生成 MCP 工具，包括从 spec 的 parameters 自动生成 inputSchema——不用手写 schema，且 API 更新后重新生成即可，文档和工具永远同步（因为都来自同一份 spec）。前提是你的 API 必须有完整的 OpenAPI 规范；如果没有，值得先补一份，这是值得投入的基础设施。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture04 · 段三 标准接口 · MCP 实战</span><br>
+  ← 上一课 <a href="lecture04-0028-standard-interfaces.html">0028 · 标准接口三代</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture04-0030-evaluating-tool-use.html">0030 · 评估工具使用：BFCL / ToolBench / τ-bench</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture04 课件《Tool Use》· 源文件夹 week3-10.5 · p55-56；FastMCP (gofastmcp.com)<br>
+Lesson 0029 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0013 — 推理的两个阶段：Prefill 与 Decode，以及 KV Cache</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture02 · Lesson 0013</span>
+  <h1>推理的两个阶段：Prefill 与 Decode，以及 KV Cache</h1>
+  <div class="meta">第 0013 课（Lecture02 第 5 课）· 来源：lecture02.pdf p119-137 · 来源文件夹：week2-9.28 · 本课成果：理解 Prefill 与 Decode 两个阶段的计算特征差异、KV Cache 为什么有效、以及投机解码的思路</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+LLM 推理分两个阶段，它们的瓶颈完全不同：<br><br>
+<strong>Prefill（预填充）</strong>——一次性处理整个输入，<strong>计算密集</strong>（受算力限制）<br>
+<strong>Decode（解码）</strong>——逐个生成输出 token，<strong>访存密集</strong>（受显存带宽限制）<br><br>
+<strong>KV Cache</strong> 的作用：把 Prefill 阶段算出的 K、V 存下来，让 Decode 每步不用重算历史。<br>
+这就是为什么"首 token 延迟"和"每 token 延迟"是两个不同指标。
+</div>
+
+<h2>一、两个阶段在做什么（p123-133）</h2>
+<pre class="loop">【Prefill】
+  输入：整个 prompt（比如 5000 token）
+  操作：一次性算出所有 token 的 K 和 V，并生成第一个输出 token
+  特点：可以完全并行（因为所有输入已知）
+  瓶颈：算力（FLOPs）
+
+【Decode】
+  输入：已经生成的 token 序列
+  操作：每次只生成一个 token
+  特点：必须串行（第 n+1 个 token 依赖第 n 个）
+  瓶颈：显存带宽（每生成一个 token 要把整个模型的权重和 KV Cache 读一遍）
+</pre>
+<p>这个区分解释了两个常见现象：</p>
+<ul>
+  <li><strong>长 prompt 慢在 Prefill</strong>——首 token 延迟高</li>
+  <li><strong>长输出慢在 Decode</strong>——因为要一个一个吐</li>
+</ul>
+
+<h2>二、Roofline 模型：为什么两个阶段瓶颈不同（p122、p134-135）</h2>
+<pre class="loop">Roofline 模型把性能分成两个区域：
+
+  计算受限（Compute-bound）
+    → 算力不够，GPU 的 ALU 满载
+    → 典型：Prefill（大批量矩阵乘）
+
+  访存受限（Memory-bound）
+    → 算力有富余，但数据供给不上
+    → 典型：Decode（每步只算一个 token，但要读全部权重）
+
+图示（p134）：
+  横轴：计算强度（FLOPs per byte）
+  纵轴：性能（FLOPs/s）
+  → 曲线先沿斜线上升（访存受限区）
+  → 到达平台后平掉（计算受限区）
+  Prefill 在右上（计算区），Decode 在左下（访存区）
+</pre>
+<p>这个模型的实际意义：<strong>优化 Decode 不是加算力，而是减少访存</strong>（这就是 KV Cache、量化、批处理为什么有效）。</p>
+
+<h2>三、KV Cache：为什么它是必需的（p133）</h2>
+<pre class="loop">没有 KV Cache：
+  生成第 100 个 token 时，要把前 99 个 token 的 K、V 重新算一遍
+  → 计算量随输出长度平方增长
+
+有 KV Cache：
+  Prefill 阶段算好所有 K、V 并缓存
+  Decode 每步只算新 token 的 K、V，然后追加到缓存
+  → 计算量线性增长
+
+代价（p87 已提过）：
+  显存占用随序列长度线性增长
+  100k 上下文的 KV Cache 可能就是几十 GB
+</pre>
+<p>所以 KV Cache 是<strong>用显存换计算</strong>。这也解释了为什么长上下文服务那么贵——显存被 KV Cache 吃掉了。</p>
+
+<h2>四、投机解码：用小模型加速大模型（p136-137）</h2>
+<pre class="loop">思路（p136）：
+  ① 用一个小而快的"草稿模型"连续猜几个 token
+  ② 用大模型一次验证这几个 token 对不对
+  ③ 猜对的接受，猜错的从第一个错误处重来
+
+为什么能加速：
+  · 大模型验证 5 个 token 和生成 1 个 token 的耗时差不多
+    （因为 Decode 是访存受限，批处理不增加多少时间）
+  · 如果草稿模型猜对了 3-4 个，就省了 3-4 步
+
+前提：草稿模型要和目标模型"想法接近"
+</pre>
+
+<h2>五、这两件事对 agent 意味着什么</h2>
+<pre class="loop">agent 的特点是"多轮、每轮输入长"
+
+  第 1 轮：prompt 5k，输出 500
+  第 2 轮：prompt 6k（含历史），输出 500
+  ...
+  第 10 轮：prompt 15k，输出 500
+
+问题：
+  · 每轮都要重新 Prefill 整个历史 → 越来越慢
+  · 这就是为什么"上下文越长越慢"是超线性的
+
+对策（L06 会讲）：
+  · KV Cache 复用（前缀不变时可复用）
+  · 压缩历史（减少 Prefill 量）
+  · 把稳定内容放前面（保护 KV Cache）
+</pre>
+
+<h2>SGRT 工程桥：延迟预算怎么分配</h2>
+<pre class="loop">【你的场景：门控时延红线 0.5s】
+
+假设你要用 LLM 做实时判断：
+  · Prefill（读 5k token 上下文）→ 典型 200-500ms
+  · Decode（生成 50 token 回答）  → 典型 300-800ms
+  → 已有 0.5-1.3s，超红线
+
+结论：LLM 不适合放在实时闭环里
+  → 实时判断用规则/轻量模型
+  → LLM 只做异步的、离线的分析
+
+【如果一定要用，三条路】
+  ① 大幅缩短上下文（Prefill 快）
+     → 只给当前状态，不给历史
+  ② 大幅缩短输出（Decode 快）
+     → 要求输出结构化短答案（如 JSON 三个字段）
+  ③ 用投机解码/更小模型
+     → 但准确性要重新验证
+
+【另一个重要区分】
+  首 token 延迟（TTFT）vs 每 token 延迟（TPOT）
+  · 交互式场景在意 TTFT（用户等第一个字）
+  · 批量生成在意 TPOT（总吞吐）
+  → 你的排查助手是交互式 → 优化 TTFT
+  → 优化方式：缩短 prompt、复用 KV Cache
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>Prefill</strong>：一次性处理输入，计算密集（算力瓶颈），决定首 token 延迟。<br>
+<strong>Decode</strong>：逐 token 生成，访存密集（显存带宽瓶颈），决定每 token 延迟。<br>
+<strong>KV Cache</strong>：缓存 K/V 避免重算，用显存换计算；长上下文昂贵的直接原因。<br>
+<strong>投机解码</strong>：小模型猜、大模型验——因为 Decode 批处理几乎不增加时间。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. Prefill 和 Decode 的瓶颈为什么不同？各是什么？</p>
+  <details><summary>展开答案</summary><p>Prefill 一次性处理整个输入，所有 token 可以并行，做的是大批量矩阵乘，瓶颈是算力（FLOPs）。Decode 每次只生成一个 token，必须串行，且每步都要把整个模型权重和 KV Cache 从显存读一遍，算力有富余但数据供给不上，瓶颈是显存带宽。这就是 Roofline 模型里计算受限区与访存受限区的区别。</p></details>
+  <p>Q2. KV Cache 解决了什么问题、代价是什么？为什么长上下文那么贵？</p>
+  <details><summary>展开答案</summary><p>解决 Decode 时重复计算历史 K/V 的问题——没有它，生成第 100 个 token 要重算前 99 个的 K/V，计算量平方增长；有了它计算量变成线性。代价是显存占用随序列长度线性增长，100k 上下文可能是几十 GB。长上下文贵正是因为 KV Cache 吃掉了大量显存，能同时服务的请求数大幅下降。</p></details>
+  <p>Q3. 投机解码为什么能加速？前提是什么？</p>
+  <details><summary>展开答案</summary><p>因为 Decode 是访存受限——大模型一次验证 5 个 token 和生成 1 个 token 耗时差不多（批处理几乎不增加时间）。所以用小草稿模型连续猜几个 token，再用大模型一次验证，猜对 3-4 个就省了 3-4 步。前提是草稿模型要和目标模型"想法接近"，否则猜错率高，反而浪费验证开销。</p></details>
+  <p>Q4. 为什么 LLM 不适合放在门控 0.5s 的实时闭环里？如果一定要用该怎么优化？</p>
+  <details><summary>展开答案</summary><p>因为 Prefill 读 5k 上下文典型要 200-500ms，Decode 生成 50 token 要 300-800ms，合计 0.5-1.3s 已超红线。如果一定要用，三条路：① 大幅缩短上下文（只给当前状态不给历史，Prefill 快）；② 大幅缩短输出（要求结构化短答案）；③ 用更小模型或投机解码（但准确性需重新验证）。更好的做法是把 LLM 放在异步离线分析侧，实时闭环用规则或轻量模型。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture02 · 段四 推理</span><br>
+  ← 上一课 <a href="lecture02-0012-training-stages.html">0012 · 训练三阶段</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture02-0014-inference-time-scaling.html">0014 · 推理期扩展</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件《LLMs for Builders》· 源文件夹 week2-9.28 · p119-137；Speculative Sampling (arXiv:2302.01318)<br>
+Lesson 0013 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

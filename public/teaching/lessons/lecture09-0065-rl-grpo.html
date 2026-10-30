@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0065 — 权重优化二：RL 与 GRPO——用验证器当奖励</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture09 · Lesson 0065</span>
+  <h1>权重优化二：RL 与 GRPO——用验证器当奖励</h1>
+  <div class="meta">第 0065 课（Lecture09 第 5 课）· 来源：lecture09.pdf p80-95 · 来源文件夹：week5-10.21 · 本课成果：理解 agent RL 的四要素、GRPO 相比 PPO 省掉了什么、为什么可验证性是 agent RL 的关键</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+Weight Optimization 的第二条线：<strong>Reinforcement Learning</strong>。<br><br>
+agent 场景下的 RL 做法（p81）：<br>
+<strong>① 让学生在 agentic 任务上 rollout<br>
+② 成功完成任务就给奖励<br>
+③ 重点是环境变化和任务复杂度<br>
+④ 可验证性是关键</strong><br><br>
+GRPO 的核心简化（p92）：<strong>不用 critic 模型，用同一 prompt 的一组输出的 z-score 当优势</strong>。
+</div>
+
+<h2>一、RL For Agents 的四条（p81）</h2>
+<pre class="loop">① Rollout student on agentic tasks
+   让学生自己在任务上尝试（不是教师示范）
+
+② Reward the student for successfully completing the task
+   成功完成就给奖励
+
+③ Focus on varying environments and task complexity
+   重点是环境变化和任务复杂度
+
+④ Verifiability is key
+   可验证性是关键</pre>
+<p>对比 SFT（上一课）：</p>
+<table>
+  <tr><th></th><th>SFT</th><th>RL</th></tr>
+  <tr><td>谁在执行</td><td>教师</td><td><strong>学生自己</strong></td></tr>
+  <tr><td>学习信号</td><td>模仿教师动作</td><td><strong>结果好坏</strong></td></tr>
+  <tr><td>能学教师没做过的动作吗</td><td>不能</td><td><strong>能</strong></td></tr>
+  <tr><td>前提</td><td>有可靠的教师</td><td><strong>有可验证的奖励</strong></td></tr>
+</table>
+<p>第 ④ 条是 agent RL 的命门：<strong>没有客观验证器，奖励就是噪音</strong>，训练会崩。</p>
+
+<h2>二、奖励从哪来（p82）</h2>
+<blockquote>
+<strong>外部奖励验证任务是否成功完成。</strong>在[环境]里运行多次。
+</blockquote>
+<pre class="loop">可验证奖励的类型：
+  · 单元测试通过 / 不通过
+  · 编译成功 / 失败
+  · 输出与标准答案精确匹配
+  · 约束检查（如"代码不能改这几个文件"）
+  · 数值落在阈值内（如"残差 RMS < 1.5mm"）
+
+不可验证的（问题很大）：
+  · "这个回答好不好" —— 只能靠人评或 LLM judge
+     → LLM judge 可以，但会引入 judge 的偏差
+</pre>
+
+<h2>三、GRPO：省掉 critic（p83-93）</h2>
+<p>DeepSeekMath 提出的 GRPO（Group Relative Policy Optimization）。课件用 10 页讲它的细节（p83-93）。</p>
+
+<h3>先看 PPO 的四个模型（p85-87）</h3>
+<pre class="loop">PPO 需要同时持有：
+  1. Policy model（策略，被训练的那个）
+  2. Reference model（参考，用来算 KL 约束）
+  3. Reward model（奖励，给分数）
+  4. Value/Critic model（价值，估计"这个状态值多少"）
+
+→ 四份模型驻留显存，成本高
+</pre>
+
+<h3>GRPO 砍掉 critic（p89-93）</h3>
+<pre class="loop">GRPO 只需要三个模型：
+  1. Policy model
+  2. Reference model
+  3. Reward model
+  ✘ 去掉 Critic
+
+替代方案（p92）：Advantage Calculation
+  → 对同一个 prompt，生成一组（group）输出
+  → 每个输出拿到奖励
+  → 计算这组奖励的 z-score
+  → z-score 就是该输出的"优势"
+</pre>
+<pre class="loop">具体计算：
+
+  prompt → [输出1, 输出2, ..., 输出G]  （G 个采样）
+  每个输出打分：r1, r2, ..., rG
+  均值 μ = mean(r)，标准差 σ = std(r)
+  优势 Ai = (ri - μ) / σ
+
+  直觉：比同组平均水平好多少，就是它的优势
+       → 不需要单独训练一个模型来估计"基准线"
+       → 同组的平均就是基准线
+</pre>
+<p>这就是 GRPO 的全部精髓：<strong>用组内相对表现替代 critic 的绝对估计</strong>。</p>
+
+<h2>四、真实案例：DeepSeek-R1（p94-95）</h2>
+<pre class="loop">课件引用 DeepSeek-R1 论文（arXiv:2501.12948）
+展示 GRPO vs PPO 在真实大规模训练中的对比
+
+关键点：R1 证明了纯 RL（无可验证奖励之外的人工标注）
+       就能让模型涌现出推理能力
+       —— 前提是任务有客观可验证的答案（数学、代码）
+</pre>
+
+<h2>五、RL 的代价与现实</h2>
+<p>课件没展开，但必须知道：</p>
+<pre class="loop">成本：
+  · 需要大量 rollout（每个 prompt 采样 G 次）
+  · 每次 rollout 可能要跑完整 agent 任务（分钟级）
+  · → 单次训练迭代的时间成本远高于 SFT
+
+不稳定：
+  · 奖励稀疏（一个 20 步任务最后才给一个奖励）
+  · 探索容易陷入局部最优
+  · 超参敏感（学习率、KL 系数、组大小 G）
+
+适用边界：
+  · 任务有明确的、可自动验证的成功标准 → 适合
+  · 任务是"质量好坏"这种主观判断 → 不适合（除非有可靠 judge）
+</pre>
+
+<h2>SGRT 工程桥：你的场景能不能上 RL</h2>
+<pre class="loop">【先问：有可验证的奖励吗？】
+
+  ✔ 有明确可验证的任务：
+     · "给一批残差数据，判断是否有异常" → 有真实标签 → 可验证
+     · "给定故障现象，输出正确的处理步骤" → 需要人工标注 → 半可验证
+     · "把标定误差降到 1.5mm 以下" → 完全可验证（数值）✔✔
+
+  ✘ 难验证的任务：
+     · "给出好的排查建议" —— 什么算好？
+     · "解释为什么这样判断" —— 没有标准答案
+
+【结论】
+  你的场景里，"参数搜索类"任务最适合 RL
+    （目标函数明确、结果可测）
+  "诊断类"任务适合 SFT + 少量 RL 微调
+    （有历史结论当标签，但不是每步都可验证）
+
+【现实建议】
+  第一步：先做 context optimization（上一课），
+          成本低、见效快、可回滚
+  第二步：如果 context 优化碰到天花板（小模型指令跟随能力不足），
+          再考虑 SFT
+  第三步：只有当你有大量可验证任务 + 算力时，才上 RL
+  → 这就是下一课"怎么选"的内容
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>RL for Agents 四步</strong>：学生 rollout → 成功给奖励 → 环境/复杂度多样 → 可验证性是关键。<br>
+<strong>与 SFT 差别</strong>：谁执行（学生 vs 教师）、学什么（结果 vs 动作）、能否学新动作（能 vs 不能）。<br>
+<strong>GRPO</strong>：去掉 critic，用同 prompt 一组输出的 z-score 当优势——组内平均即基准线。<br>
+<strong>代价</strong>：rollout 昂贵、奖励稀疏、超参敏感；没有验证器就不要上 RL。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. agent RL 的四条要点是什么？哪一条是"命门"？</p>
+  <details><summary>展开答案</summary><p>① Rollout student on agentic tasks（让学生自己在任务上尝试）；② Reward the student for successfully completing the task（成功完成给奖励）；③ Focus on varying environments and task complexity（环境变化和任务复杂度）；④ Verifiability is key（可验证性是关键）。第四条是命门——没有客观验证器，奖励就是噪音，训练会崩。</p></details>
+  <p>Q2. RL 和 SFT 最本质的三点差别是什么？</p>
+  <details><summary>展开答案</summary><p>① 谁执行：SFT 是教师执行，RL 是学生自己执行；② 学习信号：SFT 模仿教师动作，RL 看结果好坏；③ 能否学教师没做过的动作：SFT 不能，RL 能（通过探索）。前提也不同：SFT 需要有可靠的教师，RL 需要有可验证的奖励。</p></details>
+  <p>Q3. GRPO 相比 PPO 省掉了什么模型？用什么替代了它的功能？</p>
+  <details><summary>展开答案</summary><p>省掉了 Critic/Value model（PPO 需要同时持有 policy、reference、reward、critic 四个模型，GRPO 只需三个）。替代方案：对同一个 prompt 生成一组（group）输出，各自打分后计算这组奖励的 z-score，即 (ri - μ)/σ，作为该输出的优势。用组内相对表现替代了 critic 的绝对价值估计。</p></details>
+  <p>Q4. 为什么"参数搜索类"任务比"诊断类"任务更适合 RL？</p>
+  <details><summary>展开答案</summary><p>因为 RL 依赖可验证的奖励。参数搜索类任务目标函数明确、结果可数值验证（如标定误差是否降到 1.5mm 以下），奖励信号干净可靠；诊断类任务的"好建议"难以自动验证，需要人工标注，属于半可验证，奖励噪音大，RL 训练容易不稳定。诊断类更适合 SFT（有历史结论当标签）+ 少量 RL 微调。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture09 · 段三 权重优化 · RL</span><br>
+  ← 上一课 <a href="lecture09-0064-sft-for-agents.html">0072 · SFT</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture09-0066-on-policy-distillation.html">0074 · On-Policy 蒸馏</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture09 课件《Optimization》· 源文件夹 week5-10.21 · p80-95；参考 DeepSeekMath / GRPO (arXiv:2402.03300)、DeepSeek-R1 (arXiv:2501.12948)<br>
+Lesson 73 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

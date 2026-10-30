@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0053 — 如何评估记忆系统</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture07 · Lesson 0053</span>
+  <h1>如何评估记忆：四条标准与四个基准的演进史</h1>
+  <div class="meta">第 0053 课（Lecture07 第 8 课）· 来源：lecture07.pdf p67-94 · 来源文件夹：week4-10.14 · 本课成果：记住记忆评估的四条 desiderata，理解四个基准（LoCoMo→PersonaMem→LongMemEval-v2→MemoryArena）各自的进步与残留缺陷，从而能判断一个记忆方案到底行不行</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+评估记忆的四条标准（p68）：<br><br>
+<strong>Realistic</strong> 真实——记忆来源（草堆）和查询都要反映真实场景<br>
+<strong>Long-Context</strong> 长上下文——短对话上测记忆没有意义<br>
+<strong>Challenging</strong> 有难度——太简单就区分不出好坏系统<br>
+<strong>Verifiable</strong> 可验证——要能明确知道系统成功还是失败<br><br>
+四个基准按这四条标准逐步改进，但<strong>没有一个全部打勾</strong>（p74/80/86/92 的 🟨✅ 标记）。
+</div>
+
+<h2>为什么要单开一节讲评估</h2>
+<p>因为记忆系统最容易"感觉良好"：你随便问几个问题，它答得不错，就以为它行。但真实场景是<strong>几十万 token 里找一个细节</strong>，短对话测试完全测不出来。</p>
+<pre class="loop">在 5 轮对话上测记忆：几乎所有方案都"表现良好"
+在 500 轮 / 100 万 token 上测：差距立刻暴露</pre>
+
+<h2>四个基准的演进（p69-92）</h2>
+<h3>① LoCoMo（Maharana et al. 2024，p70-74）</h3>
+<pre class="loop">做法：多个长模拟对话，agent 扮演用户
+规模：每段对话 16.6k token
+任务：多任务、对抗性
+验证：问答有标准答案
+
+四条标准评分（p74）：
+  Realistic      🟨 用户之间的对话，不完全是我们关心的场景
+  Long-Context   🟨 16.6k 其实不算长
+  Challenging    ✅ 多任务 + 对抗
+  Verifiable     ✅ 有 ground truth</pre>
+<p>课件 p73 还给了个很值得注意的结论：<strong>即使模型检索到了正确信息，答案仍然可能错</strong>。这说明记忆评估不只测"取得对不对"，还要测"用得对不对"。</p>
+
+<h3>② PersonaMem（Jiang et al. 2025，p75-80）</h3>
+<pre class="loop">改进：改成"用户 ↔ agent"的对话（更真实），偏好随时间演化
+规模：单段对话最长接近 100 万 token
+任务：带干扰项的多选题
+验证：多选题有标准答案
+
+四条标准评分（p80）：
+  Realistic      🟨 比 LoCoMo 好，但多选题不像真实使用方式
+  Long-Context   ✅ 接近 100 万
+  Challenging    ✅ 带干扰项
+  Verifiable     ✅ 有答案</pre>
+<p>课件在 p80 明确提出下一个问题：<strong>"能不能让记忆建立在 agent 轨迹上，而不只是对话上？"</strong>——这就是下一个基准要解决的。</p>
+
+<h3>③ LongMemEval-v2（Wu et al. 2026，p81-86）</h3>
+<pre class="loop">改进：用真实 agent 轨迹（四个 WebArena 环境的 rollout），不是模拟对话
+规模：轨迹里达数亿 token
+任务：巨大的草堆里只有少数轨迹含答案
+验证：多选题
+
+四条标准评分（p86）：
+  Realistic      🟨 轨迹更真实了，但仍在问"关于旧观察的单选题"
+  Long-Context   ✅ 数亿 token
+  Challenging    ✅ 极稀疏的答案分布
+  Verifiable     ✅ 有答案</pre>
+<p>一个很有用的实验结论（p85）：<strong>基于文件系统的记忆配合强模型，表现最好</strong>。这对工程选型有直接指导意义——不是越复杂的记忆架构越好。</p>
+<p>课件在 p86 又提出下一个问题：<strong>"能不能测 agent 解决真实/多样任务，而不只是做单选题？"</strong></p>
+
+<h3>④ MemoryArena（He et al. 2026，p87-92）</h3>
+<pre class="loop">改进：四个不同的真实评估环境，任务是逐步构建的子任务链
+规模：轨迹里数十万 token
+任务：带大量构建约束的真实任务
+验证：解法上的约束可验证
+
+四条标准评分（p92）：
+  Realistic      ✅ 四个真实环境
+  Long-Context   ✅
+  Challenging    ✅ 带多重构建约束
+  Verifiable     ✅ 约束可验证</pre>
+<p>这是唯一一个四项全打的。但 p94 说得很公道：<strong>"这些都是流行且相当不错的例子"</strong>——不是说到 MemoryArena 就完美了，而是它目前最接近完整。</p>
+<p>还有个关键发现（p91）：<strong>记忆控制器（memory controllers）本身很弱</strong>。也就是说，即便给了好的记忆机制，怎么用它仍然是短板。</p>
+
+<h2>四条标准的实际用法</h2>
+<table>
+  <tr><th>标准</th><th>怎么检查</th><th>常见造假方式</th></tr>
+  <tr><td><strong>Realistic</strong></td><td>草堆和查询都来自真实使用吗？</td><td>用合成的短对话代替真实轨迹</td></tr>
+  <tr><td><strong>Long-Context</strong></td><td>规模是否达到真实场景量级？</td><td>在 5k token 上测，却声称支持长期记忆</td></tr>
+  <tr><td><strong>Challenging</strong></td><td>好系统和坏系统能否被区分开？</td><td>题目太简单，所有方案都 90%+</td></tr>
+  <tr><td><strong>Verifiable</strong></td><td>成功/失败是否客观可判？</td><td>用 LLM 打分但没有 rubric，或人工主观评</td></tr>
+</table>
+
+<h2>SGRT 工程桥：给你的记忆系统建自己的评估集</h2>
+<pre class="loop">【四条标准照搬到你的场景】
+
+Realistic：草堆 = 真实的排查日志/设备记录（不是编的）
+Long-Context：至少覆盖 3 个月、几百次排查
+               （短会话测不出"三个月前的偏好"）
+Challenging：包含"看起来相似但根因不同"的对抗案例
+             例：都是"残差升高"，但一个是呼吸、一个是床板
+Verifiable：问答题要有确定的正确答案
+            （"这台机器上次标定是什么时候" → 有唯一答案）
+
+【建议的最小评估集】
+  30 条真实历史排查 → 每条形成为一道题
+  · 事实检索类（15）：某设备某时间发生了什么
+  · 偏好类（8）：我上次说过这个阈值怎么定
+  · 关联类（7）：这次故障和上次那次有没有关系
+
+【特别注意课件 p73 的提醒】
+  检索对了 ≠ 答对了
+  → 所以要同时测"找没找到正确记忆"和"用没用对"</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>四条标准</strong>：Realistic / Long-Context / Challenging / Verifiable。<br>
+<strong>四个基准的进步线</strong>：LoCoMo（模拟对话）→ PersonaMem（用户-agent 对话、偏好演化）→ LongMemEval-v2（真实 agent 轨迹）→ MemoryArena（真实任务 + 可验证约束）。<br>
+<strong>关键实验结论</strong>：文件系统记忆 + 强模型表现最好；记忆控制器本身很弱。<br>
+<strong>最易忽视的陷阱</strong>：检索对了不等于答对了——要分开测。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 评估记忆系统的四条标准是什么？各举一个"造假"方式。</p>
+  <details><summary>展开答案</summary><p>① Realistic 真实（造假：用合成短对话代替真实轨迹）；② Long-Context 长上下文（造假：在 5k token 上测却声称支持长期记忆）；③ Challenging 有难度（造假：题目太简单，所有方案都 90%+，分不出好坏）；④ Verifiable 可验证（造假：用 LLM 打分但没有 rubric，或纯人工主观评）。</p></details>
+  <p>Q2. 四个基准的演进主线是什么？每个解决了上一个的什么问题？</p>
+  <details><summary>展开答案</summary><p>LoCoMo（用户间模拟对话，16.6k）→ PersonaMem（改成用户-agent 对话、偏好随时间演化、接近 100 万 token，更真实更长）→ LongMemEval-v2（改用真实 agent 轨迹而非模拟对话，数亿 token，草堆极稀疏）→ MemoryArena（改用真实任务链而非单选题，约束可验证，四项全达标）。主线是不断逼近"真实 agent 如何使用记忆"。</p></details>
+  <p>Q3. 课件提到"即使模型检索到了正确信息，答案仍然可能错"，这对评估设计意味着什么？</p>
+  <details><summary>展开答案</summary><p>意味着记忆评估要分两层：既测"检索是否找对了记忆"，也测"拿到正确记忆后是否用对了"。只测检索命中率会高估系统能力。实际做法是把评估拆成 retrieval 指标和 end-to-end 答案正确率两个维度分别看。</p></details>
+  <p>Q4. LongMemEval-v2 的实验发现"文件系统记忆 + 强模型表现最好"，这对工程选型有什么启示？</p>
+  <details><summary>展开答案</summary><p>启示是不要盲目追求复杂的记忆架构——简单的文件系统加上强模型，在真实轨迹检索上表现反而不差。复杂架构带来的额外抽象层可能成为负担。选型时应先用简单方案建立基线，再评估复杂方案是否真的带来可测量的提升。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture07 · 段五 评估</span><br>
+  ← 上一课 <a href="lecture07-0052-pattern-memory-maintenance.html">0060 · 模式四</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture07-0054-memory-challenges.html">0062 · 挑战与开放问题（收官）</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture07 课件《Agent Memory Architectures》（Diyi Yang / Michael Ryan / John Yang）· 源文件夹 week4-10.14 · p67-94；参考 LoCoMo (ACL 2024)、PersonaMem (arXiv:2504.14225)、LongMemEval-v2 (arXiv:2605.12493)、MemoryArena (arXiv:2602.16313)<br>
+Lesson 53 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

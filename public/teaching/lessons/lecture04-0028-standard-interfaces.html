@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0028 — 标准接口三代：REST、Function Calling、MCP</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture04 · Lesson 0028</span>
+  <h1>标准接口三代：REST、Function Calling、MCP</h1>
+  <div class="meta">第 0028 课（Lecture04 第 4 课）· 来源：lecture04.pdf p46-56 · 来源文件夹：week3-10.5 · 本课成果：掌握三代接口的分界线与各自限制、MCP 的 tools/list 与 tools/call、以及 inbound/outbound 鉴权分离的意义</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件把工具接入的演进分成<strong>三代</strong>（p48），分界线是"改谁"：<br><br>
+<strong>上一代思路：改模型去适配工具</strong>（Toolformer/ToolkenGPT/Gorilla）<br>
+　→ <strong>每加一个 API 就得再训练一次</strong><br><br>
+<strong>新一代思路：改工具的描述方式，让任何模型都能用</strong><br>
+　→ 运行时给 schema，而不是每个 API 微调一次<br><br>
+三代（p49）：<br>
+<strong>① REST API</strong>——面向人：端点 + 文档 + 每服务各一套鉴权<br>
+<strong>② Function Calling</strong>——面向模型：每个工具一份 JSON Schema<br>
+<strong>③ MCP</strong>——面向生态：一套协议，任意客户端，运行时发现
+</div>
+
+<h2>一、为什么需要标准接口（p47）</h2>
+<blockquote>
+<strong>改模型去适配工具</strong>：Toolformer、ToolkenGPT、Gorilla——每个新 API 意味着又一次训练<br>
+<strong>改工具的暴露方式，让任何模型都能用</strong>：REST、function calling、MCP——运行时给 schema，而不是每个 API 微调
+</blockquote>
+<pre class="loop">这个转向的实质：
+  从"训练时把工具知识编码进权重"
+  变成"推理时把工具描述放进上下文"
+
+好处：
+  · 加工具不需要训练（改配置即可）
+  · 换模型不需要重写工具（schema 通用）
+  · 工具可以热更新
+
+代价：
+  · 工具描述占上下文（规模上去要检索）
+  · 模型要靠"读懂"schema 而不是"记住"接口
+</pre>
+<h2>二、三代接口的具体差别（p49）- 本课核心表</h2>
+<table>
+  <tr><th></th><th>REST API</th><th>Function Calling</th><th>MCP</th></tr>
+  <tr><td>面向</td><td><strong>人</strong></td><td><strong>模型</strong></td><td><strong>生态</strong></td></tr>
+  <tr><td>契约形式</td><td>端点 + 文档</td><td>每个工具一份 JSON Schema</td><td>一套协议，任何客户端</td></tr>
+  <tr><td>鉴权</td><td>每个服务各一套</td><td>—</td><td>服务端暴露，客户端只需自己的 token</td></tr>
+  <tr><td>LLM 要做什么</td><td><strong>读文档、手写请求</strong></td><td>输出 name + args</td><td>tools/list 发现 → tools/call 调用</td></tr>
+  <tr><td>关键限制</td><td><strong>没有机器可读的契约</strong></td><td><strong>为一个 API 写的工具要改写成下一个</strong></td><td>需要跑一个 server 进程</td></tr>
+  <tr><td>典型形态</td><td><code>GET /v1/weather?city=SF</code></td><td><code>{"name":"get_weather","arguments":{"city":"SF"}}</code></td><td><code>tools/list</code> → <code>tools/call</code></td></tr>
+</table>
+
+<h2>三、第一代：REST（p49-50）</h2>
+<pre class="loop">基本形态（p49）：
+  GET https://api.weather.com/v1/current?city=Stanford
+  → 200 {"temp_f": 74, "conditions": "sunny"}
+
+四个动词：
+  GET 读 / POST 建 / PUT 改 / DELETE 删
+
+课件指出的限制（p50 原文）：
+  模型必须知道 URL、参数名和返回的形状
+
+为什么这是问题：
+  · URL 结构没有统一标准（/v1/current vs /api/weather/now）
+  · 参数名没有语义（city vs location vs q）
+  · 返回格式自由（JSON 嵌套结构千差万别）
+  → 模型只能靠"读文档"，而文档是给人看的
+</pre>
+<h2>四、第二代：Function Calling（p50）</h2>
+<pre class="loop">工具 schema（p50）：
+  { "name": "get_weather",
+    "description": "Current weather",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "city": {"type": "string"} },
+      "required": ["city"] } }
+
+模型输出：
+  { "tool_call": {
+      "name": "get_weather",
+      "arguments": {"city": "Stanford"} } }
+
+流程：schema 约束输入 → 模型输出 tool_call → 结果回给模型
+
+限制（p50 原文）：
+  为一个 API 写的工具，必须为下一个 API 重写一遍
+</pre>
+<h2>五、第三代：MCP（p51-56）</h2>
+<h3>5.1 架构（p52）</h3>
+<pre class="loop">三个角色：
+  MCP Host   —— 宿主应用（里面跑着 LLM）
+  MCP Client —— host 里的客户端，连到 server
+  MCP Server —— 暴露工具/资源/提示的服务
+
+  Host ── Client ──(协议)── Server
+
+关键：一个 host 可以连多个 server
+     → 每个 server 负责一组工具
+     → 工具可以来自不同厂商
+</pre>
+<h3>5.2 工具发现（p53）</h3>
+<pre class="loop">请求：
+  {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{...}}}
+
+响应：
+  {"id":2,"result":{"tools":[
+    {"name":"weather_current",
+     "title":"Weather Information",
+     "description":"Current weather for a location",
+     "inputSchema":{"type":"object",
+       "properties":{
+         "location":{"type":"string"},
+         "units":{"enum":["metric","imperial"]}},
+       "required":["location"]}},
+    {"name":"calculator_arithmetic", ...}],
+   "ttlMs":300000}}
+
+注意 ttlMs：缓存有效期（这里是 5 分钟）
+→ 工具列表不是每次都重新拉，有缓存机制
+</pre>
+<h3>5.3 工具执行（p54）</h3>
+<pre class="loop">请求：
+  {"jsonrpc":"2.0","id":3,"method":"tools/call",
+   "params":{"name":"weather_current",
+             "arguments":{"location":"Stanford","units":"imperial"}}}
+
+响应：
+  {"id":3,"result":{"content":[
+    {"type":"text",
+     "text":"Current weather in Stanford: 68°F, partly cloudy, wind W 8 mph"}]}}
+
+三个要点（p54 原文）：
+  · name 选一个已列出的工具
+  · arguments 遵循它的 inputSchema
+  · 结果是 content 数组，host 交回给 LLM
+</pre>
+<h2>六、鉴权的两个方向（p56）——很实用的一页</h2>
+<pre class="loop">课件用课程 LMS 的例子说明 inbound vs outbound：
+
+  Agent ──(inbound: AGENT_TOKEN)──► Course MCP Server ──(outbound: LMS_TOKEN)──► LMS REST API
+
+  inbound（agent → server）：
+    谁来调这个 MCP server
+    用 AGENT_TOKEN 验证
+    → StaticTokenVerifier
+
+  outbound（server → 上游 API）：
+    server 用什么身份调 LMS
+    用 LMS_TOKEN
+    → 放在 httpx client 的 headers 里
+
+为什么必须分开：
+  · agent 不该持有 LMS 的凭据
+  · server 才是该有凭据的那一层
+  · 权限边界清晰
+
+代码示例（p56）：
+  api = httpx.AsyncClient(base_url="...", headers={"Authorization": f"Bearer {LMS_TOKEN}"})
+  who_may_call = StaticTokenVerifier(tokens={AGENT_TOKEN: {"client_id": "ta-agent"}})
+  mcp = FastMCP.from_openapi(openapi_spec=spec, client=api, name="Course MCP", auth=who_may_call)
+  mcp.run(transport="http", port=8001)
+</pre>
+<p>注意最后一行：<strong><code>FastMCP.from_openapi</code>——从 OpenAPI 规范自动生成 MCP 工具</strong>。这意味着把 REST API 变成 MCP 工具几乎零成本。</p>
+
+<h2>SGRT 工程桥：你该用哪一代</h2>
+<pre class="loop">【现在：Function Calling 足够】
+  5-8 个工具，自己写的，自己用
+  → 直接在代码里定义 schema
+  → 不需要 REST（没有第三方要调）
+  → 不需要 MCP（没有多个宿主共享）
+
+【什么时候需要 MCP】
+  · 如果 WPF 主程序也要用这些工具（两个宿主共享同一套工具）
+  · 如果要把工具开放给第三方（如医院的其他系统）
+  · 如果工具要独立部署/更新（不想跟着主程序发版）
+
+  → 这时 MCP 的价值就出来了：写一次，多处复用
+
+【inbound/outbound 的启示】
+  如果你的 MCP server 要访问医院 HIS/PACS：
+    inbound：谁在调（agent 的身份）
+    outbound：server 用什么凭据访问 HIS
+  → 这两个必须分开
+  → agent 绝对不能直接持有 HIS 的凭据
+  → 这是权限最小化原则，也是等保要求
+
+【一个现实的判断】
+  如果你的场景只有"自己的 agent 调自己的工具"
+  → MCP 是过度设计
+  → 直接 function calling，省一个 server 进程
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>演进动机</strong>：从"改模型适配工具"（每个 API 都要训练）转向"改工具描述"（运行时给 schema）。<br>
+<strong>三代</strong>：REST（面向人，无机器可读契约）／Function Calling（面向模型，每工具一 schema）／MCP（面向生态，运行时发现）。<br>
+<strong>MCP 两个方法</strong>：tools/list 发现（带 ttlMs 缓存）、tools/call 执行。<br>
+<strong>鉴权两向</strong>：inbound（谁调 server）vs outbound（server 调上游），必须分开。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 工具接入从"改模型"转向"改工具描述"，这个转向的实质是什么？带来什么好处和代价？</p>
+  <details><summary>展开答案</summary><p>实质是从"训练时把工具知识编码进权重"变成"推理时把工具描述放进上下文"。好处：加工具不需要训练（改配置即可）、换模型不需要重写工具（schema 通用）、工具可热更新。代价：工具描述占上下文（规模上去必须检索）、模型要靠"读懂"schema 而不是"记住"接口，所以 schema 写得好不好直接影响成功率。</p></details>
+  <p>Q2. REST、Function Calling、MCP 三代各自的关键限制是什么？</p>
+  <details><summary>展开答案</summary><p>REST：没有机器可读的契约——模型必须知道 URL、参数名和返回形状，这些只能从给人看的文档里读，而且各服务格式不统一。Function Calling：为一个 API 写的工具必须为下一个 API 重写——schema 是每个工具一份，跨服务不通用。MCP：需要跑一个 server 进程（增加部署复杂度），但换来运行时发现和跨宿主复用。</p></details>
+  <p>Q3. MCP 的 tools/list 响应里 ttlMs 是什么？为什么需要它？</p>
+  <details><summary>展开答案</summary><p>ttlMs 是工具列表的缓存有效期（示例中 300000 毫秒 = 5 分钟）。需要它是因为 tools/list 每次调用都要走一次协议往返，而工具列表通常不会频繁变化——如果每轮对话都重新拉取，会浪费大量 token 和延迟。有了 ttl，host 可以缓存工具列表，过期后才重新拉取。</p></details>
+  <p>Q4. inbound 和 outbound 鉴权为什么要分开？你的场景该怎么套用？</p>
+  <details><summary>展开答案</summary><p>因为两者回答不同问题：inbound 是"谁来调这个 server"（用 agent 的 token 验证调用方身份），outbound 是"server 用什么身份调上游"（把上游凭据放在 server 侧）。分开的原因是权限最小化——agent 不该持有 HIS/PACS 的凭据，server 才是该有凭据的那一层，这样即使 agent 被攻破也拿不到上游系统的访问权。这也符合等保和医疗数据的权限要求。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture04 · 段三 标准接口</span><br>
+  ← 上一课 <a href="lecture04-0027-scaling-apis.html">0027 · ToolLLM 与 Gorilla</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture04-0029-mcp-example.html">0029 · MCP 实战：从 OpenAPI 生成工具</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture04 课件《Tool Use》· 源文件夹 week3-10.5 · p46-56；MCP 规范、FastMCP<br>
+Lesson 0028 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

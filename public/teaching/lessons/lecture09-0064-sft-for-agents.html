@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0064 — 权重优化一：SFT——用教师的成功轨迹训学生</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture09 · Lesson 0064</span>
+  <h1>权重优化一：SFT——用教师的成功轨迹训学生</h1>
+  <div class="meta">第 0064 课（Lecture09 第 4 课）· 来源：lecture09.pdf p70-79 · 来源文件夹：week5-10.21 · 本课成果：理解 SFT 在 agent 场景下的具体做法（rollout 教师 → 训学生）、为什么强调任务与环境多样性，以及知识蒸馏的成本逻辑</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+Weight Optimization 的第一条线：<strong>Supervised Finetuning（SFT）</strong>。<br><br>
+agent 场景下的 SFT 做法（p74）：<br>
+<strong>① 让教师模型在 agentic 任务上做 rollout<br>
+② 用教师完成的任务去后训练学生<br>
+③ 重点是任务和环境的多样性<br>
+④ 学生学到的是"任务执行"</strong><br><br>
+核心价值：<strong>用强模型的能力换便宜模型的成本</strong>。
+</div>
+
+<h2>一、先回顾基础：SFT 的损失函数（p72-73）</h2>
+<p>课件先用两页复习了基础，因为它决定了 agent SFT 的细节：</p>
+<pre class="loop">Cross Entropy Loss（交叉熵损失）：
+
+  对词汇表里的每个 token 计算：
+    · 如果这个 token 是数据里真实的下一个 token → 目标值 1
+    · 其他 token → 目标值 0
+  → 最小化预测分布与这个 one-hot 目标的交叉熵
+  → 直觉：让模型在正确 token 上的概率尽量接近 1
+
+Instruction Finetuning（指令微调，p73）：
+  在「指令 + 输入」上训练模型产出「期望输出」
+  FLAN 等工作的做法
+</pre>
+<p>这两个是 SFT 的基础。agent 场景下的 SFT 就是把"指令"换成"任务"，"输出"换成"完整的行动轨迹"。</p>
+
+<h2>二、SFT For Agents 的四条（p74）</h2>
+<pre class="loop">① Rollout teacher on agentic tasks
+   让教师模型在真实的 agentic 任务上跑
+
+② Post-train student models on teacher completed tasks
+   用教师完成的任务去后训练学生
+
+③ Focus on diversity of tasks and environments
+   重点是任务和环境的多样性
+
+④ Student learns task execution
+   学生学到的是"任务执行"能力</pre>
+<p>第 ③ 条最容易被低估。为什么多样性这么重要？</p>
+<pre class="loop">如果只在一个环境上训：
+  → 学生背下了这个环境的特定路径
+  → 换个界面/换个工具/换个数据格式，就废了
+
+如果多样化环境：
+  → 学生学到的是"遇到这类任务该怎么探索"
+  → 迁移能力更强</pre>
+
+<h2>三、教师的两种用法（p75）</h2>
+<p>课件给了两个细节（p75）：</p>
+<blockquote>
+<strong>让教师模型执行任务、然后在这些输出上训练。</strong><br>
+<strong>另外也可能：验证[结果]</strong>
+</blockquote>
+<p>也就是说，教师的作用有两种：</p>
+<table>
+  <tr><th>用法</th><th>做法</th><th>适合</th></tr>
+  <tr><td><strong>纯模仿</strong></td><td>教师做，学生照着学</td><td>教师很少出错的任务</td></tr>
+  <tr><td><strong>带验证</strong></td><td>教师做 → 用测试/检查验证正确性 → 只学通过的</td><td>教师会出错，但有客观验证手段</td></tr>
+</table>
+<p>第二种更可靠。它其实就是 L70 讲的 bootstrap：<strong>生成 + 筛选</strong>。</p>
+
+<h2>四、三个实证（p76-79）</h2>
+<h3>OpenThoughts-Agent（p76-77）</h3>
+<pre class="loop">定位：大规模 agent 后训练数据集
+做法：finetune 在……（课件此处为图片，内容为数据集构成与实验）
+意义：说明 agent SFT 需要专门构建的数据集，
+     不是拿通用指令数据就能训出来</pre>
+
+<h3>FireAct（p78-79）</h3>
+<pre class="loop">做法：微调 Llama2，训练数据来自 GPT-4 的轨迹
+结论（p79）：在 Llama2-13B 上微调后效果显著提升
+
+意义：这是"用强模型蒸馏弱模型"的经典案例
+     GPT-4 的能力 → 蒸馏进 13B 的本地模型
+     成本从"每次调 GPT-4"降到"本地推理"</pre>
+
+<h2>五、SFT 的本质：模仿学习的边界</h2>
+<p>课件没展开，但工程上必须知道：</p>
+<pre class="loop">SFT 学的是：在给定状态 S 下，教师会采取动作 A
+             → P(A | S) 的模仿
+
+它学不到：
+  · 教师为什么这么选（除非教师把推理也写出来）
+  · 教师没遇到过的状态该怎么办
+  · 错误怎么恢复（教师的轨迹通常很顺）
+
+这就是为什么还需要 RL（下一课）：
+  RL 能探索"教师没做过的动作"，并用结果好坏来评价
+</pre>
+
+<h2>SGRT 工程桥：值不值得训一个本地模型</h2>
+<pre class="loop">【算账】
+  现状：每次排查调一次大模型
+       假设一次排查 20 轮、每轮 8k token
+       → 单次约 16 万 token
+       → 按主流价格，单次成本几毛到一块
+       → 每天 20 次排查 = 每天十几块，一年几千块
+
+  蒸馏方案：
+    · 用大模型跑 500 个历史排查任务，生成轨迹
+    · 微调一个 7B/13B 本地模型
+    · 训练成本：约 1-2 张 A100 跑几小时（或租云）
+    · 推理成本：本地 GPU，边际成本接近电费
+
+  盈亏平衡点：
+    如果年调用量 > 几千次 → 蒸馏划算
+    如果一年只跑几百次 → 直接用 API 更省
+
+【但医疗场景有额外考量】
+  · 本地模型 = 数据不出院，隐私合规更容易
+  · 但本地模型的判断准确性要额外验证
+  · 且模型更新/回滚的流程要纳入变更管理
+
+【关键前提】
+  必须先有"客观验证"能力（测试/检查），
+  否则你无法判断教师给的轨迹对不对，
+  训出来的学生可能学到了教师的错误
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>SFT for Agents 四步</strong>：教师 rollout → 训学生 → 保证任务/环境多样性 → 学生学任务执行。<br>
+<strong>教师两种用法</strong>：纯模仿（教师可靠）／带验证（有客观检查，只学通过的）。<br>
+<strong>典型案例</strong>：FireAct（GPT-4 轨迹蒸馏进 Llama2-13B）。<br>
+<strong>本质</strong>：模仿 P(A|S)，学不到"为什么"、学不到"没见过的状态"、学不到"错误恢复"。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. agent 场景下的 SFT 具体怎么做？四个步骤是什么？</p>
+  <details><summary>展开答案</summary><p>① Rollout teacher on agentic tasks——让教师模型在真实 agentic 任务上跑；② Post-train student models on teacher completed tasks——用教师完成的任务后训练学生；③ Focus on diversity of tasks and environments——重点保证任务和环境的多样性；④ Student learns task execution——学生学到的是任务执行能力。</p></details>
+  <p>Q2. 为什么"任务和环境的多样性"在 agent SFT 里格外重要？</p>
+  <details><summary>展开答案</summary><p>因为如果只在一个环境上训，学生背下的是这个环境的特定路径，换个界面、工具或数据格式就失效了。多样化环境让学生学的是"遇到这类任务该怎么探索"的通用能力，迁移性更强。agent 任务的环境变量远比普通指令微调多（工具集、数据格式、界面状态），所以多样性更关键。</p></details>
+  <p>Q3. 教师模型有两种用法，"带验证"的那种为什么更可靠？它和前面哪一课的思想一致？</p>
+  <details><summary>展开答案</summary><p>纯模仿是教师做学生就学，适合教师很少出错的任务；带验证是教师做→用测试或检查验证正确性→只学通过的，适合教师会出错但有客观验证手段的场景。带验证更可靠因为它过滤了教师的错误。这和 L70 讲的 bootstrap（生成+用 metric 筛选）是同一个思想。</p></details>
+  <p>Q4. SFT 学不到什么？这解释了为什么还需要 RL？</p>
+  <details><summary>展开答案</summary><p>SFT 学的是 P(A|S) 的模仿，学不到：教师为什么这么选（除非写出推理）、教师没遇到过的状态该怎么办、错误怎么恢复（教师轨迹通常很顺）。这正是需要 RL 的原因：RL 能探索教师没做过的动作，并用最终结果的好坏来评价，而不是只能模仿已知动作。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture09 · 段三 权重优化 · SFT</span><br>
+  ← 上一课 <a href="lecture09-0063-reflective-optimization.html">0071 · 反思式优化</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture09-0065-rl-grpo.html">0073 · 权重优化：RL 与 GRPO</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture09 课件《Optimization》· 源文件夹 week5-10.21 · p70-79；参考 OpenThoughts-Agent (arXiv:2606.24855)、FireAct (arXiv:2310.05915)<br>
+Lesson 72 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

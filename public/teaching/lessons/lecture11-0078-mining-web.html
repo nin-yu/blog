@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0078 — 来源二：从网页与世界挖掘</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture11 · Lesson 0078</span>
+  <h1>来源二：从网页与世界挖掘</h1>
+  <div class="meta">第 0078 课（Lecture11 第 4 课）· 来源：lecture11.pdf p29-37 · 来源文件夹：week6-10.28 · 本课成果：掌握三种挖掘方式（SWE-rebench / AgentTrek / VideoAgentTrek）的机制与验证强度，理解「自带验证的数据优先」原则，能盘点本项目可挖资产</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+第二种来源的思路（p30）：<strong>把网上的既有产物（issue 报告、教程）转换成轨迹</strong>。<br><br>
+三个代表案例，各自挖掘的东西不同：<br>
+<strong>SWE-rebench【代码】</strong>——全自动流水线挖了 21,336 个[任务]<br>
+<strong>AgentTrek【Web】</strong>——从网上采集教程，再转成可执行轨迹<br>
+<strong>VideoAgentTrek【CUA】</strong>——用逆动力学模型给 39k 个 YouTube 视频打标<br><br>
+核心优势：<strong>规模不靠人力</strong>。核心风险：<strong>质量取决于挖掘和转换是否可靠</strong>。
+</div>
+
+<h2>一、为什么"挖掘"是必要的（p29-30）</h2>
+<pre class="loop">人类示范的瓶颈：成本 × 人力 = 线性
+挖掘的思路：网上已经有大量"人类解决问题的痕迹"
+  · GitHub issue（问题 + 讨论 + 修复 commit）
+  · 技术教程（步骤化的操作说明）
+  · YouTube 录屏（真实操作的视频）
+
+→ 这些不是"轨迹"，但含有轨迹的原料
+→ 转换它们是自动化的工作
+→ 成本远低于人工执行
+</pre>
+<h2>二、SWE-rebench：全自动挖代码任务（p31-32）</h2>
+<blockquote>
+SWE-rebench【代码】：一条全自动流水线，挖了 <strong>21,336</strong> 个[任务]
+</blockquote>
+<pre class="loop">挖什么：
+  GitHub 上的 PR / issue / commit
+  → 每个 PR 自带：问题描述 + 代码改动 + 测试
+
+为什么这类数据特别"肥"：
+  ① 有任务（issue 描述）
+  ② 有参考解（PR 的 diff）
+  ③ 有验证器（仓库里已有的测试）
+  → 三件套天生齐备！
+  → 比 Mind2Web 的"人做一遍再录"便宜几个数量级
+
+流程大致是：
+  筛仓库（有测试的）→ 找出修 bug 的 PR
+  → 回退到修复前的状态（这就是起始环境）
+  → 用 PR 的测试作为 verifier
+  → 得到 21,336 个可复现任务
+</pre>
+<p>这个案例的重要启示：</p>
+<pre class="loop">"最好的 agent 数据，来自那些本来就带验证机制的人类活动"
+
+  GitHub PR  → 天然有测试
+  数学题     → 天然有答案
+  竞赛编程   → 天然有评测
+  
+→ 所以挖数据的第一步不是"找内容"
+→ 是"找有内置验证的地方"
+→ 对你的含义：找那些结果可自动确认的历史记录
+</pre>
+<h2>三、AgentTrek：从教程挖 Web 轨迹（p33-35）</h2>
+<blockquote>
+AgentTrek【Web】：从网上采集 how-to 教程，[再把它们变成可执行的轨迹]
+</blockquote>
+<pre class="loop">思路：
+  网上的 how-to 教程本身就是"人类写的操作步骤"
+  → 教程文本 → 让 agent 在真实网站上重放
+  → 重放成功 = 得到一条轨迹
+
+关键设计：
+  · 教程是"任务描述 + 大致步骤"
+  · agent 负责把模糊步骤落实成具体动作
+  · 成功与否由是否能走通判定
+
+和 Mind2Web 的差别：
+  Mind2Web：人先做，再录 → 真实但贵
+  AgentTrek：先有教程，agent 重放 → 便宜但不一定是"人的真实做法"
+
+风险：
+  教程可能过时、可能有错、可能不完整
+  → 重放失败率高
+  → 且"成功的重放"不代表"最优做法"
+</pre>
+<h2>四、VideoAgentTrek：给视频打标（p36-37）</h2>
+<blockquote>
+VideoAgentTrek【CUA】：用逆动力学模型给 <strong>39k 个 YouTube 视频</strong>打标
+</blockquote>
+<pre class="loop">核心问题：
+  YouTube 上有海量"人操作电脑"的录屏
+  → 但视频里没有结构化的动作标签
+  → 只有像素
+
+解法：逆动力学模型（inverse dynamics model）
+  输入：前一帧 + 后一帧
+  输出：中间发生了什么动作（点击哪里、输入什么）
+  → 把视频"翻译"成 (screen, action) 序列
+  
+→ 这就把视频变成了轨迹
+
+为什么规模能到 39k：
+  视频是"免费"存在的
+  → 不需要雇人录制
+  → 只需要算力打标
+
+质量风险：
+  逆动力学模型自己会错
+  → 打错标签会污染数据
+  → 且无法人工核查 39k 个视频
+</pre>
+<h2>五、三种挖掘方式的对比</h2>
+<table>
+  <tr><th>案例</th><th>挖什么</th><th>规模</th><th>自带验证吗</th><th>主要风险</th></tr>
+  <tr><td><strong>SWE-rebench</strong></td><td>GitHub PR（含测试）</td><td>21,336</td><td><strong>有</strong>（仓库测试）</td><td>仓库分布偏差</td></tr>
+  <tr><td><strong>AgentTrek</strong></td><td>网上 how-to 教程</td><td>—</td><td>部分（能否走通）</td><td>教程过时/有错，重放失败</td></tr>
+  <tr><td><strong>VideoAgentTrek</strong></td><td>YouTube 录屏</td><td>39,000</td><td>无（靠打标）</td><td>打标模型出错，无法核查</td></tr>
+</table>
+<pre class="loop">一个清晰的规律：
+
+  自带验证的数据 > 需要额外判定的数据
+  
+  SWE-rebench（有测试）→ 最可靠
+  AgentTrek（能走通）  → 中等
+  VideoAgentTrek（打标）→ 最弱，因为标签是模型生成的
+  
+→ 挖掘优先级：先找"自带验证"的源头
+</pre>
+<h2>六、Case Study：Synatra vs AgentTrek（p42）</h2>
+<blockquote>
+[对比] Synatra 和 AgentTrek 有什么差别？
+</blockquote>
+<pre class="loop">两者都从 wikiHow 类教程出发，但方向相反：
+
+AgentTrek：教程 → 让 agent 在真实网站重放 → 得到真实轨迹
+Synatra  ：教程 → 用 LLM 改写成轨迹文本 → 纯合成
+
+差别：
+  AgentTrek 要真的跑通（有环境约束，更难造假）
+  Synatra 只要模型写出"看起来合理"的步骤（容易造假）
+
+→ 前者质量更可信但产出率低
+→ 后者产出快但可能完全脱离现实
+→ 这就是 0079 课"合成"和 0078 课"挖掘"的分界
+</pre>
+<h2>SGRT 工程桥：你能"挖"什么</h2>
+<pre class="loop">【按"自带验证"原则盘点你的历史资产】
+
+✔ 高价值：标定日志
+  每次标定都有：输入（图像/参数）+ 过程（中间值）+ 结果（RMS）
+  → 天然有验证（RMS 是否达标）
+  → 这就是 SWE-rebench 式的数据
+  → 可挖出："给定这些图像和参数，能否得到达标的标定结果"
+
+✔ 高价值：故障工单 + 处理记录
+  现象描述 + 处理动作 + 处理结果
+  → 部分自带验证（处理后是否恢复正常）
+  → 可挖出排查任务
+
+⚠️ 中价值：技术文档/规范
+  有步骤说明，但没有验证
+  → 类似 AgentTrek 的教程
+  → 需要"重放"才知道对不对
+  → 而且设备不在手边时无法重放
+
+✘ 低价值：会议记录、聊天记录
+  没有结构化动作，也没有验证
+
+【具体的第一批挖掘动作】
+
+  ① 从标定日志里找"失败后重试成功"的记录
+     这类记录最有价值：
+       第一次为什么失败、改了什么、第二次为什么成功
+       → 天然是一条"反思 + 修正"的轨迹
+       
+  ② 从工单里找"结案且未复发"的记录
+     未复发 = 验证通过
+       
+  ③ 建立索引：每条记录标注
+       {设备型号, 故障类型, 是否有客观验证, 时间}
+     → 未来要建评测集时能快速筛选
+
+【不要做的】
+  ✘ 不要试图从文档"合成"排查过程
+    → 文档里没有真实决策
+    → 合成的过程看起来合理但与现实无关（Synatra 的风险）
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>思路</strong>：把网上既有产物（issue、教程、视频）转换成轨迹——规模不靠人力。<br>
+<strong>SWE-rebench</strong>：挖 GitHub PR，自带测试 = 自带验证器，21,336 个任务。<br>
+<strong>AgentTrek</strong>：教程 → agent 重放，能否走通即验证。<br>
+<strong>VideoAgentTrek</strong>：逆动力学模型给 39k YouTube 视频打标——规模最大但质量最弱。<br>
+<strong>规律</strong>：自带验证的数据 &gt; 需要额外判定的数据；挖掘要先找"有内置验证"的源头。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 为什么 SWE-rebench 这类数据特别「肥」？</p>
+  <details><summary>展开答案</summary><p>因为 GitHub PR 天生三件套齐备：① 有任务（issue 描述）；② 有参考解（PR 的 diff）；③ 有验证器（仓库里已有的测试）。所以不需要额外标注或人工执行，只要筛出有测试的仓库、找出修 bug 的 PR、回退到修复前状态，就得到一个可复现任务。比 Mind2Web 那种「人做一遍再录」便宜几个数量级。</p></details>
+  <p>Q2. 三种挖掘方式（SWE-rebench / AgentTrek / VideoAgentTrek）的验证机制各是什么？哪个最弱？</p>
+  <details><summary>展开答案</summary><p>SWE-rebench：仓库自带测试（最强，确定性验证）；AgentTrek：能否在真实网站走通教程（中等，有环境约束但结果不一定是人的最优做法）；VideoAgentTrek：无真实验证，靠逆动力学模型给视频打标（最弱，标签是模型生成的，错了无法人工核查 39k 个视频）。规律是：自带验证的数据 &gt; 需要额外判定的数据。</p></details>
+  <p>Q3. VideoAgentTrek 的逆动力学模型在做什么？为什么这个规模能做到 39k 但质量有风险？</p>
+  <details><summary>展开答案</summary><p>逆动力学模型输入前后两帧画面、输出中间发生了什么动作（点击哪里、输入什么），把没有结构化标签的视频「翻译」成 (screen, action) 序列。规模能到 39k 因为视频是免费存在的，不需要雇人录制，只需算力打标。质量风险是打标模型自身会出错，而 39k 个视频无法人工核查，错误标签会静默污染数据。</p></details>
+  <p>Q4. 按「自带验证」原则，你的团队哪些资产是高价值可挖的？第一批该挖什么？</p>
+  <details><summary>展开答案</summary><p>高价值：① 标定日志（有输入+过程+ RMS 结果，天然有验证）；② 故障工单+处理记录（处理后是否恢复正常即验证）。中价值：技术文档（有步骤无验证，类似教程）。低价值：会议/聊天记录。第一批该挖：① 标定日志里「失败后重试成功」的记录——天然含真实反思与修正过程；② 工单里「结案且未复发」的记录——未复发即验证通过。同时建索引标注 {设备型号, 故障类型, 是否有客观验证, 时间} 方便后续筛选。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture11 · 段三 数据来源 · 挖掘</span><br>
+  ← 上一课 <a href="lecture11-0077-human-demonstrations.html">0077 · 人类示范</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture11-0079-synthesized.html">0079 · 来源三：合成轨迹与合成环境</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture11 课件《What Data Do Agents Need?》· 源文件夹 week6-10.28 · p29-37；SWE-rebench (arXiv:2505.20411)、AgentTrek、VideoAgentTrek (arXiv:2504.07866)<br>
+Lesson 0078 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

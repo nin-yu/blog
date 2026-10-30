@@ -1,7 +1,7 @@
 # 综合题 / 结业考试（毕业考核 · Markdown 作答制）
 
 > 对齐 Stanford CS329Z Lecture 1–5 · 教学空间 lessons/
-> **组织方式**：按讲分文件夹 `Lecture01/ … Lecture05/`。每讲放 1 道**综合结业考试题**；Lecture01 另有早期 6 道专项题，也归入 `Lecture01/`。
+> **组织方式**：按讲分文件夹 `Lecture01/ … Lecture06/`。每讲放 1 道**综合结业考试题**；Lecture01 另有早期 6 道专项题，也归入 `Lecture01/`。
 > 规则：**用你自己的话、越具体越好**。回答里要能看到"你为什么这么设计"，而不是背名词。
 > 作答方式：每题一个 .md 文件，题目在上，**「我的作答」区在下方**——直接编辑保存，随时可以改。答完（哪怕只答一题）告诉我"评卷"，我逐题评判。
 
@@ -19,7 +19,8 @@
 ├─ Lecture02/结业考试-Lecture02-上下文与选型.md
 ├─ Lecture03/结业考试-Lecture03-RAG全链路.md
 ├─ Lecture04/结业考试-Lecture04-工具与MCP.md
-└─ Lecture05/结业考试-Lecture05-工程化.md
+├─ Lecture05/结业考试-Lecture05-工程化.md
+└─ Lecture06/结业考试-Lecture06-设计模式.md
 ```
 
 ## 一、每讲综合结业考试题（每讲一道）
@@ -31,6 +32,7 @@
 | Lecture03 | [Lecture03/结业考试-Lecture03-RAG全链路.md](Lecture03/结业考试-Lecture03-RAG全链路.md) | RAG 全链路：分块/索引增强/混合检索/RRF/指标/失败三侧 | ★★★ |
 | Lecture04 | [Lecture04/结业考试-Lecture04-工具与MCP.md](Lecture04/结业考试-Lecture04-工具与MCP.md) | 工具层设计 + MCP 架构/鉴权 + 三层失败 + Pass^k 验收 | ★★★ |
 | Lecture05 | [Lecture05/结业考试-Lecture05-工程化.md](Lecture05/结业考试-Lecture05-工程化.md) | 三支柱 / 框架取舍（DSPy·LangGraph）/ harness / 编排 / 四条铁律 | ★★★ |
+| Lecture06 | [Lecture06/结业考试-Lecture06-设计模式.md](Lecture06/结业考试-Lecture06-设计模式.md) | 范式判据 / 五种 workflow 模式 / 推理四法 / 五种上下文模式 / Pi 案例借鉴 | ★★★ |
 
 ## 二、Lecture01 专项题（早期 6 题 + 1 道概念串联题，可按序或任选）
 

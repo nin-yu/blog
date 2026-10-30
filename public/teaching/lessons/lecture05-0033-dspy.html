@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0033 — DSPy：签名、模块、优化器</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture05 · Lesson 0033</span>
+  <h1>DSPy：签名、模块、优化器</h1>
+  <div class="meta">第 0033 课（Lecture05 第 2 课）· 来源：lecture05.pdf p19-51 · 来源文件夹：week3-10.7 · 本课成果：掌握 DSPy 三个抽象的分工与签名价值，理解优化器为何需要 Data+Metric，能判断何时值得引入 DSPy</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+DSPy 的三个抽象（p22）：<br><br>
+<strong>Signatures 签名</strong>——严格定义模型的输入/输出契约（<strong>What</strong>）<br>
+<strong>Modules 模块</strong>——把签名与程序逻辑组合成可调用函数（<strong>How</strong>）<br>
+<strong>Optimizers 优化器</strong>——在给定数据和指标下改进 prompt 或权重<br><br>
+最关键的一句（p51）：<strong>优化器让"改进"这件事显式化</strong>——你用数据和 metric 换更好的程序，而不是靠感觉改 prompt。
+</div>
+
+<h2>一、三个抽象的分工（p22）</h2>
+<table>
+  <tr><th>抽象</th><th>回答什么</th><th>课件的定义</th></tr>
+  <tr><td><strong>Signatures</strong></td><td><strong>What</strong>（做什么）</td><td>严格定义到语言模型的输入/输出</td></tr>
+  <tr><td><strong>Modules</strong></td><td><strong>How</strong>（怎么做）</td><td>把签名和程序逻辑组合成可调用函数</td></tr>
+  <tr><td><strong>Optimizers</strong></td><td>怎么变好</td><td>在给定数据和 metric 下改进 prompt 或权重</td></tr>
+</table>
+<p>这个三分法很值得记住，因为它把"写 prompt"这件事拆成了三个可分别改进的层：</p>
+<pre class="loop">签名写错了 → 模型理解的任务就错了（最根本的问题）
+模块选错了 → 该用 CoT 的地方用了直接预测
+优化器没用 → 全靠手调，无法系统性改进
+</pre>
+
+<h2>二、Signatures：把契约写下来（p24-28）</h2>
+<pre class="loop">DSPy 的写法（示意）：
+  classify_iris = dspy.Predict("petal_length, petal_width, sepal_length,
+                                sepal_width -> species")
+
+  这就声明了：4 个数值输入 → 1 个类别输出
+  → 契约明确，不靠自然语言描述
+
+课件强调（p26，演示页）：
+  "Not good that these are [not typed]" ← 参数没有类型是个问题
+  → 所以要写类型
+</pre>
+<p>签名的价值不在"写法更短"，在于：</p>
+<pre class="loop">① 契约明确 → 换个模型实现，接口不变
+② 可被优化 → 优化器知道输入输出是什么，才能自动搜索 prompt
+③ 可被测试 → 能对签名做单元测试（输入合法/非法）
+
+对比"随便写一段 prompt"：
+  没有契约 → 无法自动化优化，也无法判断改对了没有
+</pre>
+<h2>三、Modules：选择用什么推理结构（p29-34）</h2>
+<pre class="loop">常见的模块（p51）：
+  dspy.Predict          直接预测（不推理）
+  dspy.ChainOfThought   带推理链
+  dspy.BestOfN          多次采样选最好
+  ...（还有其他）
+
+选择依据与 Lecture02 的推理期扩展对应：
+  简单任务 → Predict（省 token）
+  需要推理 → ChainOfThought
+  需要可靠性 → BestOfN（多采样）
+
+模块的意义：
+  把"用什么推理结构"变成一个显式的、可替换的选择
+  而不是隐藏在 prompt 的措辞里
+</pre>
+<h2>四、Optimizers：把改进变成搜索（p35-44）</h2>
+<pre class="loop">优化器需要两样东西（p37-39）：
+
+  Data   —— 训练数据（输入 + 期望输出，或至少能被 metric 打分）
+  Metric —— 评价函数（判断输出好不好）
+
+然后优化器自动搜索：更好的指令 + 更好的 few-shot 示例
+
+这个思路和 Lecture09 完全一致：
+  OPRO / MIPROv2 / GEPA 都是"反思 + 搜索"的框架
+  DSPy 的优化器是这套方法的产品化封装
+</pre>
+<h2>五、DSPy 内置了 agent 模块（p45-50）</h2>
+<blockquote>
+<strong>dspy.ReAct</strong>——用 ReAct 循环来满足签名<br>
+<strong>dspy.RLM</strong>——递归语言模型
+</blockquote>
+<pre class="loop">这意味着：你写一个签名，然后选 dspy.ReAct 作为模块
+→ 它会自动用 ReAct 循环去满足这个输入输出契约
+→ 不需要自己实现 Thought-Action-Observation
+
+例：
+  qa = dspy.ReAct("question -> answer", tools=[search, calc])
+  → DSPy 自动生成 ReAct 循环、工具调用、停止判断
+</pre>
+<h2>六、DSPy 总结（p51）——背下这四句</h2>
+<blockquote>
+· Signatures 定义输入/输出契约<br>
+· Modules 组合并指明"契约该如何被满足"；有 dspy.Predict、ChainOfThought、BestOfN 等<br>
+· Optimizers 能在给定数据和 metric 下改进程序的 prompt/权重<br>
+· DSPy 内置了让 agent 满足签名的模块：dspy.ReAct、dspy.RLM
+</blockquote>
+
+<h2>七、DSPy 的定位（回到谱系）</h2>
+<pre class="loop">在 Lecture05 第 0032 讲的控制流谱系上：
+
+  Model ──── Workflow/Compound AI ──── Agent ──── Small part
+                  ▲
+                DSPy 在这里
+
+为什么？
+  · DSPy 的"程序"是你写的（签名的组合顺序由你定）
+  · 模型只在每个签名内部做决策
+  → 控制流在程序里 → 属于 Workflow 档
+  → 即使使用 dspy.ReAct，循环的上界和结构仍由你定义
+</pre>
+<h2>SGRT 工程桥：DSPy 能给你什么</h2>
+<pre class="loop">【最有价值的一点：Optimizers】
+
+你的痛点：
+  prompt 全靠手调，改完不知道好没好
+  → 换个说法可能这一例对了那例错了
+
+DSPy 的做法：
+  ① 写签名：residual_stats -> root_cause, evidence, confidence
+  ② 选模块：dspy.ChainOfThought（需要推理）
+  ③ 定义 metric：根因判断是否与历史结论一致
+  ④ 跑优化器：自动搜索更好的指令和 few-shot
+
+  → 得到的是一个"在 30 个历史案例上准确率最高"的 prompt
+  → 而且这个 prompt 是自动生成的，不是你猜的
+
+【现实约束】
+  ① 需要几十到上百个标注案例（你目前有历史记录但缺标注）
+  ② DSPy 需要改代码结构（签名式写法）
+  ③ 引入一个依赖库
+
+【建议的路径】
+  Step 1  先用纯 API + 手写 prompt 跑通
+          → 确认"能不能做到 70% 准确率"
+  Step 2  如果手调卡住（改不动了）
+          → 引入 DSPy 的 optimizer
+  Step 3  如果 DSPy 有效
+          → 保留它；否则退回手写（框架不是必须的）
+
+【不要一上来就用 DSPy】
+  因为它解决的问题是"系统性优化 prompt"
+  如果你连评估集都没有，优化器无从下手
+  → 先建评估集（三支柱的第三根）
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>三个抽象</strong>：Signatures（What）／Modules（How）／Optimizers（怎么变好）。<br>
+<strong>签名价值</strong>：契约明确、可被优化、可被测试。<br>
+<strong>模块</strong>：Predict／ChainOfThought／BestOfN，显式选择推理结构。<br>
+<strong>优化器</strong>：需要 Data + Metric，自动搜索指令和示例。<br>
+<strong>内置 agent</strong>：dspy.ReAct、dspy.RLM。定位在谱系的 Workflow 档。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. DSPy 的三个抽象分别回答什么问题？</p>
+  <details><summary>展开答案</summary><p>Signatures 回答 What（做什么）——严格定义到语言模型的输入/输出契约；Modules 回答 How（怎么做）——把签名和程序逻辑组合成可调用函数，如 dspy.Predict、ChainOfThought、BestOfN；Optimizers 回答"怎么变好"——在给定数据和 metric 下改进 prompt 或权重。</p></details>
+  <p>Q2. 签名的三项价值是什么？为什么"随便写一段 prompt"做不到这些？</p>
+  <details><summary>展开答案</summary><p>三项价值：① 契约明确——换模型实现时接口不变；② 可被优化——优化器知道输入输出是什么才能自动搜索 prompt；③ 可被测试——能对签名做单元测试（合法/非法输入）。随便写 prompt 做不到，因为没有明确的契约：优化器不知道要满足什么，也无法判断改动是好是坏，只能靠人工逐个试。</p></details>
+  <p>Q3. DSPy 的优化器需要什么才能工作？这和 Lecture09 讲的什么一致？</p>
+  <details><summary>展开答案</summary><p>需要 Data（训练数据，输入+期望输出或至少能被 metric 打分）和 Metric（评价函数判断输出好坏）。这和 Lecture09 的 OPRO/MIPROv2/GEPA 完全一致——都是"反思+搜索"：用 metric 筛选候选、用数据验证效果。DSPy 的优化器是这套方法的产品化封装。所以前提是你得先有评估集。</p></details>
+  <p>Q4. DSPy 在控制流谱系上处于哪一档？为什么 dspy.ReAct 也不算"agent 档"？</p>
+  <details><summary>展开答案</summary><p>处于 Workflow/Compound AI System 档。因为 DSPy 的"程序"结构是你写的——签名的组合顺序、循环结构由你定义，模型只在每个签名内部做决策。即使使用 dspy.ReAct，ReAct 循环的上界、工具集、停止条件仍由你在代码里定义，控制流仍在程序里，所以仍是 workflow 档而非完全由模型决定步骤的 agent 档。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture05 · 段二 Workflow 框架 · DSPy</span><br>
+  ← 上一课 <a href="lecture05-0032-what-is-engineering.html">0032 · 什么叫工程化</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture05-0034-langgraph.html">0034 · LangGraph：State、Node、Edge</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture05 课件《Frameworks & Orchestration》· 源文件夹 week3-10.7 · p19-51；DSPy (Khattab et al., arXiv:2310.03714)<br>
+Lesson 0033 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

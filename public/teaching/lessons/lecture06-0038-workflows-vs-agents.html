@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0038 — 回顾：workflow 与 agent 的分界</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture06 · Lesson 0038</span>
+  <h1>回顾：workflow 与 agent 的分界</h1>
+  <div class="meta">第 0038 课（Lecture06 第 1 课）· 来源：lecture06.pdf p8-12 · 来源文件夹：week3-10.12 · 本课成果：掌握 workflow 与 agent 在控制流、适应性、适用场景上的差别，能为自己的流程找出 workflow/agent 的交接点</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件用一张表把 workflow 和 agent 的差别讲透了（p12）：<br><br>
+<table>
+  <tr><th></th><th>Workflows</th><th>Agents</th></tr>
+  <tr><td><strong>控制流</strong></td><td>代码</td><td>LLM</td></tr>
+  <tr><td><strong>适应性</strong></td><td><strong>固定的</strong>（编程好的分支、路由、循环）</td><td><strong>根据观察选择下一步</strong></td></tr>
+  <tr><td><strong>最适合</strong></td><td>有清晰、可重复结构的任务</td><td>需要探索和灵活决策的任务</td></tr>
+  <tr><td><strong>例子</strong></td><td>分类工单 → 检索政策 → 起草自动回复</td><td>用工具调查并解决工单</td></tr>
+</table>
+最后一行最关键（p12 原文）：<strong>真实系统往往是 workflow 和 agent 的组合。</strong>
+</div>
+
+<h2>一、控制流在哪（p9-10）</h2>
+<pre class="loop">这就是 Lecture05 第 0032 讲那根谱系的再次出现：
+
+        ◄── 控制流在程序里              控制流在模型里 ──►
+  Model ── Workflow/Compound AI ── Agent ── Small part
+
+这一讲把它拆成三个具体的设计维度（p8）：
+  ① Workflow Designs   工作流设计模式（5 种）
+  ② Reasoning Designs  推理/行动设计模式（ReAct/Reflexion/CodeAct/规划-执行）
+  ③ Context Designs    上下文管理模式（5 种）
+
+→ 每个维度都是一组"可选的积木"
+→ 你搭系统就是选积木
+</pre>
+<h2>二、设计模式是什么（p3-5）</h2>
+<p>课件引了 Martin Fowler 的话（p4）+ 那个著名的"模式是半成品"论断，然后给出自己的立场（p5）：</p>
+<blockquote>
+<strong>搭 agent 系统时你必须做很多设计决策。今天我们介绍设计模式——[它们不是模板，是决策的参考框架]。</strong>
+</blockquote>
+<pre class="loop">为什么"模式"而不是"最佳实践"：
+
+  最佳实践  → 照做就对（但往往不成立）
+  设计模式  → 描述"在什么条件下选什么"
+  
+课件的态度很谨慎：
+  · 模式是"半成品"——需要你根据场景补全
+  · 不是"照抄就能用"
+</pre>
+<h2>三、Workflow vs Agent 的具体差别（p12）</h2>
+<pre class="loop">同一个业务，两种实现：
+
+【Workflow 版本】
+  分类工单 → 检索政策 → 起草自动回复
+  · 三步代码写死
+  · 每步的输出是下一步的输入
+  · 可复现、好调试、成本可预测
+
+【Agent 版本】
+  用工具调查并解决工单
+  · 模型决定先看什么、再看什么
+  · 可能读了 3 个文档也可能读了 10 个
+  · 灵活但不可预测
+
+【关键判断（p12 最后一句）】
+  真实系统往往是组合
+  → 不是"全 workflow"或"全 agent"
+  → 而是"在哪一段用 workflow，哪一段用 agent"
+</pre>
+<h2>四、本讲结构</h2>
+<pre class="loop">0038 回顾 + workflow 与 agent 的分界（本课）
+0039 五种 workflow 设计模式 + 组合实例（STORM / Archon）
+0040 推理/行动模式一：ReAct 与 Reflexion
+0041 推理/行动模式二：CodeAct 与"先规划再执行"（ReWOO/LLMCompiler）
+0042 上下文管理的两条原则 + 五种模式
+0043 上下文隔离与渐进披露
+0044 案例：Pi 极简 harness（优点与代价）
+0045 Lecture06 总结与结业
+</pre>
+<h2>SGRT 工程桥：你的系统哪里该用 workflow、哪里该用 agent</h2>
+<pre class="loop">【按步骤拆解你的标定流程】
+
+采集图像          → workflow（固定）
+角点检测          → workflow（固定）
+角点质量判定      → workflow（阈值规则）
+  但如果角点不够 → 需要"判断为什么不够"
+                 → 这一段可以是 agent（看图像、查历史、给建议）
+求解外参          → workflow（固定算法）
+残差评估          → workflow（固定）
+  但残差超标     → 需要"诊断根因"
+                 → 这一段是 agent
+写配置            → workflow（固定）
+
+【结论】
+  你的系统是"workflow 里嵌几个 agent 判断点"
+  → 这就是 p12 说的"真实系统往往是组合"
+  → 不要试图把整个流程 agent 化
+  → 也不要把诊断这种开放性任务硬写成规则
+
+【判断口诀】
+  步骤能枚举 → workflow
+  步骤需要探索 → agent
+  两者之间有清晰的"交接点" → 就在那里分界
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>控制流</strong>：workflow 在代码、agent 在 LLM。<br>
+<strong>适应性</strong>：workflow 是编程好的分支路由循环；agent 根据观察选下一步。<br>
+<strong>适合</strong>：workflow 用于结构清晰可重复；agent 用于需要探索。<br>
+<strong>关键</strong>：真实系统是两者的组合——要找"交接点"，不是二选一。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. workflow 和 agent 在控制流和适应性上的差别是什么？</p>
+  <details><summary>展开答案</summary><p>控制流：workflow 在代码里（程序决定），agent 在 LLM 里（模型决定）。适应性：workflow 是固定的——编程好的分支、路由、循环，同样的输入走同样的路径；agent 根据观察选择下一步，路径随观察结果变化。这个差别直接决定了可复现性和调试难度：workflow 可复现、好调试；agent 灵活但需要观测和兜底。</p></details>
+  <p>Q2. 为什么说"真实系统往往是 workflow 和 agent 的组合"？</p>
+  <details><summary>展开答案</summary><p>因为很少有系统全用其中一种：纯 workflow 无法处理开放性的判断（如"为什么角点不够"），纯 agent 则在确定性步骤上浪费成本且不可靠。实际做法是在流程中找"交接点"——确定性步骤用 workflow（采集、检测、求解、评估、写配置），需要探索判断的环节嵌入 agent（诊断根因）。这不是折中，而是按每段任务的性质选最合适的控制方式。</p></details>
+  <p>Q3. 课件为什么说设计模式是"半成品"而不是"最佳实践"？</p>
+  <details><summary>展开答案</summary><p>因为设计模式描述的是"在什么条件下选什么"，不是"照做就对"。每个模式都有适用前提和代价——比如 Orchestrator-Workers 适合"难以预判子任务数量和性质"的场景，如果子任务本来就固定，用它反而增加复杂度和延迟。所谓"半成品"是指模式只给出结构和权衡，具体怎么补全取决于你的场景、数据和约束。</p></details>
+  <p>Q4. 你的标定流程里，哪些步骤该用 workflow、哪些该用 agent？</p>
+  <details><summary>展开答案</summary><p>workflow：采集图像、角点检测、角点质量阈值判定、求解外参、残差评估、写配置——这些都是可枚举的固定步骤，用代码实现可复现、可调试。agent：角点不够时"判断为什么不够"（看图像、查历史、给建议）、残差超标时"诊断根因"——这两处需要探索和多源证据综合，无法用规则枚举。关键是这两个交接点的边界要明确：agent 输出结构化结论后交回 workflow 执行。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture06 · 段一 回顾</span><br>
+  <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture06-0039-workflow-patterns.html">0039 · 五种 workflow 设计模式</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture06 课件《Agent Design Patterns and Scaffolds》· 源文件夹 week3-10.12 · p8-12<br>
+Lesson 0038 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

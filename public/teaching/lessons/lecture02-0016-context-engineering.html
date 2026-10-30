@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0016 — 上下文工程：五个组成部分与避免膨胀</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture02 · Lesson 0016</span>
+  <h1>上下文工程：五个组成部分与避免膨胀</h1>
+  <div class="meta">第 0016 课（Lecture02 第 8 课）· 来源：lecture02.pdf p160-171 · 来源文件夹：week2-9.28 · 本课成果：掌握 agent 上下文的五个组成部分、context rot 现象，以及避免膨胀的五条实用建议</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+agent 的上下文由五部分组成（p162）：<br>
+<strong>System Prompt · Message History · Memories · Tool Call Results · Attached Files</strong><br><br>
+为什么不能全都放进去（p163-164）：<strong>Context Rot</strong>——上下文越长，模型的推理能力越差，不是"装不下"的问题而是"读不准"的问题。<br><br>
+课件明确说（p165）：<strong>没有唯一正确的构建方式，这需要你自己实验。</strong>
+</div>
+
+<h2>一、上下文里有什么（p162）</h2>
+<pre class="loop">① System Prompt   —— 角色、规则、约束
+② Message History —— 之前的对话轮次
+③ Memories        —— 从记忆系统检索出的内容
+④ Tool Call Results —— 每次工具返回的原始结果
+⑤ Attached Files  —— 附带的文档、图片、数据
+
+这五类里，④ 是最容易失控的：
+  每次工具返回都全量进上下文
+  → 20 次调用后，上下文里全是原始数据
+</pre>
+
+<h2>二、Context Rot：为什么不是"装得下就行"（p163-164）</h2>
+<blockquote>
+<strong>为什么不把所有东西都放进去？——Context Rot（上下文腐化）</strong>
+</blockquote>
+<pre class="loop">现象（OOLONG 论文的发现）：
+  上下文越长，模型在"需要从大量信息中聚合/推理"的任务上表现越差
+  → 不是"记不住"，而是"抓不住重点"
+
+类比：
+  让你从 3 句话里找答案 → 容易
+  让你从 3000 句话里找答案 → 即使答案就在里面，你也容易漏
+
+机制推测：
+  · 注意力被稀释（要分配给更多 token）
+  · 无关信息造成干扰（Lecture01 讲的 context distraction）
+  · 位置偏差（中间位置的信息更容易被忽略）
+</pre>
+
+<h2>三、五条实用建议</h2>
+
+<h3>3.1 避免膨胀：工具要少（p166）</h3>
+<blockquote>
+<strong>有时候几个工具就够了。Pi 只有 read、write、edit、bash。</strong>
+</blockquote>
+<pre class="loop">工具越多 → 工具 schema 占的上下文越多
+          → 模型选择时越容易选错
+          → 而且每个工具的返回都可能是下一个膨胀源
+
+Pi 的选择：4 个工具，其他能力都是 bash 的子集
+</pre>
+
+<h3>3.2 避免膨胀：用检索而不是全量（p167）</h3>
+<blockquote>
+<strong>用检索来取回最相关的记忆或文件</strong>
+</blockquote>
+<pre class="loop">错误做法：把 50 个文档全塞进上下文
+正确做法：检索出最相关的 3 个片段
+
+→ 这是 Lecture03（RAG）的核心内容
+</pre>
+
+<h3>3.3 保护 KV Cache（p168-169）——最实用的一条</h3>
+<pre class="loop">p168：顺序追加 → 不破坏 KV Cache
+p169：插入到中间 → 所有位置编码都变了 → 缓存全部失效
+
+具体含义：
+  ✔ 把新内容追加到末尾
+     缓存前缀仍然有效，只需重新算新增部分
+  
+  ✘ 在对话中间插入或修改内容
+     后面的所有 token 位置都变了
+     → 整个 KV Cache 作废
+     → 相当于重新 Prefill 一遍
+
+工程含义：
+  同一次任务里，尽量"只追加不修改"
+  需要改历史时，考虑另开会话而不是原地改
+</pre>
+
+<h3>3.4 用评估来验证上下文选择（p170）</h3>
+<blockquote>
+<strong>你可以建立 benchmark/eval 来测试你的改动</strong>
+</blockquote>
+<pre class="loop">不要靠直觉判断"加了这段信息会不会更好"
+→ 建一个小测试集（比如 20 个任务）
+→ 对比"加 / 不加"的成功率
+→ 用数据决定
+
+这条和 Lecture09 的三支柱完全一致：
+  没有 metric 就没有优化，只有"感觉好点了"
+</pre>
+
+<h3>3.5 Compaction：压缩的两难（p171）</h3>
+<blockquote>
+· 到了需要压缩的时候，上下文已经非常长了<br>
+· 新的决策是：<strong>在新上下文里保留什么</strong><br>
+· 保留太多 → 很快又要压缩一次<br>
+· 丢弃太多 → 可能丢掉完成任务所需的关键上下文
+</blockquote>
+<pre class="loop">这是一个真正的两难，没有最优解：
+  保留阈值太高 → 频繁压缩，每次压缩都要调 LLM，成本高
+  保留阈值太低 → 丢关键信息，任务失败
+
+实践建议：
+  · 保留：目标、约束、当前进度、尚未解决的假设
+  · 丢弃：原始工具返回、已排除方向的详细过程
+  · 中间态（摘要）：推理链、已确认的事实
+</pre>
+
+<h2>四、另一种哲学：递归语言模型（p172-173）</h2>
+<pre class="loop">RLM（Recursive Language Models）的思路：
+  不试图把所有内容塞进一个上下文
+  而是让模型递归地处理：
+    · 先看摘要
+    · 需要深入时再展开某一节
+    · 每一层都有自己的上下文
+
+→ 这是"分治"思想在上下文管理的应用
+→ 和 L06 讲的 Context Isolation（子 agent）类似
+</pre>
+
+<h2>SGRT 工程桥：你的排查助手五类上下文怎么管</h2>
+<pre class="loop">【① System Prompt】固定不动
+  角色、设备参数、安全约束、输出格式
+  → 必须放在最前面（保护 KV Cache）
+  → 不要中途修改（会作废缓存）
+
+【② Message History】只追加
+  用户的提问、agent 的推理、结论
+  → 追加式，不插不改
+
+【③ Memories】按需检索
+  历史相似案例 → 检索出 top-3
+  → 不要全部塞进去
+
+【④ Tool Call Results】最大的膨胀源 ⚠️
+  查一次日志返回 5000 行 → 不要全放
+  正确做法：
+    工具内部就做筛选（只返回异常段、只返回统计）
+    → 让工具返回"结论"而不是"原文"
+  → 这是你最容易漏的优化点
+
+【⑤ Attached Files】
+  只在需要时挂载，用完即卸
+
+【一个实测建议】
+  拿 20 个历史案例，对比两种配置：
+    A. 工具返回原始日志
+    B. 工具返回筛选后的摘要
+  测"诊断准确率"和"token 消耗"
+  → 大概率 B 又准又省
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>五部分</strong>：System Prompt / Message History / Memories / Tool Results / Attached Files。<br>
+<strong>Context Rot</strong>：越长越抓不住重点——不是容量问题，是注意力问题。<br>
+<strong>五建议</strong>：工具要少／用检索不全塞／保护 KV Cache（只追加不插入）／用 eval 验证／压缩时保留目标约束进度。<br>
+<strong>最大膨胀源</strong>：Tool Call Results——让工具返回结论而不是原文。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. agent 上下文由哪五部分组成？哪一部分最容易失控？</p>
+  <details><summary>展开答案</summary><p>① System Prompt（角色、规则、约束）；② Message History（之前的对话轮次）；③ Memories（从记忆系统检索的内容）；④ Tool Call Results（每次工具返回的原始结果）；⑤ Attached Files（附带的文档、图片、数据）。最容易失控的是 Tool Call Results——每次工具返回都全量进上下文，20 次调用后上下文里全是原始数据。</p></details>
+  <p>Q2. Context Rot 是什么？为什么说它不是容量问题而是注意力问题？</p>
+  <details><summary>展开答案</summary><p>Context Rot（上下文腐化）指上下文越长，模型在需要从大量信息中聚合推理的任务上表现越差。说是注意力问题而非容量问题，因为答案确实"在里面"、模型也确实"看得到"，但注意力被稀释、被无关信息干扰、存在位置偏差（中间位置信息更易被忽略），所以抓不住重点。就像让人从 3000 句话里找答案，即使答案在里面也容易漏。</p></details>
+  <p>Q3. 为什么"在对话中间插入内容"会让 KV Cache 全部失效？工程上该怎么做？</p>
+  <details><summary>展开答案</summary><p>因为 KV Cache 依赖前缀不变——插入内容后，插入点之后的所有 token 位置编码都变了，它们的 K/V 全部需要重算，等于整个缓存作废、重新 Prefill 一遍。工程上应该只追加不修改：把新内容加到末尾，前缀缓存仍有效只需算新增部分；需要改历史时考虑另开会话而不是原地改。</p></details>
+  <p>Q4. Compaction 的两难是什么？你的场景里该保留什么、丢弃什么？</p>
+  <details><summary>展开答案</summary><p>两难：保留太多会很快需要再压缩一次（频繁调 LLM 成本高），丢弃太多可能丢掉完成任务所需的关键上下文。你的场景应保留：目标、约束（安全阈值）、当前排查进度、尚未解决的假设；丢弃：原始工具返回的完整日志、已排除方向的详细推导过程；中间态用摘要：推理链主干、已确认的事实。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture02 · 段五 LLM for Agents · 上下文工程</span><br>
+  ← 上一课 <a href="lecture02-0015-structured-io.html">0015 · 结构化 I/O</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture02-0017-lecture02-summary.html">0017 · Lecture02 总结（收官）</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件《LLMs for Builders》· 源文件夹 week2-9.28 · p160-173；OOLONG (arXiv:2511.02817)、Recursive Language Models (arXiv:2512.24601)、Effective Context Engineering (Anthropic 2025)<br>
+Lesson 0016 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

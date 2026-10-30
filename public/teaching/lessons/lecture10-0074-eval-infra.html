@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0074 — 评测基础设施与持续基准</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture10 · Lesson 0074</span>
+  <h1>评测基础设施与持续基准</h1>
+  <div class="meta">第 0074 课（Lecture10 第 6 课Lecture10 收官）· 来源：lecture10.pdf p55-64 · 来源文件夹：week6-10.26 · 本课成果：掌握评测基建四要求、任务是软件这一论断、regrade/rerun/reuse 三档版本管理与完整凭据要求，能为本项目排出一套落地方案（Lecture10 收官）</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+评测基础设施的四个要求（p56）：<br>
+<strong>可靠（容错）/ 可复现 / 快（并行跑独立 trial）/ 可移植（本地和云沙箱）</strong><br><br>
+但更重要的是这一句（p60）：<br>
+<strong>「任务是软件，软件有 bug」</strong><br>
+于是评测必须是<strong>持续的</strong>（continuous benchmarks）：把基准接进 CI/CD，任务会坏、会 flaky、会被新模型搞出新问题。<br><br>
+以及两个关键设计：<strong>回归/重跑/复用三档版本管理</strong>（p61）、<strong>每行结果都有完整凭据</strong>（p62）。
+</div>
+
+<h2>一、基础设施四要求（p56）</h2>
+<pre class="loop">① 可靠（容错）
+   单个 trial 崩了不该让整个评测崩
+   → 超时、异常、容器启动失败都要能处理
+
+② 可复现
+   同样的任务 + 同样的模型 → 尽量同样的结果
+   → 环境锁定、依赖烘进镜像、随机种子
+
+③ 快（并行跑独立 trial）
+   30 个任务 × 3 次 = 90 次运行
+   串行要几小时，并行只要几十分钟
+   → 但前提是任务真的独立（p43 的 INDEPENDENT）
+
+④ 可移植（本地和云沙箱）
+   本地开发时在本地跑，量大了上云
+   → 不能依赖某个特定云厂商
+
+→ 这四条其实都是传统 CI 的要求
+→ 讲座的观点：agent 评测应该沿用软件工程的实践
+</pre>
+<h2>二、核心论断：任务是软件（p60）</h2>
+<blockquote>
+<strong>任务是软件。软件有 bug。</strong><br>
+使用会带来 bug 报告：不稳定、假阴性、新模型=新行为、基础设施噪音/兼容性问题、奖励黑客
+</blockquote>
+<pre class="loop">这句话打破一个幻想：
+  「我写好基准，它就固定了，以后拿它衡量就行」
+  
+现实：
+  · 模型升级 → 旧任务可能变得太简单（失去区分度）
+  · 模型升级 → 学会奖励黑客 → 任务必须加固
+  · 依赖升级 → 环境不再可复现
+  · 网络/资源波动 → flaky
+  → 基准是会腐烂的软件资产
+
+所以讲座给的解法（p60）：
+  CONTINUOUS BENCHMARKS（接进 CI/CD）
+  tbench.ai 上：benchmark 运行 → 新任务 / issue → 使用产生 bug 报告
+</pre>
+<h2>三、三档版本管理（p61）——本课最实用的一页</h2>
+<pre class="loop">课件把"改任务"分成三档，规模递增：
+
+【regrade 重新评分】
+  不重跑，只重新算分
+  适用：
+    · 更新文档
+    · 修复 oracle 的不稳定性
+    · 固定漂移的依赖版本
+  → 最便宜（不需要 agent 重跑）
+
+【rerun 重跑】
+  agent 环境变了，需要重跑
+  适用：
+    · 修正 prompt 里的笔误
+    · 修正过严的验证器
+    · 消除奖励黑客
+    · 重新调整判官
+    · 减少验证器 flaky
+    · 调整验证器资源
+  → 中等成本
+
+【reuse 复用 / 新任务】
+  任务本身需要改或增加
+  适用：
+    · 报告额外指标
+    · 改变奖励
+    · 新增任务
+    · 修正描述不足的 prompt
+    · 修正描述过度的 prompt
+    · 修改数据和工具
+    · 调整 agent 资源
+  → 最贵
+</pre>
+<table>
+  <tr><th>档位</th><th>触发原因</th><th>成本</th></tr>
+  <tr><td><strong>regrade</strong></td><td>文档/依赖/oracle 稳定性</td><td>最低（不重跑 agent）</td></tr>
+  <tr><td><strong>rerun</strong></td><td>验证器/判官/prompt 笔误/奖励黑客</td><td>中（agent 重跑）</td></tr>
+  <tr><td><strong>reuse</strong></td><td>任务定义/数据/工具/奖励变化</td><td>最高（重做任务）</td></tr>
+</table>
+<p>这个分档的价值：<strong>当你发现基准有问题时，先判断属于哪一档，不要一律推翻重做</strong>。</p>
+
+<h2>四、每行结果都要有完整凭据（p62）</h2>
+<blockquote>
+<strong>FULL RECEIPTS FOR EVERY ROW：每次 trial 的轨迹、日志、制品、奖励</strong>
+</blockquote>
+<pre class="loop">"每行"指的是结果表里的每一行（= 一个 trial）
+
+要存：
+  · trajectory（完整轨迹）
+  · logs（日志）
+  · artifacts（agent 产出的文件）
+  · rewards（得分）
+
+为什么这是硬要求：
+  ① 分数可疑时能复查（是不是验证器判错了）
+  ② 模型行为异常时能诊断（它在哪一步跑偏）
+  ③ 输赢可争议时需要证据（"它真的通过了吗"）
+  ④ 训练用 RL 时需要轨迹（distillation / 回放）
+
+→ 没有凭据的评测结果，等于没有评测
+→ 这和 Lecture05 的"可观测性"是同一件事
+</pre>
+<h2>五、任务 QA 的静态+agentic 检查（p59）</h2>
+<pre class="loop">课件列的检查手段：
+  · static checks（静态检查）
+  · agent judge on trajectories（用 agent 判官看轨迹）
+  · oracle agent（参考解 agent）
+  · frontier agents（前沿 agent 能不能做）
+  · cheat agents（专门作弊的 agent 能不能骗过）
+
+最有意思的是最后两个：
+  frontier agents → 验证任务"可解且有难度"（太难/太易都该调整）
+  cheat agents   → 验证任务"防得住作弊"
+
+→ 用 agent 来 QA 任务本身，这是 agent 时代的自举
+</pre>
+<h2>SGRT 工程桥：你的评测该怎么落地</h2>
+<pre class="loop">【阶段一：不要建平台，建一个脚本】
+
+  30 个 task 目录（按 0072 课的结构）
+  + 一个 Python 脚本：
+      读所有 task → 每个跑 3 次 → 调 verifier → 输出 CSV
+  → 半天能写出来
+  → 不需要 Harbor、不需要云沙箱
+
+【阶段二：加可复现性】
+  · 环境：把日志/配置/案例库打包进 task 目录
+  · 不依赖网络（否则 flaky）
+  · 固定随机种子（如果 API 支持）
+  · 记录每次运行用的模型版本、参数（温度等）
+
+【阶段三：加凭据】
+  每个 trial 存一个 JSON：
+  {
+    "task_id": "TX204-residual-001",
+    "trial": 2,
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "trajectory": [...],          ← 每步 action+observation
+    "final_answer": {...},
+    "verifier_result": {"layer1": true, "layer2": true, "layer3": false},
+    "reward": 0.0,
+    "duration_s": 142,
+    "tokens": 18234
+  }
+  → 这就是你的 "full receipts"
+
+【阶段四：接进日常开发】
+  每次改 prompt / 改工具 / 换模型
+  → 跑一遍评测
+  → 对比：单次准确率、Pass^3、平均 token、平均时长
+  → 用数据决定要不要采纳这个改动
+  
+  → 这一步就是 Lecture05 铁律三的落地
+
+【关于"任务是软件"】
+  你的基准也会腐烂：
+    · 设备固件升级 → 日志格式变了 → 工具要改
+    · 标定规范改版 → 阈值变了 → 标注要更新
+    · 模型升级 → 可能"猜"对旧任务但推理错了
+  → 所以要把 task 当成代码来维护（版本控制 + 定期复查）
+  → 尤其：每次模型大版本升级后，重跑一遍看有没有行为变化
+</pre>
+
+<h2>Lecture10 全讲总结</h2>
+<pre class="loop">一、范式（p3-31）：演绎（规则→输出）→ 归纳（样例→规则）
+   三层产物：模型（学数据）/ agent（靠评估）/ 软件（由 agent 生成）
+   支点：bash is the one tool → 动作空间小、任务空间无限 → 评估是唯一手段
+二、词汇（p42）：Task / Trial / Benchmark / Verifier / Trajectory
+   / Evaluation Harness / Agent Harness
+三、写任务（p43-48）：四性质 + 五件套 + 指令三风格 + 环境四要求
+四、写验证器（p49-54）：看结果不看过程 + 混淆矩阵（FP更危险）
+   + 一一对应 + 四道隔离 + 参考解模仿 agent
+五、基础设施（p55-64）：可靠/可复现/快/可移植 + 持续基准
+   + regrade/rerun/reuse 三档 + 每行完整凭据
+</pre>
+<h2>本课小结</h2>
+<blockquote>
+<strong>四要求</strong>：可靠（容错）／可复现／快（并行）／可移植。<br>
+<strong>核心论断</strong>：任务是软件，软件有 bug → 评测必须持续（CI/CD）。<br>
+<strong>三档版本</strong>：regrade（不重跑）／rerun（重跑）／reuse（改任务）。<br>
+<strong>完整凭据</strong>：每个 trial 存轨迹、日志、制品、奖励——没有凭据的评测等于没有评测。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 评测基础设施的四个要求是什么？为什么「快」要求任务独立？</p>
+  <details><summary>展开答案</summary><p>① 可靠（容错，单个 trial 崩了不影响整体）；② 可复现（环境锁定、依赖烘进镜像）；③ 快（并行跑独立 trial）；④ 可移植（本地和云沙箱都能跑）。「快」要求任务独立，因为并行执行的前提是任务之间没有依赖关系——如果 task B 依赖 task A 的环境状态，就无法同时跑；只有独立任务才能真正并行，30 个任务 × 3 次才能从几小时压到几十分钟。</p></details>
+  <p>Q2. 「任务是软件，软件有 bug」这个论断推翻什么幻想？列出基准腐烂的四种方式。</p>
+  <details><summary>展开答案</summary><p>推翻了「我写好基准它就固定了，以后拿它衡量就行」的幻想。四种腐烂方式：① 模型升级后旧任务变得太简单失去区分度；② 模型学会奖励黑客，任务必须加固；③ 依赖升级导致环境不再可复现；④ 网络/资源波动造成 flaky（不稳定）。此外还有「新模型=新行为」「基础设施噪音/兼容性问题」。所以基准必须接进 CI/CD 持续维护。</p></details>
+  <p>Q3. regrade / rerun / reuse 三档各适用什么情况？为什么要分档？</p>
+  <details><summary>展开答案</summary><p>regrade（重新评分，不重跑 agent）：更新文档、修复 oracle 不稳定性、固定漂移依赖；rerun（agent 重跑）：修正 prompt 笔误、修正过严验证器、消除奖励黑客、重调判官、减少验证器 flaky；reuse（改任务/新增）：报告额外指标、改变奖励、新增任务、修正欠/过描述 prompt、修改数据和工具。分档的价值是：发现基准有问题时先判断属于哪一档，不要一律推翻重做——很多问题只需重新评分而非重跑。</p></details>
+  <p>Q4. 「每行结果都要有完整凭据」具体要存什么？为什么说没有凭据的评测等于没有评测？</p>
+  <details><summary>展开答案</summary><p>要存每个 trial 的 trajectory（完整轨迹）、logs（日志）、artifacts（agent 产出文件）、rewards（得分）。说没有凭据等于没有评测，因为：① 分数可疑时无法复查（是不是验证器判错）；② 模型行为异常时无法诊断（在哪步跑偏）；③ 结果有争议时无证据；④ 训练 RL 时需要轨迹做 distillation 或回放。凭据是评测结果可信的前提，与 Lecture05 的可观测性是同一件事。</p></details>
+</div>
+
+<h2>综合结业考试题</h2>
+<div class="takeaway">
+<strong>Lecture10 结业考试</strong>（把本讲当一个整体来考）：给一个业务场景，要求你写出 3 个 task（含指令、环境、参考解、验证器），设计验证器的四层检查与防作弊隔离，并规划评测基础设施与持续维护方式。<br>
+<strong>→ 领取结业考试题</strong>：<a href="../综合题/Lecture10/结业考试-Lecture10-评测工程.html">结业考试-Lecture10-评测工程.md</a>（Markdown 作答制，作答区就在题目下方；答完对我说「评卷」）。
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture10 · 段四 基础设施 · Lecture10 收官</span><br>
+  ← 上一课 <a href="lecture10-0073-writing-verifiers.html">0073 · 怎么写验证器</a> · <a href="../index.html">课程大纲</a> · 回顾 <a href="lecture10-0069-deductive-to-inductive.html">0069 · 从演绎到归纳</a><br>Lecture10 完结 → 回到 <a href="../index.html">课程大纲</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture10 课件《Evaluating Agents: Terminal-Bench and Harbor》· 源文件夹 week6-10.26 · p55-64<br>
+Lesson 0074 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

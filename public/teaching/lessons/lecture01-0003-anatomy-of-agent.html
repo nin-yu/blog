@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0003 — agent 的解剖：LLM 内核 + 推理 + 记忆 + 工具 + 环境</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture01 · Lesson 0003</span>
+  <h1>agent 的解剖：LLM 内核 + 推理 + 记忆 + 工具 + 环境</h1>
+  <div class="meta">第 0003 课（Lecture01 第 3 课）· 来源：lecture01.pdf p28-32,44-53 · 来源文件夹：week1-9.23 · 本课成果：掌握 agent 的五个组件及其角色，理解 agent-environment 循环，能画出一个完整 agent 的骨架图</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+agent 的解剖（p29-30, p53）：<br><br>
+<strong>LLM Core</strong>（大脑）+ <strong>Planning & Reasoning</strong>（想）+ <strong>Memory</strong>（记）+ <strong>Tools</strong>（做）+ <strong>Environment</strong>（被作用的世界）<br><br>
+循环：<strong>act（行动）→ observe（观察）→ 再 act</strong><br><br>
+关键理解：<strong>这五个组件不是并列的，LLM Core 是中心，其余四个是围绕它的能力扩展</strong>。
+</div>
+
+<h2>从 ReAct 的标签推出五个组件（p29）</h2>
+<p>课件用 ReAct 的四个标记直接映射到组件：</p>
+<pre class="loop">ReAct 里的标记           →    agent 组件
+──────────────────────────────────────────────
+the model                →    LLM Core
+Think[...]               →    Planning & Reasoning
+traces so far            →    Memory
+Act:                     →    Tools
+Obs:                     →    Environment
+</pre>
+<p>这个映射很直接，但它揭示了 ReAct 设计的本质：<strong>ReAct 不发明新东西，它只是把"一个 agent 该有的东西"用四个标记组织成了一个循环</strong>。</p>
+
+<h2>完整骨架（p30、p53）</h2>
+<pre class="loop">        ┌──────────────────────────────────────────┐
+        │              Environment                 │
+        │  桌面 OS / 浏览器 / 移动 App / 游戏 / 数据库  │
+        └───────────────▲──────────────┬───────────┘
+                    observe            │ act
+                        │              ▼
+        ┌───────────────┴──────────────────────────┐
+        │  ┌────────────┐                          │
+        │  │  LLM Core  │ ◄─── 中心                │
+        │  └─────┬──────┘                          │
+        │        │                                 │
+        │  ┌─────▼──────────────┐                  │
+        │  │ Planning &         │  想               │
+        │  │ Reasoning          │                  │
+        │  └────────────────────┘                  │
+        │  ┌────────────────────┐                  │
+        │  │ Memory             │  记               │
+        │  └────────────────────┘                  │
+        │  ┌────────────────────┐                  │
+        │  │ Tools              │  做               │
+        │  │ 检索/计算/代码/搜索/  │                  │
+        │  │ 文件操作…            │                  │
+        │  └────────────────────┘                  │
+        └──────────────────────────────────────────┘
+
+Agent actions（对外动作）：
+  · tool call（调用工具）
+  · interaction（与环境交互）
+  · response to users（回复用户）
+</pre>
+
+<h2>逐个组件的作用</h2>
+<table>
+  <tr><th>组件</th><th>作用</th><th>没有它会怎样</th></tr>
+  <tr><td><strong>LLM Core</strong></td><td>决策中心，读上下文、产出下一步</td><td>什么都不存在</td></tr>
+  <tr><td><strong>Planning & Reasoning</strong></td><td>在观察和行动之间插入推理</td><td>只能做"看到→直接反应"，遇到复杂情况就错（下一课详讲）</td></tr>
+  <tr><td><strong>Memory</strong></td><td>保存超出上下文窗口的信息</td><td>长任务会忘记目标（L07 详讲）</td></tr>
+  <tr><td><strong>Tools</strong></td><td>让 agent 能真的做事</td><td>只能说不能做（L04 详讲）</td></tr>
+  <tr><td><strong>Environment</strong></td><td>agent 作用的对象，提供观察</td><td>没有反馈，agent 无法判断自己做对没有</td></tr>
+</table>
+
+<h2>为什么 Environment 必须单列（p30）</h2>
+<pre class="loop">很多人画 agent 图时省略 Environment，只画"LLM + 工具"。
+这样会漏掉一个关键点：
+
+  · 工具是"agent 主动调用的接口"
+  · 环境是"agent 被动的反馈来源"
+  · 甚至工具本身也在环境里执行（文件系统是环境的一部分）
+
+影响：
+  如果 Environment 不提供可靠反馈 → agent 无法自我纠正
+  如果 Environment 不可控 → agent 的行为不可复现
+  → 这就是为什么 L06 说"强测试是给 agent 的外部反馈"
+</pre>
+
+<h2>相似定义对照（p31-32）</h2>
+<p>课件列了几个来源，结论都差不多：</p>
+<ul>
+  <li><strong>Lilian Weng 的博客</strong>：LLM + Planning + Memory + Tool Use</li>
+  <li><strong>CoALA（Cognitive Language Agents, Sumers et al.）</strong>：工作/情景/语义/程序记忆 + 内部/外部行动</li>
+</ul>
+<p>它们的共同点：<strong>都是"一个核心 + 若干能力模块"的结构</strong>。差别只在模块怎么切。</p>
+
+<h2>环境的重要性：一个经常被忽略的工程点</h2>
+<pre class="loop">在医疗场景里，"Environment" 意味着什么？
+
+  排查助手的 Environment =
+    · 数据库（读历史）
+    · 文件系统（读配置）
+    · 设备状态接口（读实时状态）
+    · 人（最终执行建议的人）
+
+  关键：最后一项也是环境的一部分
+    → agent 的建议要被工程师采纳才算闭环
+    → 所以"建议的可读性"和"证据的完整度"是环境设计问题，
+      不只是输出格式问题
+</pre>
+
+<h2>SGRT 工程桥：用五组件检查你的排查助手</h2>
+<pre class="loop">逐项自查：
+
+  LLM Core          ✔ 用 deepseek 等 API 模型
+  Planning & Reasoning  ⚠️ 用的什么模式？
+                         · 直接答（无推理）
+                         · ReAct（边想边查）
+                         · 先规划再执行（L06）
+                        → 你的场景建议 ReAct
+
+  Memory            ✘ 目前没有
+                      → 每次从零开始，L07 会讲怎么补
+
+  Tools             ⚠️ 部分有（查日志、查配置）
+                      → 但接口是否结构化？错误怎么返回？
+                      → L04 会讲工具设计
+
+  Environment       ✔ 已有（设备、数据库、人）
+                      → 但反馈质量和可复现性够不够？
+
+【最容易漏的是 Memory】
+  大部分人先做 Tools（因为"能用"最直观）
+  然后发现"每次都从零"，才补 Memory
+  → 提前想清楚能省一轮返工
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>五组件</strong>：LLM Core（中心）+ Planning/Reasoning + Memory + Tools + Environment。<br>
+<strong>循环</strong>：act → observe → act。<br>
+<strong>对外动作三类</strong>：工具调用、环境交互、回复用户。<br>
+<strong>易漏项</strong>：Environment 提供反馈，省略它会导致"agent 无法自我纠正"。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. agent 的五个组件是什么？哪个是中心？</p>
+  <details><summary>展开答案</summary><p>LLM Core、Planning & Reasoning、Memory、Tools、Environment。LLM Core 是中心，其余四个是围绕它的能力扩展——推理让它在观察和行动之间加入思考、记忆让它保存超出窗口的信息、工具让它能真的做事、环境提供反馈和作用的对象。</p></details>
+  <p>Q2. ReAct 的四个标记 how 映射到 agent 组件？</p>
+  <details><summary>展开答案</summary><p>the model → LLM Core；Think[...] → Planning & Reasoning；traces so far → Memory；Act: → Tools；Obs: → Environment。这个映射揭示了 ReAct 的本质：它没有发明新东西，只是把"一个 agent 该有的东西"用四个标记组织成了循环。</p></details>
+  <p>Q3. 为什么画 agent 架构图时不能省略 Environment？</p>
+  <details><summary>展开答案</summary><p>因为工具是 agent 主动调用的接口，而环境是 agent 被动的反馈来源，两者角色不同，而且工具本身也在环境里执行。省略环境会漏掉关键点：如果环境不提供可靠反馈，agent 无法自我纠正；如果环境不可控，agent 行为不可复现。这也是为什么"强测试"是给 agent 的外部反馈。</p></details>
+  <p>Q4. 用五组件自查，你的排查助手最缺哪个？为什么大部分人最后才补它？</p>
+  <details><summary>展开答案</summary><p>最缺 Memory。因为大多数人先做 Tools——"能让 agent 动手"最直观、最有成就感，做完就以为系统能用了；之后才发现"每次都从零开始、同样的问题每天重新教一遍"，这时才回头补记忆。提前想清楚记忆的需求能省一轮返工。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture01 · 段三 架构 · 解剖</span><br>
+  ← 上一课 <a href="lecture01-0002-history-of-agents.html">0002 · agent 的历史</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture01-0004-reasoning-why.html">0004 · 推理为什么有用：ReAct 与自洽性</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture01 课件《Intro to Agentic Systems》· 源文件夹 week1-9.23 · p28-32,44-53<br>
+Lesson 0003 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0026 — 学习调用工具：Toolformer 与 ToolkenGPT</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture04 · Lesson 0026</span>
+  <h1>学习调用工具：Toolformer 与 ToolkenGPT</h1>
+  <div class="meta">第 0026 课（Lecture04 第 2 课）· 来源：lecture04.pdf p22-35 · 来源文件夹：week3-10.5 · 本课成果：掌握 Toolformer 三步自监督方法与损失过滤的对照设计，理解 ToolkenGPT 把工具当 token 的思路，能对比四种方法的规模与训练方式</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+Toolformer 的核心（p22）：<strong>让 LM 自己学会"该调哪个 API、什么时候调、传什么参数、怎么用返回值"</strong>。<br><br>
+方法三步（p24-27）：<br>
+<strong>① 采样候选调用</strong>——在文本里挑位置，让模型生成 API 调用<br>
+<strong>② 执行并过滤</strong>——<strong>只有能让后续 token 的损失下降的调用才保留</strong><br>
+<strong>③ 用保留的样本微调</strong><br><br>
+关键创新：<strong>不需要人工标注"这里该调工具"</strong>——用"调用后预测变准了"当信号。
+</div>
+
+<h2>一、Toolformer 要解决什么（p22-23）</h2>
+<blockquote>
+Toolformer 训练 LM 去决定：该调哪些 API、什么时候调、传什么参数、以及如何最好地利用结果。<br>
+用自监督学习，每个 API 只需少量示例。
+</blockquote>
+<pre class="loop">候选工具（p23）：
+  Q&A 系统、计算器、搜索引擎、翻译系统、日历
+
+例子：
+  "Pittsburgh is known as the Steel City."
+  → 模型应该学会在这里插入：
+    QA("What other name is Pittsburgh known by?")
+</pre>
+<h2>二、三步方法（p24-27）</h2>
+
+<h3>步骤一：采样候选调用（p25）</h3>
+<pre class="loop">对输入 x：
+  ① 选出模型"不确定"的位置 i（概率 p_i > 阈值 τ_s）
+     → 为什么选不确定的位置？那里最可能需要外部信息
+  ② 在每个位置生成 m 个候选调用 c_i^1, ..., c_i^m
+
+例（p25）：
+  Input: Pittsburgh is known as the Steel City.
+  Output: Pittsburgh is known as [QA("What other name is Pittsburgh
+          known by?")] the Steel City.
+</pre>
+<h3>步骤二：执行并计算损失差（p26）</h3>
+<pre class="loop">执行每个候选调用，得到结果
+然后比较两种情况的损失：
+
+  L_i^-  = 不调 API 时，后续 token 的损失
+  L_i^+  = 调了 API（含返回值）后，后续 token 的损失
+
+如果 L_i^+ < L_i^- → 这个调用"有帮助"
+
+例：
+  "Pittsburgh is known as [?] the Steel City."
+  · 不调 API：模型要预测 "the Steel City"，不确定
+  · 调 QA 后返回值 "the Steel City" → 损失大幅下降 ✓
+</pre>
+<h3>步骤三：过滤（p27）</h3>
+<pre class="loop">保留条件：损失下降量超过阈值 τ_f
+
+课件强调的对比基准（p27）：
+  "Both API call and execution output"
+    vs
+  "Doing no API call and doing an API call without output"
+  
+  即：要证明的是"因为拿到了返回值而变好"
+      而不是"因为多了一些 token 而变好"
+      
+  → 这个对照很重要，防止把"随机多几个 token"误判成"工具有用"
+</pre>
+<h2>三、结果（p30-31）</h2>
+<blockquote>
+Toolformer 在多样化任务上都有提升（p30 给了各任务的数字表）
+GPT-2 带 Toolformer vs 不带（p31）
+</blockquote>
+<pre class="loop">关键意义不在于"提升多少分"，而在于：
+  · 证明了模型可以自己发现"哪里调工具有用"
+  · 不需要人工标注工具调用位置
+  → 这是自动化获取工具使用数据的可行路径
+</pre>
+<h2>四、ToolkenGPT：把工具当成"词"（p32-35）</h2>
+<blockquote>
+· 把每个工具表示成一个 token（"toolken"），为它学一个 embedding<br>
+· 一旦触发某个 toolken，LM 就为这个工具补全参数并执行
+</blockquote>
+<pre class="loop">框架（p33-34）：
+  步骤 1: LLM 预测下一个 token（可能是普通词，也可能是 toolken）
+  步骤 2: 如果预测到 toolken → 模式切换
+          · 生成暂停
+          · 上下文移到新的 prompt
+          · 用 tool-mode prompt（含 [tool](args) 语法的示例）
+  步骤 3: 填参数（ICL 做这部分"简单活"）
+  步骤 4: 工具执行，返回值回到推理模式
+
+和 Toolformer 的差别：
+  Toolformer：工具调用是文本
+  ToolkenGPT：工具调用是一个新 token
+  → 学的是 embedding，不是整个模型
+</pre>
+<h2>五、ToolLLM 与 Gorilla（下一课展开）</h2>
+<pre class="loop">ToolLLM（p37-39）：
+  · 微调 LLaMA 得到 ToolLLaMA
+  · 配一个神经 API 检索器，为每条指令推荐合适的 API
+  · 目标：支持 16k+ API
+
+Gorilla（p40-44）：
+  · 用 1.6k API 训练
+  · 用 AST 子树匹配来度量幻觉
+  · Retrieval-Aware Training：训练时加入正确和错误的检索结果
+    → 让模型对低质量检索鲁棒
+</pre>
+<h2>六、四种方法的对比（p45）——这张表最有用</h2>
+<table>
+  <tr><th></th><th>Toolformer</th><th>ToolkenGPT</th><th>ToolLLM</th><th>Gorilla</th></tr>
+  <tr><td>工具调用是什么</td><td>文本</td><td>一个新 token</td><td>ReAct 式轨迹</td><td>文本 + API 调用代码</td></tr>
+  <tr><td>训练什么</td><td>模型（GPT-J 6B）</td><td>embeddings</td><td>模型（LLaMA 7B）</td><td>模型（LLaMA 7B）</td></tr>
+  <tr><td>标签来源</td><td><strong>自监督</strong></td><td>真值或合成调用</td><td>ChatGPT 轨迹</td><td>GPT-4 self-instruct</td></tr>
+  <tr><td>怎么学会"何时调"</td><td><strong>损失过滤</strong></td><td>embedding</td><td>微调</td><td>微调</td></tr>
+  <tr><td>怎么学会"调什么"</td><td>微调</td><td>in-context</td><td>微调</td><td>微调</td></tr>
+  <tr><td>规模</td><td>5 个工具</td><td>234 个工具</td><td><strong>16k API</strong></td><td>1.6k API</td></tr>
+</table>
+<p>看这张表能发现一个规律：<strong>规模越大，越依赖"检索"而不是"记住"</strong>——ToolLLM 和 Gorilla 都配了 API 检索器。</p>
+
+<h2>SGRT 工程桥：你需要哪种"学习工具调用"</h2>
+<pre class="loop">【结论：都不需要】
+
+原因：
+  · Toolformer 解决"模型不知道该在哪调工具"
+  · ToolkenGPT 解决"工具太多，要学 embedding"
+  · ToolLLM/Gorilla 解决"上万 API 里选对"
+
+  你的工具集是固定的几个：
+    查日志、查配置、查呼吸曲线、查 kV 图像、算残差
+  → 不需要模型"自己发现"何时调
+  → 只需要在 prompt 里明确写清每个工具做什么、参数是什么
+
+【真正该学的不是这四种方法，而是两个思想】
+
+思想一：用"结果是否变好"当信号（Toolformer 的过滤）
+  → 你的场景里可以这样做：
+    让 agent 对一个历史案例做排查，
+    有工具 vs 无工具，看诊断准确率差多少
+    → 证明工具是否真的有用，而不是"感觉有用"
+
+思想二：训练时加入错误检索（Gorilla 的 RAT）
+  → 你的工具可能失败（数据库超时、字段缺失）
+  → 要让 agent 学会"工具返回错误时怎么办"
+  → 这在 prompt 里就要训练：故意给它一些失败案例
+
+【一个实用建议】
+  与其纠结"用什么方法教模型用工具"，
+  不如先把工具的接口设计好：
+    · 参数校验严格
+    · 错误信息明确（不要只返回 "error"）
+    · 返回格式固定
+  → 这比换任何训练方法都有效
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>Toolformer 三步</strong>：采样候选调用 → 执行并算损失差 → 保留有增益的。<br>
+<strong>关键信号</strong>：不是"人工标注该调"，而是"调用后后续 token 预测变准了"。<br>
+<strong>对照设计</strong>：必须对比"无调用"和"有调用无返回"，才能证明是返回值起作用。<br>
+<strong>ToolkenGPT</strong>：工具当一个 token，学 embedding 而非整个模型。<br>
+<strong>规律</strong>：工具规模越大越依赖检索（ToolLLM 16k、Gorilla 1.6k 都配了检索器）。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. Toolformer 的三步是什么？它的自监督信号是什么？</p>
+  <details><summary>展开答案</summary><p>① 采样候选调用——在模型不确定的位置（概率低于阈值）生成多个 API 调用候选；② 执行并计算损失差——比较"不调 API"和"调了 API"两种情况下后续 token 的损失；③ 过滤——只保留损失下降超过阈值的调用，用这些样本微调模型。自监督信号是"调用之后后续 token 的预测损失是否下降"，不需要人工标注哪里该调工具。</p></details>
+  <p>Q2. 为什么 Toolformer 要设"有调用无返回"这个对照？</p>
+  <details><summary>展开答案</summary><p>为了防止把"随机多几个 token 带来的损失变化"误判成"工具有用"。如果只比较"无调用 vs 有调用"，损失下降可能仅仅因为多了一些 token 改变了上下文；必须对比"有调用但没返回值"和"有调用且有返回值"，才能证明下降是返回值的信息带来的。这是一个严谨的消融设计。</p></details>
+  <p>Q3. ToolkenGPT 和 Toolformer 在"工具调用是什么"这一点上有什么不同？这带来什么好处？</p>
+  <details><summary>展开答案</summary><p>Toolformer 把工具调用当作文本（模型生成一段文字形式的 API 调用）；ToolkenGPT 把每个工具当作一个新的 token（toolken），模型预测到它就触发模式切换。好处是只需学习 toolken 的 embedding，不需要微调整个模型——训练成本低得多；而且工具可以热插拔（加工具只需加 embedding），适合工具数量会变的场景。</p></details>
+  <p>Q4. 你的场景为什么不直接用这四种方法？该从中学到什么？</p>
+  <details><summary>展开答案</summary><p>不直接用是因为这四种方法解决的是"工具太多/不知何时调"的问题，而你的工具集是固定的几个（查日志、查配置、查曲线、算残差），在 prompt 里写清接口即可。该学两个思想：① 用"结果是否变好"当信号（Toolformer 的过滤思路）——可以对比有工具/无工具的诊断准确率；② 训练时加入失败案例（Gorilla 的 RAT 思路）——让 agent 学会工具返回错误时怎么处理。另外最实用的建议是先把工具接口设计好（严格校验、明确错误、固定格式），比换任何训练方法都有效。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture04 · 段二 学习调用工具</span><br>
+  ← 上一课 <a href="lecture04-0025-why-tools.html">0025 · 为什么需要工具</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture04-0027-scaling-apis.html">0027 · 规模化：ToolLLM 与 Gorilla</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture04 课件《Tool Use》· 源文件夹 week3-10.5 · p22-35；Toolformer (Schick et al. 2023, arXiv:2302.04761)、ToolkenGPT (Hao et al. 2024)<br>
+Lesson 0026 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0017 — Lecture02 总结：架构、训练、推理如何共同决定 agent 的能力</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture02 · Lesson 0017</span>
+  <h1>Lecture02 总结：架构、训练、推理如何共同决定 agent 的能力</h1>
+  <div class="meta">第 0017 课（Lecture02 第 9 课Lecture02 收官）· 来源：lecture02.pdf p174-176 · 来源文件夹：week2-9.28 · 本课成果：把 Lecture02 九课串成一条线，理解架构-训练-推理-应用四层的相互制约，能判断一个模型能力瓶颈在哪一层</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+这一讲的九课，是一条自上而下的链路：<br><br>
+<strong>架构</strong>（0010-0011）决定"能看多长、算多快"<br>
+<strong>训练</strong>（0012）决定"会什么、偏向什么"<br>
+<strong>推理</strong>（0013-0014）决定"每次要花多少时间和钱"<br>
+<strong>应用</strong>（0015-0016）决定"你怎么用它"<br><br>
+关键认知：<strong>这四层互相制约</strong>——你不能只在应用层想办法解决架构层的限制。
+</div>
+
+<h2>九课一条线</h2>
+<pre class="loop">0009 语言模型是什么
+      ↓ 概率连乘 + 生成式 + 采样（温度）
+0010 Transformer 与注意力
+      ↓ O(1) 顺序（能并行）+ O(n²)（长上下文贵）
+0011 线性注意力
+      ↓ 压成 O(n)，但丢细节；实践用混合架构
+0012 训练三阶段
+      ↓ 预训练（语言规律）→ 中训练（领域倾斜）→ 后训练（指令/偏好/可验证）
+0013 Prefill 与 Decode
+      ↓ 算力瓶颈 vs 带宽瓶颈；KV Cache 用显存换计算
+0014 推理期扩展
+      ↓ CoT / 重复采样 / 自洽性——多花算力换准确率
+0015 结构化 I/O
+      ↓ 约束解码 / DSPy 签名 / 分类器
+0016 上下文工程
+      ↓ 五部分 + context rot + 保护 KV Cache
+0017 总结
+</pre>
+
+<h2>四层如何互相制约</h2>
+
+<h3>制约一：架构决定上下文的物理成本</h3>
+<pre class="loop">O(n²) 的注意力 →
+  长上下文必然贵、必然慢
+  → 所以 0016 说"不要全塞"，不是为了省事，
+     是因为物理上就那么贵
+
+线性注意力 →
+  长文本便宜但细节记不住
+  → 所以关键数据必须显式放进上下文，
+     不能指望模型自己"记得"
+
+结论：应用层的设计必须在架构成本曲线内
+</pre>
+
+<h3>制约二：训练决定能力的偏向和边界</h3>
+<pre class="loop">预训练/中训练的数据配比 →
+  决定了模型擅长什么领域
+
+后训练的方式 →
+  RLHF：学会"讨人喜欢"（可能谄媚）
+  RLVR：学会"做对"（但只在可验证任务上）
+
+结论：选模型不能只看"参数多大"，
+     要看它的训练配比和后训练方式
+</pre>
+
+<h3>制约三：推理特征决定架构选择</h3>
+<pre class="loop">Decode 是访存受限 →
+  → 批处理几乎不增加时间
+  → 这是为什么"投机解码"和"多轮并发"可行
+  → 也是为什么"多采样"的成本主要是 Prefill
+
+Prefill 是计算受限 →
+  → prompt 越长越慢，且是超线性的
+  → agent 多轮对话时，每轮都重算历史 → 越来越慢
+  → 所以必须靠 KV Cache 复用和压缩
+</pre>
+
+<h3>制约四：应用层的选择反过来暴露架构限制</h3>
+<pre class="loop">如果你决定"每次都把全部历史发给模型"：
+  → 触发 O(n²)
+  → 触发 Prefill 重复计算
+  → 上下文越长越慢越贵
+
+如果你的场景要求"实时响应"：
+  → 暴露出 Decode 的串行本质
+  → 只能靠缩短输出或换小模型
+
+结论：应用设计不是自由的，它受物理约束
+</pre>
+
+<h2>本讲最重要的三个数字</h2>
+<table>
+  <tr><th>数字</th><th>含义</th><th>工程含义</th></tr>
+  <tr><td><strong>O(n²)</strong></td><td>注意力计算量随序列长度平方增长</td><td>长上下文无法"便宜地"使用</td></tr>
+  <tr><td><strong>O(n)</strong> KV Cache</td><td>显存占用随长度线性增长</td><td>长上下文并发数受限</td></tr>
+  <tr><td><strong>N 倍</strong></td><td>重复采样的成本倍数</td><td>推理期扩展的成本是线性放大的</td></tr>
+</table>
+
+<h2>回头看第 0009 课的温度</h2>
+<p>第一课讲的"温度"，其实是这整讲的一个缩影：</p>
+<pre class="loop">温度调节的是"分布的形状"
+  → 它决定你从模型的概率分布里怎么抽样
+  → 低温 = 拿最可能的（确定）
+  → 高温 = 允许不太可能的（发散）
+
+这背后是 0009 讲的定义：
+  模型 = 下一个 token 的概率分布生成器
+  → 所有"应用层技巧"都是在操作这个分布
+    （约束解码 = 砍掉非法 token 的概率）
+    （CoT = 让模型多生成几步改变分布）
+    （温度 = 重塑分布形状）
+</pre>
+
+<h2>SGRT 工程桥：判断你的瓶颈在哪一层</h2>
+<pre class="loop">【症状 → 层 → 对策】
+
+症状：回答不准、编造内容
+  → 训练层（模型领域能力不够）或应用层（上下文没给对）
+  → 先查应用层：关键信息在上下文里吗？
+  → 再查训练层：换个领域更强的模型试试
+
+症状：太慢（几秒才出第一个字）
+  → 推理层（Prefill 太长）
+  → 缩短 prompt、复用 KV Cache
+
+症状：太慢（输出很久才完）
+  → 推理层（Decode 串行）
+  → 缩短输出、结构化短答案
+
+症状：成本高
+  → 推理层（token 多）或应用层（全量塞上下文）
+  → 压缩上下文、工具返回结论而非原文
+
+症状：长上下文时准确率骤降
+  → 架构层（Context Rot + 线性注意力丢细节）
+  → 不要依赖长上下文记忆，改用检索
+
+【关键】
+  不要用应用层的技巧去解决架构层的限制
+  例：无论你怎么写 prompt，都无法让 100 万 token 的上下文变便宜
+</pre>
+
+<h2>本讲小结</h2>
+<blockquote>
+<strong>四层</strong>：架构（能看多长算多快）／训练（会什么偏向什么）／推理（花多少时间钱）／应用（怎么用）。<br>
+<strong>互相制约</strong>：应用设计必须在架构成本曲线内；训练决定能力边界；推理特征决定可行的算法。<br>
+<strong>三个数字</strong>：O(n²) 注意力、O(n) KV Cache、N 倍采样成本。<br>
+<strong>诊断法</strong>：先判断症状属于哪一层，不要跨层硬解。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. Lecture02 的九课分成哪四层？举个"层与层互相制约"的例子。</p>
+  <details><summary>展开答案</summary><p>四层：架构（0010-0011，能看多长算多快）、训练（0012，会什么偏向什么）、推理（0013-0014，花多少时间钱）、应用（0015-0016，怎么用）。例：架构层的 O(n²) 决定了长上下文必然贵，所以应用层"不要全塞上下文"不是省事技巧而是物理约束——无论怎么写 prompt 都无法让 100 万 token 变便宜。</p></details>
+  <p>Q2. Context Rot 和线性注意力"丢细节"是两个不同的问题，它们的共同后果是什么？</p>
+  <details><summary>展开答案</summary><p>Context Rot 是全注意力下的注意力稀释问题——上下文越长模型越抓不住重点；线性注意力丢细节是压缩导致的信息损失——状态里没有原文只能抓主旨。共同后果是：都不能指望模型从超长上下文里可靠地捞出精确细节。所以工程上对精确数据应该用 RAG/数据库查出来显式放进上下文，而不是依赖模型的长上下文记忆。</p></details>
+  <p>Q3. 为什么"多轮 agent 对话会越来越慢"？根源在哪个阶段？</p>
+  <details><summary>展开答案</summary><p>根源在 Prefill 阶段。agent 每轮都要把完整历史（系统提示、消息历史、记忆、工具结果、附件）重新发给模型，第 10 轮时 prompt 可能是第 1 轮的 3 倍。而 Prefill 是计算受限且随长度超线性增长，所以每轮都比上一轮慢。对策是 KV Cache 复用（只追加不插入）和压缩历史。</p></details>
+  <p>Q4. 如果 agent 的回答总是不准，你会先查哪一层？为什么不是先换更大的模型？</p>
+  <details><summary>展开答案</summary><p>先查应用层——关键信息是否在上下文里、有没有被 context rot 淹没、工具返回的格式是否让模型能理解。因为换模型成本高且可能无效：如果问题出在"没给对上下文"，换再大的模型也答不对。只有确认上下文给对了、模型仍答错，才考虑训练层（该模型领域能力不足），这时换领域更强的模型才有意义。</p></details>
+</div>
+
+<h2>综合结业考试题</h2>
+<div class="takeaway">
+<strong>Lecture02 结业考试</strong>（把本讲当一个整体来考）：给一个真实的成本/延迟/准确率约束，要求你判断瓶颈在哪一层、该调整架构/训练/推理/应用中的哪一个、并算清代价。<br>
+<strong>→ 领取结业考试题</strong>：<a href="../综合题/Lecture02/结业考试-Lecture02-上下文与选型.html">结业考试-Lecture02-上下文与选型.md</a>（Markdown 作答制，作答区就在题目下方；答完对我说"评卷"）。
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture02 · 段六 总结 · Lecture02 收官</span><br>
+  ← 上一课 <a href="lecture02-0016-context-engineering.html">0016 · 上下文工程</a> · <a href="../index.html">课程大纲</a> · 回顾 <a href="lecture02-0009-what-is-lm.html">0009 · 语言模型是什么</a><br>Lecture02 完结 → 回到 <a href="../index.html">课程大纲</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件《LLMs for Builders》· 源文件夹 week2-9.28 · p174-176<br>
+Lesson 0017 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

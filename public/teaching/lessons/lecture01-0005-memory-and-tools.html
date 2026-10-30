@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0005 — 记忆三类与工具调用：Toolformer、Gorilla</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture01 · Lesson 0005</span>
+  <h1>记忆三类与工具调用：Toolformer、Gorilla</h1>
+  <div class="meta">第 0005 课（Lecture01 第 5 课）· 来源：lecture01.pdf p44-53 · 来源文件夹：week1-9.23 · 本课成果：掌握三类记忆的读写机制、理解工具调用为什么是 agent 的关键能力，以及 Toolformer 与 Gorilla 解决的两个不同问题</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+<strong>为什么需要记忆</strong>（p45）：上下文窗口装不下所有事件流；即使装得下，也可能难以注意到相关事件。<br><br>
+<strong>三类记忆</strong>（p46，按内容分）：<br>
+　情景记忆 Episodic——存经验（Generative Agents）<br>
+　语义记忆 Semantic——存知识<br>
+　程序记忆 Procedural——存技能（Voyager）<br><br>
+<strong>工具</strong>：Toolformer 解决"模型自己学会何时调工具"，Gorilla 解决"海量 API 里选对哪一个"。
+</div>
+
+<h2>一、为什么需要记忆（p45）</h2>
+<pre class="loop">两个理由（p45 原文）：
+
+① 上下文窗口装不下所有事件流
+   长任务的事件越积越多，迟早爆掉
+
+② 即使装得下，也可能难以注意到相关事件、难以消化
+   → 这不是容量问题，是注意力问题
+     （Lecture02 会用量化说明：context rot）
+</pre>
+<p>注意第 ② 点：<strong>很多人以为记忆只是为了"省 token"，其实更根本的是"让模型能注意到该注意的东西"</strong>。</p>
+
+<h2>二、三类记忆的读写机制（p46-49）</h2>
+<table>
+  <tr><th>类型</th><th>存什么</th><th>怎么写（Write）</th><th>怎么读（Read）</th><th>代表</th></tr>
+  <tr><td><strong>Episodic</strong> 情景</td><td>经验</td><td>追加式事件流（append-only）</td><td>基于启发式分数检索</td><td>Generative Agents</td></tr>
+  <tr><td><strong>Semantic</strong> 语义</td><td>知识</td><td>LLM 对事件做推理后写入</td><td>检索</td><td>—</td></tr>
+  <tr><td><strong>Procedural</strong> 程序</td><td>技能</td><td>写成代码形式的技能</td><td>Embedding 检索</td><td>Voyager</td></tr>
+</table>
+<p>这三行值得逐一看：</p>
+<pre class="loop">Episodic：只追加、不修改
+  → 保证事实完整（什么都记得）
+  → 代价：会无限增长
+  
+Semantic：要先"推理"再写
+  → 不是原样存，是提炼成知识点
+  → 代价：提炼会丢信息、可能引入偏差
+
+Procedural：存成代码
+  → 可执行、可直接调用
+  → 代价：只适用于能表达成代码的技能
+</pre>
+
+<h2>三、Toolformer：模型教会自己用工具（p51）</h2>
+<blockquote>
+<strong>Toolformer 训练语言模型去决定：该调哪些 API、什么时候调。</strong>
+</blockquote>
+<pre class="loop">核心思路：
+  ① 给模型一批 API 的说明
+  ② 让模型自己尝试在文本里插入 API 调用
+  ③ 只保留"调了之后确实让后续预测更准"的那些调用
+  ④ 用这些样本训练
+
+→ 关键：不需要人工标注"这里该调工具"
+        模型自己发现"在这里调工具会有帮助"
+</pre>
+<p>它解决的问题是<strong>"何时调"</strong>。</p>
+
+<h2>四、Gorilla：海量 API 里选对（p52）</h2>
+<blockquote>
+<strong>Gorilla：LLM 连接海量 API（Patil et al., 2023）</strong>
+</blockquote>
+<pre class="loop">场景差异：
+  Toolformer：几个工具，问题是"什么时候用"
+  Gorilla：    上千个 API，问题是"用哪一个"
+
+难点：
+  · API 文档可能互相重叠（好几个都能查天气）
+  · 参数容易填错（版本不同、字段名变化）
+  · 模型没见过的新 API 怎么办
+
+Gorilla 的做法：
+  · 用检索先把相关 API 文档找出来（而不是全塞进上下文）
+  · 训练模型基于检索到的文档生成调用
+  · 用 AST 匹配等方式评估"调用是否正确"
+</pre>
+
+<h2>五、把五个组件串起来（p53）</h2>
+<pre class="loop">Skeleton of an Agent：
+
+        Environment
+            ↕ act / observe
+   ┌────────────────────┐
+   │     LLM Core       │
+   │  ↕                 │
+   │  Planning &        │
+   │  Reasoning         │
+   │  ↕                 │
+   │  Memory            │
+   │  ↕                 │
+   │  Tools             │
+   └────────────────────┘
+
+这一页就是第 0003 课那张骨架图的完整版
+区别在于：这里说明了各组件之间的双向关系</pre>
+
+<h2>三类记忆在真实系统里的分工</h2>
+<pre class="loop">一个完整的 agent 系统通常三者都有：
+
+  Episodic  →  "我做过什么"（日志、轨迹）
+  Semantic  →  "我知道什么"（事实、偏好）
+  Procedural→  "我会怎么做"（技能、SOP）
+
+它们的写入频率不同：
+  Episodic   每次行动都写（最高频）
+  Semantic   偶尔提炼（中频）
+  Procedural 成功后固化（低频）
+</pre>
+
+<h2>SGRT 工程桥：三类记忆对应你的三种资产</h2>
+<pre class="loop">【Episodic —— 排查轨迹】
+  2026-10-30 14:23  查了呼吸曲线，呼气末抖动 120ms
+  2026-10-30 14:25  查了呼吸垫压力，发现 2 小时前重设
+  → 追加式、不改、可检索
+  → 这就是你的日志系统（已有，但缺"能被 agent 读"的接口）
+
+【Semantic —— 设备与规程知识】
+  这台机器标定板 12mm、阈值 1.5mm、等中心 kV 锚定
+  → 由人写入或从文档提炼
+  → 这是你的配置 + 规程文档
+
+【Procedural —— 排查 SOP】
+  "先排除图像质量 → 再查呼吸 → 再查机械 → 最后查罕见"
+  → 写成可执行的检查清单
+  → 建议存成文件（可 diff、可审批，见 L07）
+
+【工具层面】
+  你要的不是 Toolformer（模型自动发现何时调）
+  而是 Gorilla（有明确的工具集，要选对）
+  → 你的工具就那么几个：查日志、查配置、查曲线、查图像
+  → 关键是接口设计清晰，不是让模型自己发现
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>需要记忆的理由</strong>：窗口装不下 + 装得下也难注意（注意力问题，不只是容量）。<br>
+<strong>三类记忆</strong>：情景（追加式日志）／语义（推理后提炼）／程序（代码形式技能）。<br>
+<strong>Toolformer</strong>：解决"何时调"——模型自己发现哪里调工具有用。<br>
+<strong>Gorilla</strong>：解决"调哪个"——靠检索缩小 API 范围。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 为什么需要记忆？课件给了两个理由，第二个为什么更重要？</p>
+  <details><summary>展开答案</summary><p>两个理由：① 上下文窗口装不下所有事件流；② 即使装得下，也可能难以注意到相关事件、难以消化。第二个更重要，因为它指出这不是容量问题而是注意力问题——把海量信息全塞进上下文，模型反而更难定位关键内容（这就是 Lecture02 会讲的 context rot）。所以记忆不只是"省 token"，更是"让模型能注意到该注意的东西"。</p></details>
+  <p>Q2. 三类记忆的读写机制各是什么？各自的主要代价？</p>
+  <details><summary>展开答案</summary><p>Episodic：追加式事件流写入、基于启发式分数检索，代价是会无限增长；Semantic：LLM 对事件推理后写入、检索读取，代价是提炼会丢信息并可能引入偏差；Procedural：写成代码形式的技能、Embedding 检索，代价是只适用于能表达成代码的技能。</p></details>
+  <p>Q3. Toolformer 和 Gorilla 解决的是哪两个不同的问题？</p>
+  <details><summary>展开答案</summary><p>Toolformer 解决"何时调"——工具只有几个，问题是模型要自己发现"在这里插入 API 调用能提升后续预测"，靠保留有效调用样本训练。Gorilla 解决"调哪个"——面对上千个 API，难点是文档重叠、参数易错，做法是用检索先缩小相关 API 范围再生成调用。</p></details>
+  <p>Q4. 你的场景更需要 Toolformer 还是 Gorilla 的思路？为什么？</p>
+  <details><summary>展开答案</summary><p>更需要 Gorilla 的思路。因为你的工具集是有限且明确的（查日志、查配置、查呼吸曲线、查 kV 图像等几个），不存在"模型要自己发现何时该调工具"的问题；真正的难点是接口设计清晰、参数结构正确、错误能明确返回。不需要 Toolformer 那套让模型自己探索的机制。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture01 · 段三 架构 · 记忆与工具</span><br>
+  ← 上一课 <a href="lecture01-0004-reasoning-why.html">0004 · 推理为什么有用</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture01-0006-compound-ai-systems.html">0006 · 复合 AI 系统：RAG、工具、MCP</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture01 课件《Intro to Agentic Systems》· 源文件夹 week1-9.23 · p44-53；Toolformer (arXiv:2302.04761)、Gorilla (arXiv:2305.15334)、Generative Agents (arXiv:2304.03442)、Voyager (arXiv:2305.16291)<br>
+Lesson 0005 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

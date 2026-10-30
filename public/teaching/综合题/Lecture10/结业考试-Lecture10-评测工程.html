@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>结业考试 · Lecture10（Evaluating Agents）</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>结业考试 · 评测工程建设</h1>
+<blockquote>
+<p><strong>作答方式</strong>：直接在每题下方的「作答」区写你的答案，然后把整个文件发给我（或对我说「评卷」）。</p>
+<p><strong>评分</strong>：按题目分值给出得分与逐条点评，重点看「结论是否成立 + 理由是否有依据 + 有没有落到你的具体场景」。</p>
+<p><strong>提示</strong>：答案都在这讲的课程里。卡住时回到对应的课，不要猜。</p>
+</blockquote>
+<p><strong>来源</strong>：CS329Z Lecture10 课件《Evaluating Agents: Terminal-Bench and Harbor》· 对应课程 lesson10-0069-0074</p>
+<hr>
+<h2>场景</h2>
+<p>你要为排查助手建一套评测。现有资源：30 个历史案例（含真实根因）、脱敏的日志/图像/配置、一台测试设备（可人为制造故障）。</p>
+<h2>题目</h2>
+<p><strong>Q1（范式与词汇，20 分）</strong></p>
+<p>（a）课件说「agent 是通过评估开发的，不是从数据训练的」。用你的场景解释这句话为什么成立。</p>
+<p>（b）定义以下术语并用你的场景举例：Task、Trial、Benchmark、Verifier、Trajectory、Evaluation Harness、Agent Harness。</p>
+<p>（c）Evaluation Harness 和 Agent Harness 在你的场景里分别是什么？谁启动谁？</p>
+<p><strong>Q2（写任务，30 分）</strong></p>
+<p>（a）列出好 task 的五个性质，并说明每个性质在你的场景里怎么满足。</p>
+<p>（b）为一个具体故障场景（自选，例如「夜间残差升高」）写出完整的 task 五件套：</p>
+<ul>
+<li>instruction.md 的全文（注意选哪种指令风格，并说明为什么）</li>
+<li>task.toml 的关键字段</li>
+<li>environment 里需要什么（不写 Dockerfile，写清单）</li>
+<li>solution/solve.sh 的步骤（必须是模仿 agent 的动作，不能硬编码）</li>
+<li>tests/test.sh 的检查点</li>
+</ul>
+<p>（c）instruction 的三种风格各测什么？你的 task 选了哪种？为什么不能混用？</p>
+<p><strong>Q3（写验证器，30 分）</strong></p>
+<p>（a）为什么验证器要「看结果不看过程」？「基于环境状态」排除了什么错误做法？</p>
+<p>（b）画出你场景的混淆矩阵，说明 FP 和 FN 各自的危害。哪个更危险？</p>
+<p>（c）设计四层验证器：格式检查、结论命中、证据检查、安全性检查。每层具体检查什么？为什么这个顺序？</p>
+<p>（d）防奖励黑客的四道隔离是什么？在你的场景里具体怎么做？</p>
+<p>（e）参考解为什么必须模仿 agent 动作而不能直接 echo 答案？举一个它能发现的 bug。</p>
+<p><strong>Q4（基础设施与持续维护，20 分）</strong></p>
+<p>（a）评测基建的四个要求是什么？在你的单机环境下怎么满足「可复现」和「快」？</p>
+<p>（b）「任务是软件，软件有 bug」——你的基准会以哪四种方式腐烂？各举你场景的具体例子。</p>
+<p>（c）regrade / rerun / reuse 三档各适用什么情况？举两个你场景里属于不同档的改动。</p>
+<p>（d）「每行结果都要有完整凭据」——你要存什么？为什么没有凭据的评测等于没有评测？</p>
+<hr>
+<h2>作答区</h2>
+<blockquote>
+<p>在这里写你的答案（每题一段，标明题号）。写完对我说「评卷」。</p>
+</blockquote>
+  </div>
+</div>
+</body>
+</html>

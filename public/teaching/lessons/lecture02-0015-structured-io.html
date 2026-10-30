@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0015 — 结构化 I/O：约束解码、DSPy 签名与分类器</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture02 · Lesson 0015</span>
+  <h1>结构化 I/O：约束解码、DSPy 签名与分类器</h1>
+  <div class="meta">第 0015 课（Lecture02 第 7 课）· 来源：lecture02.pdf p149-159 · 来源文件夹：week2-9.28 · 本课成果：理解为什么需要结构化 I/O、约束解码如何强制格式、DSPy 签名的作用，以及分类器与 System One 模型的思路</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+为什么需要结构化 I/O（p152）：<br>
+<strong>复合 AI 系统里，各组件之间需要一个共享的"通信契约"</strong>——如果你让下一个组件读自然语言，它每次都要重新解析。<br><br>
+三条实现路径：<br>
+<strong>① 约束解码</strong>——在生成时强制输出符合 schema<br>
+<strong>② DSPy 签名</strong>——用声明式的方式定义输入输出契约<br>
+<strong>③ 分类器 / System One 模型</strong>——不走生成，直接输出类别
+</div>
+
+<h2>一、为什么需要结构化（p152）</h2>
+<pre class="loop">问题场景：
+  Agent A 的输出要传给 Agent B
+  A 说："我觉得这可能是呼吸信号的问题，因为抖动有点大"
+  → B 要理解这句话，得再调一次模型解析
+  → 不稳定、慢、贵
+
+解决：
+  约定格式 {"root_cause": "respiratory", "confidence": 0.8}
+  → B 直接读字段，不需要解析
+  → 这就是"共享契约"
+</pre>
+
+<h2>二、约束解码：强制输出格式（p153-154）</h2>
+<blockquote>
+<strong>Force the language model to output to a particular structure</strong>
+</blockquote>
+<pre class="loop">原理（SGLang 等方式）：
+  在每一步生成时，屏蔽掉"不符合当前语法状态"的 token
+
+  例：要生成 JSON {"name": "...", ...
+    ① 生成 { 之后，只允许 " 或 } 
+    ② 生成 "name" 之后，只允许 :
+    ③ 生成 : 之后，只允许 " 或数字
+    → 模型不可能输出非法 JSON
+
+好处：
+  · 100% 保证格式正确（不是"通常正确"）
+  · 省掉解析失败的重试
+  · 可以用更小/更便宜的模型做结构化输出
+
+代价：
+  · 实现复杂（需要把语法编译成 token mask）
+  · 可能影响语义质量（强行约束可能让模型选次优 token）
+</pre>
+
+<h2>三、DSPy 签名：声明式的契约（p155-156）</h2>
+<blockquote>
+<strong>DSPy Signatures：用声明式方式定义"输入是什么、输出是什么"</strong>
+</blockquote>
+<pre class="loop">DSPy 的写法：
+
+  classify_iris = dspy.Predict("petal_length, petal_width, 
+                                sepal_length, sepal_width -> species")
+  
+  这就定义了一个签名：4 个数值输入 → 1 个类别输出
+  DSPy 负责把它编译成实际的 prompt（p156 展示了生成的 system prompt）
+
+和约束解码的区别：
+  约束解码 → 在 token 层面强制（格式一定对）
+  DSPy 签名 → 在语义层面约定（DSPy 会优化怎么问）
+  
+  两者可以结合：DSPy 管"问什么"，约束解码管"输出格式"
+</pre>
+
+<h2>四、分类器与 System One 模型（p157-158）</h2>
+<pre class="loop">【分类器】
+  在 embedding 之上训练一个小分类头
+  → 输入文本 → embedding → 小网络 → 类别
+
+  特点：
+    · 极快、极便宜（不用生成）
+    · 只能输出预定义类别
+    · 适合"分流"这种简单判断
+
+【System One 模型】（p158）
+  课件定义：本质上是"带可适应选项的分类器"
+  → 用于做"决策"而非"生成"
+
+  名字来自卡尼曼的双系统理论：
+    System 1 = 快速直觉判断
+    System 2 = 慢速深思推理
+  
+  → 这里指轻量的、直接出决策的模型
+</pre>
+
+<h2>五、三种方式的取舍</h2>
+<table>
+  <tr><th>方式</th><th>速度</th><th>灵活性</th><th>适用</th></tr>
+  <tr><td><strong>约束解码</strong></td><td>中（仍是生成）</td><td>格式固定，内容是生成的</td><td>需要结构化 + 内容多样（如生成 JSON 报告）</td></tr>
+  <tr><td><strong>DSPy 签名</strong></td><td>中</td><td>高（可优化 prompt）</td><td>需要系统性优化提示词的场景</td></tr>
+  <tr><td><strong>分类器</strong></td><td><strong>极快</strong></td><td>低（只能输出预定类别）</td><td>分流、打标签、简单判断</td></tr>
+</table>
+
+<h2>六、工具调用就是结构化输出的典型例子（p159）</h2>
+<pre class="loop">Toolformer 式的工具调用：
+
+  模型输出 = 一个结构化的调用
+  {
+    "tool": "read_file",
+    "args": {"path": "test.py"}
+  }
+
+  这个结构必须严格正确，否则执行失败
+  → 所以工具调用天然依赖约束解码 / 结构化输出
+  → 这也是为什么现代 API 都支持 function calling 的 schema
+</pre>
+
+<h2>SGRT 工程桥：你的系统该怎么设计 I/O</h2>
+<pre class="loop">【分层设计】
+
+① 分流层 → 用分类器，不用 LLM
+   "这次报警属于哪一类？"（图像/呼吸/机械/罕见）
+   → 4 分类，毫秒级
+   → 不需要生成，不需要推理
+
+② 判断层 → 用 LLM + 约束解码
+   "具体是什么根因？给出证据"
+   → 输出 JSON：
+     {"root_cause": "...", "evidence": [...], "confidence": 0.8}
+   → 格式必须严格，下游才能自动处理
+
+③ 解释层 → 用 LLM，自由文本
+   "用工程师能懂的话解释"
+   → 不需要结构化
+
+【关键原则】
+  不要用 LLM 做"分类"这种简单事
+  → 分类器快几十倍、便宜几百倍
+  → LLM 应该用在"需要理解语义"的地方
+
+【你的接口应该长这样】
+  {
+    "alert_type": "residual_rise",
+    "suspected_cause": "respiratory_baseline_drift",
+    "confidence": 0.82,
+    "evidence": [{"type":"breath_jitter","value_ms":120,"threshold_ms":50}],
+    "recommended_action": "recalibrate_baseline",
+    "requires_human_review": true
+  }
+  → 每个字段都有明确语义
+  → 下游可以自动处理，也可以给人看
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>为什么</strong>：复合系统需要共享通信契约，否则每次都要重新解析自然语言。<br>
+<strong>约束解码</strong>：token 层强制格式，100% 保证合法 JSON。<br>
+<strong>DSPy 签名</strong>：声明式定义输入输出契约，还能自动优化 prompt。<br>
+<strong>分类器</strong>：不用生成，直接出类别——最快最便宜。<br>
+<strong>工具调用</strong>：本质就是结构化输出的典型应用。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 为什么复合 AI 系统需要结构化 I/O？用自然语言传递有什么问题？</p>
+  <details><summary>展开答案</summary><p>因为各组件之间需要一个共享的通信契约。如果用自然语言传递（如"我觉得这可能是呼吸问题"），下一个组件要理解这句话就得再调一次模型解析——不稳定、慢、贵，而且每次解析结果可能不同。约定结构化格式（如 {"root_cause": "respiratory", "confidence": 0.8}）后，下游直接读字段，无需解析。</p></details>
+  <p>Q2. 约束解码的原理是什么？它有什么代价？</p>
+  <details><summary>展开答案</summary><p>原理是在每一步生成时屏蔽掉"不符合当前语法状态"的 token——比如要生成 JSON，生成 { 之后只允许 " 或 }，生成 "name" 之后只允许 :。这样模型不可能输出非法格式。好处是 100% 保证格式正确、省掉重试、可以用更小的模型。代价是实现复杂（要把语法编译成 token mask），且强行约束可能让模型选次优 token 影响语义质量。</p></details>
+  <p>Q3. 分类器和 LLM 生成在做"分流"这件事上有什么本质差别？</p>
+  <details><summary>展开答案</summary><p>分类器是在 embedding 之上训练一个小网络，直接输出类别——极快（毫秒级）、极便宜，但只能输出预定义类别。LLM 生成要逐 token 吐字，慢几十倍、贵几百倍，且可能输出格式不定的内容。所以简单的分流任务应该用分类器：它不需要"理解并生成"，只需要"判断属于哪一类"。</p></details>
+  <p>Q4. 你的排查助手应该怎么分层设计 I/O？哪一层不该用 LLM？</p>
+  <details><summary>展开答案</summary><p>分三层：① 分流层用分类器判断报警属于哪一类（图像/呼吸/机械/罕见），毫秒级，不该用 LLM；② 判断层用 LLM + 约束解码输出结构化 JSON（root_cause/evidence/confidence/recommended_action/requires_human_review）；③ 解释层用 LLM 自由文本给工程师看。不该用 LLM 的是分流层——这是简单分类，用 LLM 慢几十倍贵几百倍还不稳定。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture02 · 段五 LLM for Agents · 结构化 I/O</span><br>
+  ← 上一课 <a href="lecture02-0014-inference-time-scaling.html">0014 · 推理期扩展</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture02-0016-context-engineering.html">0016 · 上下文工程</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件《LLMs for Builders》· 源文件夹 week2-9.28 · p149-159；SGLang (arXiv:2312.07104)、DSPy (dspy.ai)、Toolformer (arXiv:2302.04761)<br>
+Lesson 0015 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

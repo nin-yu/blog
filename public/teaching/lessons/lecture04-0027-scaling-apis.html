@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0027 — 规模化用工具：ToolLLM 与 Gorilla</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture04 · Lesson 0027</span>
+  <h1>规模化用工具：ToolLLM 与 Gorilla</h1>
+  <div class="meta">第 0027 课（Lecture04 第 3 课）· 来源：lecture04.pdf p36-45 · 来源文件夹：week3-10.5 · 本课成果：理解工具规模如何决定架构、RAT 如何让模型学会忽略低质量检索、AST 匹配为何优于字符串匹配</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+工具规模上去之后，问题从"何时调"变成"<strong>从上千个 API 里选对哪一个</strong>"。<br><br>
+<strong>ToolLLM</strong>（p37-39）：微调 LLaMA + <strong>神经 API 检索器</strong>，支持 16k+ API<br>
+<strong>Gorilla</strong>（p40-44）：用 1.6k API 训练，两个关键贡献——<br>
+　<strong>RAT（检索感知训练）</strong>：训练时同时给正确和错误的检索结果<br>
+　<strong>AST 子树匹配</strong>：用语法树比对来度量幻觉<br><br>
+核心规律：<strong>规模越大，越不能靠"记住"，必须靠"检索"</strong>。
+</div>
+
+<h2>一、ToolLLM：16k API + 神经检索器（p37-39）</h2>
+<pre class="loop">做法（p37）：
+  ① 微调 LLaMA → ToolLLaMA
+  ② 配一个神经 API 检索器
+  ③ 为每条指令推荐合适的 API
+
+数据（p61）：
+  · 从 RapidAPI 爬了 6000+ 真实 API
+  · 人工整理出涉及这些 API 的真实指令
+  → 最终覆盖 16k+ API
+
+为什么需要检索器：
+  16k 个 API 的文档不可能全塞进上下文
+  → 先检索出相关的 5-10 个
+  → 再让模型从中选
+</pre>
+<h2>二、Gorilla 的两个关键贡献</h2>
+
+<h3>2.1 RAT：检索感知训练（p42）</h3>
+<blockquote>
+· 微调模型，让它<strong>学会使用或忽略</strong>检索上下文<br>
+· 在指令微调时<strong>引入正确和错误的检索结果</strong><br>
+· RAT 让模型对低质量检索<strong>鲁棒</strong>
+</blockquote>
+<pre class="loop">问题：推理时检索器可能给错结果
+  如果训练时只见过"正确检索"，模型会默认"检索到的都对"
+  → 一旦检索错了，模型就跟着错
+
+RAT 的解法：
+  训练时故意给它一些错误的检索结果
+  教它"这个检索结果跟问题不匹配，应该忽略"
+  → 模型学会判断检索质量，而不是盲信
+
+这个思路极其重要，可以迁移到任何 RAG/工具场景
+</pre>
+<h3>2.2 AST 子树匹配：度量幻觉（p43）</h3>
+<blockquote>
+用<strong>抽象语法树（AST）子树匹配</strong>来度量幻觉
+</blockquote>
+<pre class="loop">为什么不能用字符串匹配：
+  模型可能生成：
+    get_weather(city="SF")
+    get_weather(city='SF')        ← 引号不同
+    get_weather( city = "SF" )    ← 空格不同
+  这三个在语义上完全一样，但字符串不同
+
+AST 匹配的做法：
+  把调用解析成语法树，比较树的结构和节点
+  → 参数名对不对、类型对不对、嵌套对不对
+  → 能识别"结构上正确但不是真 API"这种幻觉
+
+对比传统评测：
+  字符串匹配 → 会因为格式差异误判
+  AST 匹配   → 关注语义结构
+</pre>
+<h2>三、四个数字的对比（p41、p45）</h2>
+<table>
+  <tr><th>方法</th><th>工具规模</th><th>是否配检索器</th></tr>
+  <tr><td>Toolformer</td><td>5</td><td>否（全部在上下文里）</td></tr>
+  <tr><td>ToolkenGPT</td><td>234</td><td>否（embedding 学）</td></tr>
+  <tr><td>Gorilla</td><td>1,645</td><td>是（zero-shot 或 retrieval 两种模式）</td></tr>
+  <tr><td>ToolLLM</td><td>16,000+</td><td>是（神经 API 检索器）</td></tr>
+</table>
+<pre class="loop">规律很清楚：
+  5 个工具   → 全塞 prompt 就行
+  234 个工具 → 用 embedding 学
+  1.6k 个   → 必须配检索
+  16k 个    → 必须配检索 + 微调
+
+→ 工具数量决定了架构，不是反过来
+</pre>
+<h2>四、为什么"检索"是必然的</h2>
+<pre class="loop">如果一个 API 文档平均 200 token：
+  5 个   → 1,000 token    可接受
+  234 个 → 46,800 token   太长了
+  1.6k   → 320,000 token  不可能
+  16k    → 3,200,000 token 完全不可能
+
+→ 上下文窗口是物理限制（Lecture02 的 O(n²)）
+→ 所以大规模工具必须靠检索缩小范围
+→ 这不是设计选择，是物理约束
+</pre>
+<h2>SGRT 工程桥：你会不会遇到规模问题</h2>
+<pre class="loop">【现状：5-8 个工具】
+  查日志、查配置、查呼吸曲线、查 kV 图像、算残差、查案例库
+  → 全部塞 prompt 完全可行（约 1500 token）
+  → 不需要检索器，也不需要训练
+
+【什么情况下会变多】
+  如果将来接多种设备、每种设备多个接口：
+    10 种设备 × 5 个接口 = 50 个工具
+  → 仍然可接受（约 10k token，但开始占地方了）
+
+  如果接第三方服务（HIS、PACS、RIS 系统）：
+    可能几百个接口
+  → 这时就必须上检索
+
+【现在该做的准备】
+  ① 工具描述写规范（名称、说明、参数、返回格式）
+     → 未来加检索时有现成的元数据可用
+  ② 工具命名用一致的规则
+     → 如 device_get_status / device_set_param
+     → 方便按前缀分组检索
+  ③ 预留一个"工具注册表"
+     → 不要让工具散落在代码各处
+
+【从 Gorilla 学的一件事】
+  RAT 的思路可以直接用：
+  测试 agent 时，故意给它错误的工具返回
+  看它能否识别"这个结果不对"并换方法
+  → 这是健壮性测试，不需要训练
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>ToolLLM</strong>：微调 LLaMA + 神经 API 检索器，16k API。<br>
+<strong>Gorilla RAT</strong>：训练时混入错误检索，让模型学会忽略低质量检索——可迁移到任何 RAG/工具场景。<br>
+<strong>Gorilla AST</strong>：用语法树而非字符串度量幻觉，避免格式差异误判。<br>
+<strong>规律</strong>：工具数量决定架构——5 个塞 prompt、234 个学 embedding、上千个必须检索。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. ToolLLM 为什么需要神经 API 检索器？</p>
+  <details><summary>展开答案</summary><p>因为它覆盖 16k+ API，按每个 API 文档 200 token 算需要 320 万 token——完全超出上下文窗口。所以必须先检索出相关的 5-10 个 API 文档，再让模型从中选择。这是物理约束（Lecture02 的 O(n²)）决定的必然设计，不是优化选择。</p></details>
+  <p>Q2. Gorilla 的 RAT 解决什么问题？为什么这个思路重要？</p>
+  <details><summary>展开答案</summary><p>RAT（检索感知训练）解决"模型盲信检索结果"的问题——如果训练时只见过正确检索，模型会默认检索到的都对，一旦推理时检索错了就跟着错。做法是训练时故意混入错误的检索结果，教模型判断检索质量并学会忽略不匹配的。这个思路重要因为可迁移到任何 RAG/工具场景：真实系统里检索和工具调用都会失败，模型必须学会识别失败。</p></details>
+  <p>Q3. 为什么用 AST 子树匹配而不是字符串匹配来度量幻觉？</p>
+  <details><summary>展开答案</summary><p>因为字符串匹配会被格式差异误判：get_weather(city="SF")、get_weather(city='SF')、get_weather( city = "SF" ) 三种写法语义完全相同但字符串不同。AST 匹配把调用解析成语法树，比较树结构和节点（参数名、类型、嵌套），能识别"结构上正确但不是真 API"的幻觉，而不会被引号或空格的差异干扰。</p></details>
+  <p>Q4. 你的工具规模现在是多少？什么情况下会上检索？该提前准备什么？</p>
+  <details><summary>展开答案</summary><p>现在 5-8 个工具（查日志、配置、呼吸曲线、kV 图像、算残差、查案例），全部塞 prompt 约 1500 token，完全可行。如果接多种设备（10 种×5 接口=50 个）仍可接受，但若接第三方系统（HIS/PACS/RIS）可能几百个接口，就必须上检索。提前准备：① 工具描述写规范（名称/说明/参数/返回格式），未来有元数据可用；② 命名用一致规则（如 device_get_status），方便按前缀检索；③ 预留工具注册表，不要散落代码各处。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture04 · 段二 学习调用工具 · 规模化</span><br>
+  ← 上一课 <a href="lecture04-0026-learning-to-call.html">0026 · Toolformer 与 ToolkenGPT</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture04-0028-standard-interfaces.html">0028 · 标准接口三代：REST / Function Calling / MCP</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture04 课件《Tool Use》· 源文件夹 week3-10.5 · p36-45；ToolLLM / ToolBench (Qin et al. 2023, arXiv:2307.16789)、Gorilla (Patil et al. 2023, arXiv:2305.15334)<br>
+Lesson 0027 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

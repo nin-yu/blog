@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0049 — 模式一：从经验中学流程</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture07 · Lesson 0049</span>
+  <h1>模式一：从经验中学流程——Voyager、AWM 与 Skill Files</h1>
+  <div class="meta">第 0049 课（Lecture07 第 4 课）· 来源：lecture07.pdf p29-41 · 来源文件夹：week4-10.14 · 本课成果：理解把成功轨迹沉淀为可复用流程的机制、它能带来什么量级的提升，以及它在动态环境下为什么会失效</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+四种架构模式的第一个（p29）：<strong>Learning Procedures from Experience——把过去成功的轨迹召回复用</strong>。<br><br>
+三个代表：<br>
+<strong>Voyager</strong>（p31-34）——技能库，把写对的代码存成技能，下次直接调用<br>
+<strong>AWM</strong>（p35-38）——把成功轨迹归纳成"工作流"，塞进 system prompt<br>
+<strong>Skill Files</strong>（p39-40）——把技能写成文件，人可编辑<br><br>
+限制（p41）：<strong>这类程序记忆对动态环境不鲁棒</strong>。
+</div>
+
+<h2>Voyager：技能库（p31-34）</h2>
+<p>Voyager 是 Minecraft 里的 agent。核心设计是<strong>Skill Library</strong>：每次成功写出一段能用的代码（比如"造一把石镐"），就把它存成技能；下次需要时<strong>检索调用</strong>，而不是重新推理一遍。</p>
+<pre class="loop">【无技能库】
+  需要木棍 → 从头推理：砍树 → 做木板 → 做木棍
+  需要石镐 → 从头推理：找石头 → 挖 → 做镐
+  需要钻石镐 → 从头推理：……(难度陡增)
+
+【有技能库】
+  需要钻石镐 → 检索："造钻石镐需要什么？"
+             → 命中已有技能 craftDiamondPickaxe()
+             → 直接调用（内部再调 craftStick()、craftIronPickaxe()…）</pre>
+<p>课件给的关键数据（p33）：</p>
+<blockquote>
+<strong>技能库让 Voyager 在 102 次提示迭代内造出了钻石工具；没有技能库，这件事从未实现。</strong>
+</blockquote>
+<p>注意这个表述——不是"提升了 20% 成功率"，而是<strong>从"做不到"变成"做得到"</strong>。这是技能复用的量级：它改变的不是效率，是<strong>能力的上限</strong>。因为深层任务需要层层嵌套的子技能，每次都从零推理会指数级累积错误。</p>
+
+<h2>AWM：把轨迹归纳成工作流（p35-38）</h2>
+<p>Agent Workflow Memory（Wang et al. 2024）做的事更"高层"：不存单个动作，而是<strong>从多条成功轨迹里归纳出可复用的工作流</strong>。</p>
+<pre class="loop">【输入】多条成功轨迹
+  轨迹A: 打开文件 → 找到函数 → 修改 → 运行测试 → 通过
+  轨迹B: 打开文件 → 搜索关键词 → 修改 → 运行测试 → 通过
+  轨迹C: 打开文件 → 找到函数 → 修改 → 运行测试 → 通过
+
+【归纳】Workflow:
+  "修改代码的标准流程：定位 → 编辑 → 测试 → 确认"
+
+【使用】下次任务开始时，这个 workflow 被放进 system prompt 作为上下文（p37）</pre>
+<p>和 Voyager 的差别：</p>
+<table>
+  <tr><th></th><th>Voyager Skill Library</th><th>AWM Workflow</th></tr>
+  <tr><td>存的粒度</td><td>可执行代码（具体技能）</td><td>抽象流程（步骤序列）</td></tr>
+  <tr><td>怎么用</td><td><strong>调用</strong>（执行代码）</td><td><strong>放进 prompt</strong>（引导决策）</td></tr>
+  <tr><td>泛化范围</td><td>窄（特定任务）</td><td>宽（一类任务）</td></tr>
+</table>
+
+<h2>Skill Files：人也能改的技能（p39-40）</h2>
+<p>第三种形态：把技能写成<strong>文件</strong>（Markdown/文本），而不是代码或 prompt 片段。</p>
+<ul>
+  <li>好处：<strong>人可读、可编辑、可版本控制</strong>——非工程师也能改。</li>
+  <li>好处：可以被 diff、被审批、被回滚。</li>
+  <li>这是当下"generalist user-facing agent"的常见做法（p41）。</li>
+</ul>
+<blockquote>对你来说这一条最重要。你的 SGRT 排查 SOP 如果写进代码，改一条要走发版；写成 skill 文件，改完立即生效，而且能进版本库做变更记录。</blockquote>
+
+<h2>限制：动态环境下不鲁棒（p41）</h2>
+<p>课件直接点出了这类方法的软肋：</p>
+<blockquote>
+<strong>这些程序记忆存储对动态环境不鲁棒</strong>（Cao et al. 2026）。
+</blockquote>
+<p>拆开说原因：</p>
+<pre class="loop">存下的流程是"当时环境下"的最优解
+  ↓
+环境变了（软件版本升级、设备换了、接口改了、界面重排）
+  ↓
+流程仍然被检索出来、仍然被执行
+  ↓
+但它已经不适用了 → 而且 agent 不会怀疑自己的记忆</pre>
+<p>这比"没有记忆"更危险：<strong>没有记忆时会重新探索，有错误记忆时会自信地走错路。</strong></p>
+<p>所以实践中必须配套：</p>
+<ul>
+  <li><strong>时效标记</strong>：每条流程带"适用版本/日期"</li>
+  <li><strong>失败反馈</strong>：检索出来的流程执行失败时，要能标记它失效</li>
+  <li><strong>定期重验</strong>：后台任务重跑旧流程，看是否还能成功</li>
+</ul>
+
+<h2>SGRT 工程桥：你的排查 SOP 应该做成哪种</h2>
+<pre class="loop">【建议：Skill Files，不是代码，也不是 prompt 片段】
+
+理由：
+  ① 医疗设备软件有变更管理要求 → 文件能进版本库、能审批、能回滚
+  ② 排查流程会随设备/固件更新而变 → 文件改一行就生效
+  ③ 工程师和临床应用人员都可能提修改意见 → 文件他们能看懂
+
+写法建议（每条 SOP 带元数据）：
+  ---
+  适用设备: Trio-Track v2.3+
+  适用固件: >= 1.8.0
+  最后验证: 2026-10-15
+  适用现象: 残差 RMS 0.8→2.3mm，腹部区域偏高
+  ---
+  步骤：
+   1. 查 kV 图像角点识别率（>95% 则排除图像问题）
+   2. 查呼吸曲线呼气末识别抖动（>50ms 则怀疑门控）
+   3. 查呼吸垫压力基线是否近期重设
+   4. 若 1-3 均正常 → 查床板机械位置与相机支架热变形
+
+【关键】固件升级后，第 1 条要重验；如果流程没标"适用固件"，
+        升级后它还会被检索出来、还会被执行，但可能已经不适用</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>模式一</strong>：把成功轨迹沉淀成可复用流程，解决"每次都从零推理"。<br>
+<strong>三种形态</strong>：Voyager 技能库（存代码、直接调用）／AWM（存抽象流程、塞 prompt）／Skill Files（存文件、人可改）。<br>
+<strong>量级</strong>：不是效率提升，是能力上限改变（102 次迭代造出钻石工具，无技能库做不到）。<br>
+<strong>软肋</strong>：动态环境下不鲁棒——错误记忆比没有记忆更危险。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. Voyager 的技能库为什么说是"改变能力上限"而不是"提升效率"？</p>
+  <details><summary>展开答案</summary><p>因为深层任务需要层层嵌套的子技能，每次都从零推理会指数级累积错误。技能库让 agent 可以直接调用已有技能（内部再嵌套调用），于是"造钻石工具"这种原本从未实现的任务，在 102 次提示迭代内做成了。这不是成功率从 70% 提到 90%，而是从"做不到"变成"做得到"。</p></details>
+  <p>Q2. Voyager 技能库和 AWM 工作流，在"存什么"和"怎么用"上有什么不同？</p>
+  <details><summary>展开答案</summary><p>Voyager 存的是可执行代码（具体技能），使用时是直接调用执行，泛化范围窄；AWM 存的是从多条轨迹归纳出的抽象流程（步骤序列），使用时是放进 system prompt 作为上下文引导决策，泛化范围更宽。</p></details>
+  <p>Q3. 为什么"错误的程序记忆"比"没有程序记忆"更危险？该怎么防？</p>
+  <details><summary>展开答案</summary><p>没有记忆时 agent 会重新探索，可能走对；有错误记忆时会自信地执行已不适用的流程，而且不会怀疑自己的记忆。防护：① 每条流程带适用版本/日期标记；② 执行失败时能标记该流程失效；③ 后台定期重验旧流程是否仍可成功。</p></details>
+  <p>Q4. 你的排查 SOP 适合做成 Skill File 还是写进代码？理由是什么？</p>
+  <details><summary>展开答案</summary><p>适合 Skill File。理由：医疗设备有变更管理要求，文件能进版本库、能审批、能回滚、能 diff；排查流程随设备/固件更新而变，文件改一行即生效而代码要走发版；工程师和临床人员都能读懂文件并提出修改意见。前提是每条 SOP 必须带适用范围元数据（设备/固件版本、最后验证日期）。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture07 · 段四 架构模式 1/4</span><br>
+  ← 上一课 <a href="lecture07-0048-memory-what-when-how.html">0056 · What/When/How</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture07-0050-pattern-tiered-memory.html">0058 · 模式二：分层记忆</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture07 课件《Agent Memory Architectures》（Diyi Yang / Michael Ryan / John Yang）· 源文件夹 week4-10.14 · p29-41；参考 Voyager (arXiv:2305.16291)、Agent Workflow Memory (arXiv:2409.07429)<br>
+Lesson 49 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

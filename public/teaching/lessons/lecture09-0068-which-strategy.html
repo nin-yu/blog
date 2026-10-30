@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0068 — 选哪种策略：context 还是权重（Lecture09 收官）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture09 · Lesson 0068</span>
+  <h1>选哪种策略：context 还是权重（Lecture09 收官）</h1>
+  <div class="meta">第 0068 课（Lecture09 第 8 课Lecture09 收官）· 来源：lecture09.pdf p117-125 · 来源文件夹：week5-10.21 · 本课成果：掌握 context 优化与权重优化的取舍判据（样本效率 vs 数据需求、API 限制 vs 小模型短板），理解交替优化的策略，能为本项目选出合理路线</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件最后给出的对比（p118-122）：<br><br>
+<strong>可以交替做</strong>（p118）：有时候最好的做法是<strong>先优化 prompt，再优化权重，再回来优化 prompt</strong>。<br><br>
+核心取舍：<br>
+<strong>Context 优化</strong>——样本效率高、跑得快、基础设施简单；但小模型可能指令跟随能力不足，且会让 prompt 越来越长<br>
+<strong>权重优化</strong>——能吃下成千上万样本持续变强；但数据饥渴、需要训练基础设施、API 模型可能不给你微调
+</div>
+
+<h2>一、交替优化（p118）</h2>
+<blockquote>
+<strong>BetterTogether（Soylu et al. 2024）：有时候最好先优化 prompt，再优化权重，然后再回来优化 prompt。</strong>
+</blockquote>
+<pre class="loop">为什么交替有效：
+
+  第 1 轮 prompt 优化 → prompt 变好，但权重还是老的
+          ↓
+  用新 prompt 产生的轨迹去训权重 → 权重适应了新任务
+          ↓
+  权重变了，原先最优的 prompt 不再是全局最优
+          ↓
+  再优化一轮 prompt → 找到新的最优点
+
+  → 两者互相影响，所以交替比单次更好
+</pre>
+
+<h2>二、样本效率 vs 数据需求（p119-120）</h2>
+<table>
+  <tr><th></th><th>Context 优化</th><th>权重优化</th></tr>
+  <tr><td>样本效率</td><td><strong>高</strong>（p119：GEPA 证明 prompt 优化比 RL 样本效率高得多）</td><td><strong>低</strong>（p120：数据饥渴，但能吃下成千上万样本持续变强）</td></tr>
+  <tr><td>典型数据量</td><td>几十到几百个例子</td><td>几千到几万条轨迹</td></tr>
+  <tr><td>迭代速度</td><td>分钟到小时</td><td>小时到天</td></tr>
+  <tr><td>上限</td><td>受模型本身能力限制</td><td>能突破模型原始能力</td></tr>
+</table>
+<p>这两条结论（p119、p120）放在一起看很有意思：</p>
+<pre class="loop">Context 优化：少数据就能见效，但有天花板（模型本身的指令跟随上限）
+权重优化：需要大量数据，但天花板更高（真正改变了模型能力）
+
+→ 这决定了它们的适用阶段：
+   早期 / 数据少 → context
+   成熟 / 数据多 → weights
+</pre>
+
+<h2>三、什么时候该用 context 优化（p121）</h2>
+<pre class="loop">三条理由（p121 原文）：
+
+① 优化 API 可访问的模型
+   有些强模型不提供微调接口
+   → 你只能用 context 优化
+
+② 需要频繁、快速地重跑优化
+   context 优化比权重优化跑得更快、基础设施更简单
+
+③ 与环境交互很贵
+   context 优化样本效率更高
+   → 每个样本要跑一次昂贵的环境交互时，这点特别重要
+</pre>
+
+<h2>四、什么时候该用权重优化（p122）</h2>
+<pre class="loop">三条理由（p122 原文）：
+
+① Context 优化失败
+   尤其对小模型，有时指令跟随能力很弱
+   → 怎么优化 prompt 都不行，只能改权重
+
+② 你有能力强的教师，想要更便宜的模型
+   直接蒸馏进学生模型通常很有效
+   → 这是成本上的理由
+
+③ 上下文变得太长了
+   context 优化会增加 prompt 的复杂度
+   → 有时需要用权重优化来避免 prompt 优化带来的 context 膨胀
+</pre>
+<p>第 ③ 条很微妙但很重要：<strong>prompt 优化会自我膨胀</strong>。为了覆盖更多情况，指令越来越长，示例越来越多，最后 prompt 本身成了问题。这时候把知识"压进权重"反而能释放上下文空间。</p>
+
+<h2>五、完整决策树</h2>
+<pre class="loop">开始
+ │
+ ├─ 有领域数据和评估吗？──否──► 先建评估集（三支柱缺一根）
+ │
+ ├─ 用的是 API 模型且不提供微调？
+ │     └─是─► 只能 context 优化 ← p121 第①条
+ │
+ ├─ 数据量少（< 几百条）？
+ │     └─是─► 优先 context 优化（样本效率高）
+ │
+ ├─ context 优化后 prompt 变得很长？
+ │     └─是─► 考虑权重优化（把知识压进权重）
+ │
+ ├─ 小模型指令跟随能力明显不足？
+ │     └─是─► 权重优化（SFT / on-policy 蒸馏）
+ │
+ ├─ 有大量可验证任务 + 算力？
+ │     └─是─► RL（但先确认验证器可靠）
+ │
+ └─ 都做过一轮了？──是──► 交替再做一轮（p118 BetterTogether）
+</pre>
+
+<h2>六、Lecture09 全讲总结</h2>
+<pre class="loop">一、条件（p7-11）：三支柱 Data+System+Eval；五条件；五收益
+二、Context 优化（p12-69）：
+     · Few-shot：顺序影响大（局部熵）、Bootstrap 自举推理、DSPy 拒绝采样
+     · 反思式：OPRO / MIPROv2（三步）/ TextGrad / GEPA（帕累托进化）
+三、权重优化（p70-104）：
+     · SFT：教师 rollout → 训学生，重多样性
+     · RL：学生 rollout → 结果奖励，GRPO 省 critic
+     · On-policy 蒸馏：在学生自己的状态上给教师信号
+四、Agent 作为优化器（p105-116）：DGM / Meta-Harness / Auto-Research
+     → metric 成为最关键控制点
+五、怎么选（p117-125）：交替优化；样本效率 vs 数据需求；三条理由各一边
+</pre>
+<p>贯穿全讲的主线：<strong>所有优化都建立在"你有一个可信的 metric"之上</strong>。没有它，context 优化会过拟合验证集，权重要么学不到东西、要么学到错误的东西，agent 自动优化会作弊。</p>
+
+
+<h2>SGRT 工程桥：给你的项目定一条优化路线</h2>
+<pre class="loop">【现状盘点】
+  · 用 API 大模型（deepseek 等）→ 不提供微调
+  · 有历史案例，但诊断结论的标注还不完整
+  · 数据量：两年日志，够用但不是海量
+  · 没有训练算力（本地只有一台开发机）
+
+【按决策树走】
+  ① 有领域数据和评估？→ 数据有，评估要补（先做这个）
+  ② API 不提供微调？→ 是 → 只能 context 优化  ★ 决定性约束
+  ③ 数据量少？→ 是（几十到几百案例）→ context 优化样本效率高
+  ④ prompt 膨胀了？→ 还没有（刚开始优化）
+  ⑤ 小模型指令跟随不足？→ 用的是大模型，不是问题
+  ⑥ 有大量可验证任务 + 算力？→ 没有算力 → 暂不上 RL
+
+【结论：第一阶段只做 context 优化】
+  路线：
+    Step 1  建评估集：30 个历史 case，人工标注根因对错
+    Step 2  Bootstrap：让模型生成推理，用历史结论筛选
+    Step 3  反思优化：挑出判错的案例，反思共同点，改指令
+    Step 4  搜索组合：指令 × few-shot 组合，在评估集上选最优
+    Step 5  帕累托：同时看准确率 / token 成本 / 平均轮数
+
+【什么情况下才升级到权重优化】
+  触发条件（三个之一）：
+    · context 优化后准确率碰到天花板（比如停在 75% 上不去）
+    · prompt 变得超过 3000 token 还在加（说明该压进权重了）
+    · 需要本地部署（数据不出院）→ 必须训本地模型
+
+  如果触发，优先选 on-policy 蒸馏（L74）：
+    · 有强模型当教师
+    · 训练数据集中在"本地小模型真的会犯错的地方"
+    · 比 RL 采样量小得多
+
+【绝对不能做的】
+  · 让 agent 自动改"什么算诊断正确"（metric 本身）
+  · 在医疗判断上跑全自动 auto-research
+  · 没有可信 metric 就开始优化
+</pre>
+
+<p>这条路线的好处是<strong>每一步都可回滚、都可验证</strong>：评估集是文件、prompt 是文件、每次改动都能对比前后准确率。符合医疗设备的变更管理要求。</p>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>交替</strong>：prompt → 权重 → prompt，两者互相影响所以交替更好。<br>
+<strong>样本效率</strong>：context 高、权重低——但权重天花板更高。<br>
+<strong>选 context</strong>：API 不给微调／需快速迭代／环境交互昂贵。<br>
+<strong>选权重</strong>：context 优化失败（小模型）／有强教师想降本／prompt 膨胀了。<br>
+<strong>前提</strong>：一切都是 metric 驱动——这是整讲的地基。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 为什么"先优化 prompt，再优化权重，再回来优化 prompt"这种交替策略有理？</p>
+  <details><summary>展开答案</summary><p>因为两者互相影响。第一轮 prompt 优化让 prompt 变好，但权重还是老的；用新 prompt 产生的轨迹去训权重后，权重适应了新任务；但权重变了之后，原先最优的 prompt 不再是全局最优——需要再优化一轮 prompt 找到新的最优点。单次优化只能到达局部最优。</p></details>
+  <p>Q2. Context 优化和权重优化在"样本效率"和"能力上限"上分别如何？</p>
+  <details><summary>展开答案</summary><p>样本效率：context 优化高（GEPA 证明比 RL 样本效率高得多，几十到几百例子就能见效），权重优化低（数据饥渴，需要几千到几万条轨迹）。能力上限：context 优化受模型本身能力限制（有天花板），权重优化能真正改变模型能力（天花板更高）。这决定了适用阶段：早期/数据少用 context，成熟/数据多用 weights。</p></details>
+  <p>Q3. 课件说"context 优化会增加 prompt 复杂度，有时需要用权重优化来避免 context 膨胀"——这是什么意思？</p>
+  <details><summary>展开答案</summary><p>prompt 优化会自我膨胀：为了覆盖更多情况，指令越来越长、示例越来越多，最后 prompt 本身成了占用上下文和成本的问题。这时候把知识"压进权重"（微调）反而能释放上下文空间——模型内化了这些知识就不需要每次都写在 prompt 里。所以冗余的 prompt 往往是应该转成权重优化的信号。</p></details>
+  <p>Q4. 为什么说"所有优化都建立在可信的 metric 之上"？四档优化各自失效的样子是什么？</p>
+  <details><summary>展开答案</summary><p>因为优化本质是"朝着 metric 指示的方向改进"，metric 错了方向就错了。四档失效样子：① context 优化会过拟合验证集（在验证集上变好、真实场景变差）；② SFT 会学到教师的错误（因为无法判断哪些轨迹是对的）；③ RL 的奖励信号是噪音，训练会崩；④ agent 自动优化会作弊（修改测试、改评测数据让指标好看）。全都指向同一个前提：metric 必须可信。</p></details>
+</div>
+
+<h2>综合结业考试题</h2>
+<div class="takeaway">
+<strong>Lecture09 结业考试</strong>（把本讲当一个整体来考）：给一个真实的系统改进需求，要求你判断是否具备优化条件、选 context 还是 weights、设计优化流程（自举+反思+搜索）、并说明如何防止 metric 被 gaming。<br>
+<strong>→ 领取结业考试题</strong>：<a href="../综合题/Lecture09/结业考试-Lecture09-优化策略.html">结业考试-Lecture09-优化策略.md</a>（Markdown 作答制，作答区就在题目下方；答完对我说"评卷"）。
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture09 · 段五 选型 · Lecture09 收官</span><br>
+  ← 上一课 <a href="lecture09-0067-agents-as-optimizers.html">0075 · agent 作为优化器</a> · <a href="../index.html">课程大纲</a> · 回顾 <a href="lecture09-0061-conditions-for-optimization.html">0069 · 什么时候该优化</a><br>Lecture09 完结 → 回到 <a href="../index.html">课程大纲</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture09 课件《Optimization》· 源文件夹 week5-10.21 · p117-125；参考 BetterTogether (EMNLP 2024)、GEPA (arXiv:2507.19457)、OpenThoughts-Agent (arXiv:2606.24855)<br>
+Lesson 76 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

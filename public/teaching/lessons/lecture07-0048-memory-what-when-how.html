@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0048 — What / When / How：记忆的三个设计问题</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture07 · Lesson 0048</span>
+  <h1>设计记忆前必须先回答的三个问题，以及三种存储载体</h1>
+  <div class="meta">第 0048 课（Lecture07 第 3 课）· 来源：lecture07.pdf p23-28 · 来源文件夹：week4-10.14 · 本课成果：能用 What/When/How 三问把自己场景的记忆需求问清楚，并在文件系统/数据库/知识图谱三者间做出有理由的选择</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件把记忆设计压成三问（p24）：<br><br>
+<strong>What</strong> —— 什么内容会被存进/取出记忆？（事实、流程、对话进展…）<br>
+<strong>When</strong> —— 什么时候触发存储/检索？（agent 工具按需、后台 worker、事件驱动…）<br>
+<strong>How</strong> —— 用什么载体存、怎么取？（文件系统、数据库、知识图谱）（p25）<br><br>
+三问里<strong>最容易被跳过的是 When</strong>，而它恰恰决定了系统的实时性和成本。
+</div>
+
+<h2>三问的具体选项（p24 原文）</h2>
+<table>
+  <tr><th>问题</th><th>课件给的选项</th><th>选错的后果</th></tr>
+  <tr><td><strong>What</strong></td><td>事实（具体的和一般的）、流程、对话进展…</td><td>存太多→噪音淹没检索；存太少→每次还要重新教</td></tr>
+  <tr><td><strong>When</strong></td><td>agent 工具（按需）、后台 worker、事件驱动…</td><td>同一条记忆反复写、或该记的时候没记</td></tr>
+  <tr><td><strong>How</strong></td><td>文件系统、数据库（检索）、知识图谱…</td><td>查询方式不匹配→取不出来，或取出来一堆无关的</td></tr>
+</table>
+
+<h2>When 的三种触发方式，差别很大</h2>
+<pre class="loop">① Agent 工具（on-demand）——让模型自己决定何时存/取
+   ✔ 简单，不需要额外基础设施
+   ✘ 模型可能"忘了用"；每次都多一次工具调用（延迟+成本）
+   ✘ 医疗场景：让模型自主决定"要不要记"，等于把审计责任交给模型
+
+② 后台 worker——独立进程周期性整理
+   ✔ 不阻塞主对话；可以批量优化（合并/去重）
+   ✘ 有延迟：刚说完的话可能还没进记忆
+   ✔ 适合"睡眠期计算"这类（见第 60 课）
+
+③ 事件驱动——某些事件发生时触发
+   ✔ 及时且确定性（"标定完成"事件 → 必然写一条记忆）
+   ✔ 最符合合规审计的期望：可枚举、可复现
+   ✘ 需要预先定义事件类型</pre>
+<p>课件把三种并列，但实际工程里往往是<strong>混合</strong>：关键事实用事件驱动（确定性），闲聊偏好用后台 worker（不阻塞），需要的时候再用工具检索。</p>
+
+<h2>How 的三种载体（p25-28）</h2>
+<table>
+  <tr><th>载体</th><th>课件要点</th><th>适合</th><th>不适合</th></tr>
+  <tr><td><strong>Filesystem</strong> 文件系统</td><td>p26，LangChain agent builders 的做法：把记忆写成文件</td><td>结构化、人可读、可版本控制的记忆（如 skill 文件、配置）</td><td>需要语义检索的海量非结构化内容</td></tr>
+  <tr><td><strong>Database</strong> 数据库</td><td>p27：向量库 + 检索；也常用传统数据库</td><td>大规模、需要相似度检索的记忆</td><td>需要多跳关系推理</td></tr>
+  <tr><td><strong>Knowledge Graph</strong> 知识图谱</td><td>p28：实体和关系构成的图</td><td>强关联、需要多跳推理（"这台机器的标定板，上次是谁换的"）</td><td>构建成本高、更新麻烦</td></tr>
+</table>
+
+<h2>三种载体不是互斥的</h2>
+<pre class="loop">真实系统通常是组合：
+
+  Filesystem   ← 技能/规程（人写、人改、要能 diff）
+       ↓
+  Database     ← 事件日志、轨迹（量大、要按相似度检索）
+       ↓
+  Knowledge Graph ← 设备-部件-人员-事件的关系网（要追溯"谁/何时/影响了什么"）
+
+你的医疗场景里这个组合几乎是必然的：
+  技能用文件（可审）、事件用数据库（可查）、
+  设备与人员的关联用图（可追溯影响面）</pre>
+
+<h2>SGRT 工程桥：用三问把你的排查助手问清楚</h2>
+<pre class="loop">【What】存什么？
+  ✔ 存：故障现象 → 根因 → 验证方法 → 最终处理（成功案例）
+  ✔ 存：设备当前配置快照（阈值、标定日期、固件版本）
+  ✔ 存：用户的判定偏好（"残差 >2mm 才需要人工介入"）
+  ✘ 不存：每一帧图像的原始统计（太多、没复用价值）
+
+【When】何时触发？
+  ✔ 事件驱动：排查会话结束时，若"成功定位根因"→ 必写一条案例
+  ✔ 后台 worker：每晚合并相似案例、去重、更新权重
+  ✘ 不交给模型自主决定"这次要不要记"——医疗场景要确定性和可审计
+
+【How】存哪里？
+  ✔ 案例库 → 向量数据库（按现象相似度检索）
+  ✔ 排查技能（SOP）→ 文件（可 diff、可审批）
+  ✔ 设备-部件-人员关系 → 知识图谱（追溯影响面）
+</pre>
+<p>这三个答案就是你的记忆系统的<strong>设计输入</strong>。注意最后一条"不交给模型自主决定"——这是从第 48 课的三选一里，按医疗场景的约束<strong>主动排除</strong>掉一个选项，而不是照抄课件的并列列表。</p>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>三问</strong>：What（存什么）/ When（何时触发）/ How（存哪里）。<br>
+<strong>When 最易被跳过</strong>：按需（灵活但不确定）／后台（不阻塞但有延迟）／事件驱动（确定、可审计）。<br>
+<strong>三载体</strong>：文件（可读可审）／数据库（量大可检索）／知识图谱（多跳关系）。<br>
+<strong>实践</strong>：三者组合，按"可审计性"而非"性能"决定优先级（医疗场景）。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 记忆设计的三个问题是什么？哪个最容易被跳过，为什么它重要？</p>
+  <details><summary>展开答案</summary><p>What（什么内容被存/取）、When（何时触发存储/检索）、How（用什么载体存与取）。最容易被跳过的是 When——它直接决定系统的实时性和成本：选"模型自主按需"会让是否记录变得不确定，选"后台 worker"会产生延迟，选"事件驱动"才有确定性和可审计性。</p></details>
+  <p>Q2. 三种存储载体各适合什么场景？</p>
+  <details><summary>展开答案</summary><p>Filesystem 适合结构化、人可读、要能版本控制的记忆（技能文件、配置）；Database（向量库/传统库）适合大规模、需要相似度检索的内容；Knowledge Graph 适合强关联、需要多跳推理的追溯（实体-关系网络），但构建和更新成本高。</p></details>
+  <p>Q3. 为什么在医疗场景里，"让模型自己决定要不要记"是不合适的？</p>
+  <details><summary>展开答案</summary><p>因为可审计性和确定性。让模型自主决定意味着"该记的没记"或"记了不该记的"都无法预料、无法复现，也无法向监管说明规则。正确做法是事件驱动——明确定义"哪些事件必然触发写记忆"，规则写在代码里而不是模型判断里。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture07 · 段三 架构 · 三问与载体</span><br>
+  ← 上一课 <a href="lecture07-0047-memory-types.html">0055 · 四类记忆</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture07-0049-pattern-learning-procedures.html">0057 · 模式一：从经验学流程</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture07 课件《Agent Memory Architectures》（Diyi Yang / Michael Ryan / John Yang）· 源文件夹 week4-10.14 · p23-28<br>
+Lesson 48 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

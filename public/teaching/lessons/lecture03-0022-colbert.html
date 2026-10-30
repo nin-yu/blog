@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0022 — ColBERT 与混合检索：按 token 打分，按排名融合</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture03 · Lesson 0022</span>
+  <h1>ColBERT 与混合检索：按 token 打分，按排名融合</h1>
+  <div class="meta">第 0022 课（Lecture03 第 5 课）· 来源：lecture03.pdf p49-54 · 来源文件夹：week2-9.30 · 本课成果：掌握 bi/cross/late 三种交互时机的取舍、RRF 融合的原理，能为本项目搭出合理的两段式检索管线</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+三种架构的核心差别在<strong>什么时候让 query 和 passage 相遇</strong>：<br><br>
+<strong>Bi-encoder（DPR）</strong>——各自编码成<strong>一个向量</strong>，最后算内积。快，但信息被压成单向量<br>
+<strong>Cross-encoder</strong>——query 和 passage <strong>一起</strong>过模型，全程注意力。准，但每对都要跑一次，无法扫全库<br>
+<strong>ColBERT（晚期交互）</strong>——各自编码成<strong>每个 token 一个向量</strong>，<strong>只在打分时</strong>交互（MaxSim）。兼顾<br><br>
+以及融合方法 <strong>RRF（倒数排名融合）</strong>（p49）。
+</div>
+
+<h2>一、Bi-encoder vs Cross-encoder（p50）</h2>
+<pre class="loop">【Bi-encoder】（检索用）
+  query  ──► encoder ──► 一个向量 q
+  passage ─► encoder ──► 一个向量 d
+  相似度 = q·d
+
+  优点：passage 向量可以离线预计算
+       → 查库时只算 query 向量 + 一次近邻搜索
+       → 快（几十毫秒）
+
+  缺点：把整段 passage 压成一个向量
+       → 细节丢失
+
+【Cross-encoder】（重排用）
+  [query + passage] ──► encoder ──► 一个分数
+  全程注意力，query 的每个词都能看到 passage 的每个词
+
+  优点：最准
+  缺点：无法预计算（每对都要跑一次）
+       → 扫 100 万文档 = 100 万次前向
+       → 完全不可行
+</pre>
+<h2>二、业界标准的两段式（p50 隐含）</h2>
+<pre class="loop">① 用 bi-encoder 从 100 万文档里粗筛出 top-100（快）
+② 用 cross-encoder 对这 100 个精排（准）
+
+→ 兼顾速度和精度
+→ 这就是"reranking"的标准做法
+</pre>
+<h2>三、ColBERT：晚期交互（p51-53）</h2>
+<pre class="loop">核心思想（p51 原文）：
+  每个 token 保留一个向量
+  query 和 passage 独立编码
+  只在打分时交互
+
+打分方式 MaxSim：
+  S(q,d) = Σ_{i ∈ q} max_{j} (qᵢ · dⱼ)
+
+  意思是：对 query 的每个 token，在 passage 里找最匹配的那个 token
+         然后把所有最大值加起来
+
+对比：
+  Bi-encoder：  1 个向量 vs 1 个向量 → 一次内积
+  Cross-encoder：全部 token 交叉注意力 → 最贵
+  ColBERT：    |q| 个向量 vs |d| 个向量 → |q|×|d| 个内积后取 max
+</pre>
+<h2>四、速度对比（p54）——这张表最实用</h2>
+<table>
+  <tr><th>检索器</th><th>离线预计算</th><th>查询延迟</th><th>擅长</th><th>失效场景</th></tr>
+  <tr><td><strong>BM25</strong>（稀疏）</td><td>倒排索引</td><td><strong>62 ms 快</strong></td><td>精确术语：ID、人名、错误码</td><td>同义改写</td></tr>
+  <tr><td><strong>DPR</strong>（bi-encoder）</td><td>每段一个向量</td><td><strong>几十 ms 快</strong></td><td>语料级语义匹配</td><td>稀有字面；需要标注对</td></tr>
+  <tr><td><strong>ColBERT</strong>（晚期交互）</td><td>每 token 一个向量</td><td><strong>458 ms 中</strong></td><td>token 级证据、大规模</td><td>索引体积（按 token 不是按文档）</td></tr>
+  <tr><td><strong>Cross-encoder</strong></td><td>无</td><td><strong>10,700 ms/千段 慢</strong></td><td>短名单上的精度</td><td>无法扫全语料</td></tr>
+</table>
+<p>延迟数据来自 Khattab & Zaharia (2020)，MS MARCO 数据集。</p>
+
+<h2>五、混合检索与 RRF（p49）</h2>
+<pre class="loop">两种方法失败的地方不同（p49 原文）：
+  · BM25 漏掉同义改写
+  · 稠密检索漏掉稀有字面（错误码、产品 ID）
+
+混合检索：两个都跑，然后融合两个排名列表
+
+RRF（倒数排名融合）：
+  RRF(d) = Σ_{r ∈ R} 1 / (k + rank_r(d))       k = 60
+
+关键优势（p49 原文）：
+  · 不需要针对语料调参
+  · 可以用任意数量的检索器
+</pre>
+<p>RRF 的精妙之处在于<strong>用排名而不是原始分数</strong>：</p>
+<pre class="loop">问题：BM25 的分数是 0-30 范围，DPR 的相似度是 0-1 范围
+     → 直接加权平均毫无意义（量纲不同）
+
+RRF 的解法：只看"排第几"
+  文档 A：BM25 排第 1，DPR 排第 20
+    → 1/(60+1) + 1/(60+20) = 0.0164 + 0.0125 = 0.0289
+  文档 B：BM25 排第 5，DPR 排第 3
+    → 1/(60+5) + 1/(60+3) = 0.0154 + 0.0159 = 0.0313
+  → B 胜（两边都不错，比"一边极好一边很差"更可信）
+
+k=60 的作用：压制极端排名的权重
+</pre>
+<h2>SGRT 工程桥：你的检索管线该怎么搭</h2>
+<pre class="loop">【两段式】
+  ① 粗筛：BM25 + DPR 并行，各取 top-20，用 RRF 融合成 top-20
+  ② 精排：cross-encoder 对这 20 个重新打分，取 top-5
+
+  延迟估算：
+    BM25    ~60ms
+    DPR     ~30ms（并行）
+    RRF     ~1ms
+    Cross-encoder 20 段  ~200ms（20/1000 × 10700）
+    ─────────────────────
+    合计     ~300ms
+
+  → 可以接受（排查场景不是实时）
+
+【为什么不用 ColBERT】
+  索引体积按 token 算，2000 个 chunk × 平均 300 token
+  = 60 万个向量（vs DPR 的 2000 个）
+  → 存储和内存成本高 300 倍
+  → 对你的规模不值得
+
+【关键的工程判断】
+  你的语料只有几千个 chunk
+  → 甚至可以不建 ANN 索引，暴力扫描也就几十毫秒
+  → 先把管线跑通，规模上来再优化
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>Bi-encoder</strong>：各压成一个向量，可预计算，快；但信息被压缩。<br>
+<strong>Cross-encoder</strong>：一起过模型，最准；但无法预计算，只用于重排。<br>
+<strong>ColBERT</strong>：每 token 一个向量 + MaxSim，兼顾；代价是索引按 token 膨胀。<br>
+<strong>RRF</strong>：用排名而非分数融合，无需调参，可融合任意多个检索器。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. Bi-encoder 和 Cross-encoder 的本质差别是什么？为什么不能只用 Cross-encoder？</p>
+  <details><summary>展开答案</summary><p>Bi-encoder 把 query 和 passage 各自编码成一个向量再算内积，passage 向量可以离线预计算；Cross-encoder 把 query 和 passage 拼在一起过模型，全程交叉注意力，最准但无法预计算。不能只用 Cross-encoder 因为扫 100 万文档就要跑 100 万次前向（按 p54 的 10700ms/千段，需要约 3 小时），实际不可行。标准做法是 bi-encoder 粗筛 top-100，再用 cross-encoder 精排。</p></details>
+  <p>Q2. ColBERT 的 MaxSim 打分在做什么？它相比 bi-encoder 和 cross-encoder 各有什么取舍？</p>
+  <details><summary>展开答案</summary><p>MaxSim：对 query 的每个 token，在 passage 的所有 token 里找最匹配的那个（最大内积），然后把所有 query token 的最大值加起来。相比 bi-encoder：更准（保留了 token 级信息而非压成单向量），但索引按 token 存储会膨胀几百倍。相比 cross-encoder：快得多（可预计算 passage 向量），但精度略低（没有全程交叉注意力）。</p></details>
+  <p>Q3. RRF 为什么用排名而不是原始分数？k=60 起什么作用？</p>
+  <details><summary>展开答案</summary><p>因为不同检索器的分数无法直接比较——BM25 分数是 0-30 范围、DPR 相似度是 0-1 范围，直接加权平均毫无意义。用排名则把量纲统一了。而且只看排名能实现"两边都不错 > 一边极好一边很差"的效果。k=60 是平滑常数，作用是压制极端排名的权重——避免某个检索器把某文档排第 1 就让它独占优势。</p></details>
+  <p>Q4. 你的语料规模下，该不该用 ColBERT 或建 ANN 索引？为什么？</p>
+  <details><summary>展开答案</summary><p>都不该。ColBERT 索引按 token 存储，2000 个 chunk × 300 token = 60 万向量，比 DPR 的 2000 个向量多 300 倍，存储成本不划算。ANN 索引（HNSW）是为了在百万级向量下加速，而几千个 chunk 暴力扫描也就几十毫秒——先跑通简单方案，规模上来再优化。过早优化会让你在还没验证效果时就承担复杂度。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture03 · 段三 检索器 · 进阶</span><br>
+  ← 上一课 <a href="lecture03-0021-bm25-dpr.html">0021 · BM25 与 DPR</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture03-0023-agentic-rag.html">0023 · Agentic RAG</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件《RAG + Agents》· 源文件夹 week2-9.30 · p49-54；ColBERT (Khattab & Zaharia 2020)、RRF<br>
+Lesson 0022 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

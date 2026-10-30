@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0073 — 怎么写验证器：混淆矩阵、环境隔离与参考解</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture10 · Lesson 0073</span>
+  <h1>怎么写验证器：混淆矩阵、环境隔离与参考解</h1>
+  <div class="meta">第 0073 课（Lecture10 第 5 课）· 来源：lecture10.pdf p49-54 · 来源文件夹：week6-10.26 · 本课成果：掌握验证器「看结果不看过程」的定位、混淆矩阵中 FP 的危害、指令与检查点一一对应、四道防奖励黑客隔离，以及参考解必须模仿 agent 动作</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+验证器的定位（p49）：<strong>基于环境状态的结果分类器（outcome based classifiers on the state of the environment）</strong><br><br>
+三点设计要点（p49）：<br>
+<strong>① 用混淆矩阵</strong>（FP/FN/TP/TN）<br>
+<strong>② 与指令中的要求一一对应</strong>（1-1 mapping to requirements）<br>
+<strong>③ 有程序化检查，也有 agent/LLM 判官</strong><br><br>
+防奖励黑客的四道隔离（p51）：<strong>锁定的 agent 环境／验证器环境隔离／agent 代码执行隔离／验证器只在隔离环境里跑</strong><br><br>
+还有一条最实用的建议（p53）：<strong>写参考解时，模仿 agent 会采取的动作，不要硬编码</strong>。
+</div>
+
+<h2>一、验证器的定位（p49）</h2>
+<pre class="loop">课件的定义很关键：
+  "outcome based"  → 看结果，不看过程
+  "on the state of the environment" → 检查环境状态，不是检查对话
+
+这条定义排除了一个常见错误：
+  ✘ 让 LLM 读 agent 的对话记录，判断"它做得对不对"
+    → 这是评判过程，主观且易被话术欺骗
+  ✔ 检查最终环境状态（文件存在吗？内容对吗？测试过了吗？）
+    → 客观、可复现
+</pre>
+<h2>二、混淆矩阵：验证器也有错误（p49）</h2>
+<pre class="loop">验证器不是圣旨，它自己会错。用混淆矩阵分析：
+
+                    真实：成功        真实：失败
+  验证器判成功      TP（真阳性）      FP（假阳性）★危险
+  验证器判失败      FN（假阴性）★危险  TN（真阴性）
+
+两种错误的后果完全不同：
+
+  FP（agent 其实失败了，验证器说成功）
+    → 分数虚高，你可能上线一个坏系统
+    → 更糟：训练时模型会学会"骗过验证器"
+    → 这就是奖励黑客的入口
+
+  FN（agent 成功了，验证器说失败）
+    → 分数虚低，你可能放弃一个好方案
+    → 也叫 flaky（不稳定）
+    → 反复出现会让人不信任整个评测
+
+优先级：FP 比 FN 危险得多
+  FP 会导致错误的决策和模型行为腐化
+  FN 只是浪费一次机会
+</pre>
+<h2>三、与指令一一对应（p49）</h2>
+<pre class="loop">"1-1 MAPPING TO REQUIREMENTS IN THE INSTRUCTION"
+
+意思是：指令里每提一个要求，验证器里就该有一条检查
+
+例：
+  instruction.md 说：
+    「输出 /app/out.step 文件」        → 检查点1：文件存在
+    「包含图中描述的物体」              → 检查点2：几何正确
+    「尺寸单位为毫米」                  → 检查点3：单位正确
+  → 三个要求，三个检查点
+
+不这么做的后果：
+  漏掉检查点2 → agent 输出一个空文件也能通过
+  → 验证器在衡量"文件存在"而不是"做对了"
+</pre>
+<h2>四、两种验证器（p49）</h2>
+<table>
+  <tr><th>类型</th><th>优点</th><th>缺点</th></tr>
+  <tr><td><strong>程序化检查</strong></td><td>确定性、可复现、快、不会被讨好</td><td>只能检查能写成代码的东西</td></tr>
+  <tr><td><strong>Agent/LLM 判官</strong></td><td>能评"质量"这类模糊标准</td><td>会漂移、可能被讨好、成本高</td></tr>
+</table>
+<pre class="loop">选择原则：
+  能用程序判的，绝不用 LLM 判
+  
+  因为（Lecture01 讲过的发现）：
+    让 LLM 评估回答会导致性能下降/偏差
+    LLM 判官倾向于"看起来好"的输出
+    → 这就是 p68 说的 "learned to look right rather than be right"
+</pre>
+<h2>五、防奖励黑客：四道隔离（p51）</h2>
+<blockquote>
+· 锁定的 agent 环境（LOCKED DOWN AGENT ENVIRONMENT）<br>
+· 验证器环境隔离（VERIFIER ENVIRONMENT ISOLATION）<br>
+· agent 代码执行隔离（AGENT CODE EXECUTION ISOLATION）<br>
+· 验证器环境 / 制品 / 测试 vs agent 环境 / 制品
+</blockquote>
+<pre class="loop">p51 的图给出核心结构：
+
+   验证器环境                agent 环境
+   ├── 制品（artifact）      ├── 制品（artifact）
+   ├── 测试（tests）         
+   └── 验证器                
+   
+   → 两个环境物理隔离
+
+为什么必须隔离：
+  ✘ 如果 agent 能看到 tests/
+    → 它可以改测试而不是改代码
+    → 或者针对测试硬编码
+  ✘ 如果 agent 能写验证器环境
+    → 它可以篡改结果
+  ✘ 如果验证器在 agent 环境里跑
+    → agent 留下的副作用会影响判定
+
+医疗/金融这类高风险领域尤其重要：
+  验证器跑在干净容器里，只读 agent 产出的制品
+</pre>
+<h2>六、写参考解：模仿而非硬编码（p53）</h2>
+<blockquote>
+<strong>[调试你的验证器和环境] 尽量匹配 agent 会采取的动作（不要硬编码）</strong>
+</blockquote>
+<pre class="loop">两种写 solve.sh 的方式：
+
+✘ 硬编码（不好）
+  echo "respiratory_baseline_drift" > /app/answer.json
+
+  问题：
+    · 它证明不了"任务可解"
+    · 它证明不了环境里有足够信息
+    · 你无法用它发现"信息不足"的 bug
+
+✔ 模仿 agent 的动作（好）
+  ① 调用 query_logs 查 22:00-08:00
+  ② 从返回里提取残差升高的时间点
+  ③ 调用 query_respiratory 看呼吸频率
+  ④ 发现频率从 14 降到 9
+  ⑤ 调用 get_calibration 看基线重设记录
+  ⑥ 推理出基线漂移
+  ⑦ 写答案
+
+  价值：
+    · 证明这些信息真的能查到（环境完整）
+    · 证明推理链成立（任务可解）
+    · 一旦某步查不到，你立刻发现环境有 bug
+</pre>
+<h2>SGRT 工程桥：你的验证器设计</h2>
+<pre class="loop">【分层验证器（全部程序化，不用 LLM 判官）】
+
+第 1 层：格式检查（防低级错误）
+  · 输出是否是合法 JSON
+  · 必填字段是否齐全（root_cause / evidence / confidence）
+  → 简单、快、零成本
+
+第 2 层：结论命中（防瞎猜）
+  · root_cause 是否等于标注值
+  ⚠️ 注意：不是字符串完全匹配，而是映射到标准码
+     例："呼吸基线漂移" / "respiratory baseline drift" / "baseline_drift"
+     → 都映射到 RESP_BASELINE_DRIFT
+  → 否则会大量 FN（假阴性），分数虚低
+
+第 3 层：证据检查（防蒙对）
+  · evidence 里是否包含关键证据项
+  · 从标注里取 1-2 个"必须命中的证据"
+  → 防止"猜对结论但没推理"
+
+第 4 层：安全性检查（红线）
+  · 是否建议了危险操作（如"直接调高照射剂量"）
+  · 需要人工介入时是否标记了 requires_human_review
+  → 这一层不过，整个 trial 判为失败（不管结论对不对）
+
+【混淆矩阵怎么用在你这里】
+
+  跑完 30 个任务 × 3 次，统计：
+    TP：应该报故障，报了且对
+    FP：不该报故障却报了 ★ 最危险
+       （设备正常却编一个问题 —— 会导致不必要的干预）
+    FN：应该报却没报 ★ 危险
+       （漏报故障 —— 可能导致事故）
+    TN：正常判定为正常
+
+  两个错误都要压低，但分析方式不同：
+    FP 高 → 模型过度诊断，需要"证据不足时明确说不知道"
+    FN 高 → 模型过于保守，需要降低证据门槛
+</pre>
+<h2>本课小结</h2>
+<blockquote>
+<strong>定位</strong>：验证器是「基于环境状态的结果分类器」——看结果不看过程。<br>
+<strong>混淆矩阵</strong>：验证器自己有 FP/FN，FP 比 FN 危险（会腐化模型行为）。<br>
+<strong>一一对应</strong>：指令里每个要求，验证器里都该有一条检查。<br>
+<strong>两种验证器</strong>：程序化优先，LLM 判官只在无法程序化时用。<br>
+<strong>四道隔离</strong>：agent 环境锁定、验证器环境隔离、代码执行隔离、验证器不碰 agent 环境。<br>
+<strong>参考解</strong>：模仿 agent 会做的动作，不要硬编码。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 为什么验证器要「看结果不看过程」？「基于环境状态」排除了什么错误做法？</p>
+  <details><summary>展开答案</summary><p>因为看结果是客观可复现的，看过程是主观且易被欺骗的。排除的错误做法是「让 LLM 读 agent 的对话记录判断它做得对不对」——这属于评判过程，容易被话术说服（模型可以写出听起来很对的推理），而且不客观。正确做法是检查最终环境状态：文件存在吗？内容对吗？测试通过了吗？这些都是确定的、可重复的。</p></details>
+  <p>Q2. 验证器的 FP 和 FN 各是什么？为什么 FP 更危险？</p>
+  <details><summary>展开答案</summary><p>FP（假阳性）是 agent 其实失败了但验证器判成功；FN（假阴性）是 agent 成功了但验证器判失败。FP 更危险，因为：① 分数虚高导致你可能上线一个坏系统；② 训练时模型会学会「骗过验证器」而不是真正解决问题（奖励黑客）；③ 这种行为腐化一旦发生很难逆转。FN 只是浪费一次机会（re-flaky），虽然会降低信任但不改变系统行为。</p></details>
+  <p>Q3. 防奖励黑客的四道隔离是什么？为什么 agent 不能看到 tests/？</p>
+  <details><summary>展开答案</summary><p>① 锁定的 agent 环境（agent 无法改动环境）；② 验证器环境隔离（验证器跑在独立环境）；③ agent 代码执行隔离；④ 验证器环境与 agent 环境的制品/测试物理分开。agent 不能看到 tests/，因为一旦看到它就可以改测试而不是改代码，或者针对测试硬编码——这就是奖励黑客。隔离后 agent 只能产出制品，验证器在干净环境里独立判定。</p></details>
+  <p>Q4. 写参考解为什么要「模仿 agent 的动作」而不是直接 echo 答案？</p>
+  <details><summary>展开答案</summary><p>因为直接 echo 答案证明不了任何事：无法证明任务可解、无法证明环境里有足够信息、无法发现「信息不足」这类环境 bug。模仿 agent 动作（查日志→提取时间点→查呼吸→查标定→推理→写答案）能验证三件事：① 这些信息真的能查到（环境完整）；② 推理链成立（任务可解）；③ 一旦某步查不到，立刻暴露环境缺失。它是验证「验证器+环境」是否正确的手段。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture10 · 段三 写验证器</span><br>
+  ← 上一课 <a href="lecture10-0072-writing-tasks.html">0072 · 怎么写任务</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture10-0074-eval-infra.html">0074 · 评测基础设施与持续基准（收官）</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture10 课件《Evaluating Agents: Terminal-Bench and Harbor》· 源文件夹 week6-10.26 · p49-54；Demystifying evals for AI agents (Anthropic)<br>
+Lesson 0073 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

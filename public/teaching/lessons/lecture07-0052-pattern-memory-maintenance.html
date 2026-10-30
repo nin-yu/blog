@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0052 — 模式四：记忆维护</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture07 · Lesson 0052</span>
+  <h1>模式四：记忆维护——睡眠期计算、A-Mem 与 Mem0 的四动作</h1>
+  <div class="meta">第 0052 课（Lecture07 第 7 课）· 来源：lecture07.pdf p57-66 · 来源文件夹：week4-10.14 · 本课成果：理解记忆为什么需要主动维护（而非只增不减）、Sleep Time Compute 的离线整理思路、以及 Mem0 用 ADD/UPDATE/DELETE/NOOP 四动作解决冲突</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+第四种模式（p57）：<strong>Memory Maintenance——清理、更新、删除旧记忆</strong>。<br><br>
+三个代表，解决三个不同的问题：<br>
+<strong>Sleep Time Compute</strong>（p58-60）——把整理放到<strong>离线时段</strong>做，不阻塞对话<br>
+<strong>A-Mem</strong>（p61-62）——<strong>专门造一个 agent 管记忆</strong>（Key Idea 原文）<br>
+<strong>Mem0</strong>（p63-64）——用 <strong>ADD / UPDATE / DELETE / NOOP</strong> 四个动作解决记忆冲突<br><br>
+核心问题：<strong>记忆只增不减，会同时毁掉检索质量和成本</strong>。
+</div>
+
+<h2>为什么必须有维护</h2>
+<pre class="loop">只增不减的记忆库，三个月后会变成这样：
+
+  "阈值是 1.5mm"        ← 三个月前写的
+  "阈值是 2.0mm"        ← 两个月前改了
+  "阈值是 1.5mm，但腹部放宽到 2.5mm"  ← 上个月细化
+  
+  → 检索时可能命中任何一条
+  → 模型拿到互相矛盾的记忆，答出来的东西不可信
+  → 而且三条都占着上下文和检索成本</pre>
+<p>这就是 Mem0 要解决的问题（p64）：<strong>后台的记忆工作流检测冲突并自动更新记忆</strong>。</p>
+
+<h2>Sleep Time Compute：把整理搬到离线（p58-60）</h2>
+<p>思路直接借自生物：人在睡眠时整理记忆。对 agent 来说就是<strong>利用空闲时段做记忆的整理、合并、重组</strong>。</p>
+<pre class="loop">【在线时段】（对话中）
+  只做最轻的事：写入原始记忆、做检索
+  绝不阻塞用户等待整理完成
+
+【离线时段】（夜间/空闲）
+  重活都放这里：
+    · 合并重复记忆
+    · 建立记忆之间的关联
+    · 重新组织层级
+    · 淘汰过期内容</pre>
+<p>好处很明确：<strong>整理的质量可以做得更高，因为不赶时间</strong>。在线时你只能做"快速追加"，离线时可以让模型慢慢想"这些记忆怎么组织更好"。</p>
+<p>这也是第 56 课 When 那个问题的一个标准答案：<strong>写入用事件驱动（及时、确定），整理用后台（不阻塞、可深度）</strong>。</p>
+
+<h2>A-Mem：专门造一个 agent 管记忆（p61-62）</h2>
+<p>课件给的核心一句话：</p>
+<blockquote>
+<strong>Key Idea: Build an Agent just for Memory Management.</strong>
+</blockquote>
+<p>思路：与其在主 agent 的对话里插入"记住这个""忘掉那个"的工具调用（打断主任务、消耗主上下文），不如<strong>开一个专门的记忆 agent</strong>，它的唯一职责就是维护记忆库。</p>
+<pre class="loop">【单 agent 方案】
+  主 agent ──写记忆工具──► 记忆库
+  问题：记忆操作挤占主任务上下文；模型要在"干活"和"管记忆"之间切换
+
+【A-Mem 方案】
+  主 agent ──输出对话──► 
+                │
+                ▼
+         记忆 agent（专职）
+           · 分析这段对话有没有值得记的
+           · 决定记成什么形式
+           · 与已有记忆建立链接
+                │
+                ▼
+             记忆库</pre>
+<p>这是"分离关注点"在记忆上的应用。代价是多一次模型调用。</p>
+
+<h2>Mem0 的四个动作（p64）</h2>
+<p>Mem0（Chhikara et al. 2025）把记忆更新归纳成四个确定的动作：</p>
+<table>
+  <tr><th>动作</th><th>含义</th><th>例子</th></tr>
+  <tr><td><strong>ADD</strong></td><td>新信息，库里没有</td><td>"设备编号改成了 TX-204"</td></tr>
+  <tr><td><strong>UPDATE</strong></td><td>已有记忆需要修改</td><td>"阈值 1.5mm 应该改成 2.0mm"</td></tr>
+  <tr><td><strong>DELETE</strong></td><td>记忆不再有效</td><td>"这条'临时放宽到 3mm'已经失效"</td></tr>
+  <tr><td><strong>NOOP</strong></td><td>什么都不做（信息重复或无用）</td><td>"阈值还是 2.0mm"——已存在，不必再写</td></tr>
+</table>
+<p><strong>NOOP 这个动作最容易被忽略，但它很关键。</strong>没有 NOOP，系统会把每句重复的话都再存一遍，记忆库迅速膨胀且全是重复项。</p>
+<p>四动作的价值在于：<strong>把"记忆更新"从模糊的"让它自己看着办"变成了四个可枚举、可测试、可审计的操作</strong>。这对你的医疗场景特别重要（见下）。</p>
+
+<h2>SGRT 工程桥：四动作直接对应你的配置管理</h2>
+<pre class="loop">【你的场景里，"记忆"经常就是配置】
+
+  技师说："从今天起腹部区域的残差阈值放宽到 2.5mm"
+
+  ❌ 暴力做法：直接追加一条新记忆
+     → 库里同时有"1.5mm"和"2.5mm"，下次不知道用哪个
+
+  ✔ Mem0 四动作：
+     判断：库里已有"腹部阈值 = 1.5mm"这条记忆
+     动作：UPDATE（把 1.5 改成 2.5）
+     留痕：记录"何时、由谁、从什么改成什么"
+
+【为什么这比"让模型自己看着办"好】
+  · UPDATE 和 ADD 是可区分的——不会产生矛盾记忆
+  · NOOP 避免重复写入三千遍"阈值还是 2.5mm"
+  · 每个动作可写日志 → 满足医疗设备的变更审计要求
+  
+【建议】：把这四个动作直接实现成四个函数
+  memory_add / memory_update / memory_delete / memory_noop
+  由规则或模型选择调用，但每个都留审计记录</pre>
+<p>这一课对你最实用的一句：<strong>别让记忆库变成只增不减的日志，要让它变成一个带 UPDATE 的配置表。</strong></p>
+
+<h2>四种架构模式回顾（p65-66）</h2>
+<pre class="loop">① Learning Procedures from Experience  从经验学流程（存"怎么做"）
+② Tiered Memory Hierarchy              分层（短期/长期分开管）
+③ Reflective Memory Consolidation      反思式巩固（存之前提炼）
+④ Memory Maintenance                   维护（清理、更新、删除）
+
+四者不是四选一——真实系统通常是组合：
+  用 ① 沉淀技能 → 用 ② 分层管理 → 用 ③ 提炼高层认知 → 用 ④ 定期整理
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>模式四</strong>：记忆必须被维护，否则矛盾、重复、过期内容会毁掉检索。<br>
+<strong>Sleep Time Compute</strong>：在线只写，离线整理——整理质量更高且不阻塞。<br>
+<strong>A-Mem</strong>：专职记忆 agent，分离关注点，代价是额外一次模型调用。<br>
+<strong>Mem0 四动作</strong>：ADD/UPDATE/DELETE/NOOP——把记忆更新变成可枚举、可审计的操作。<br>
+<strong>四模式关系</strong>：不是四选一，是组合使用。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 为什么记忆库"只增不减"会出问题？给出至少两个具体后果。</p>
+  <details><summary>展开答案</summary><p>① 矛盾内容共存（如不同时期的三条阈值），检索时可能命中任意一条，模型拿到互相矛盾的记忆导致输出不可信；② 重复和过期内容占用上下文与检索成本，淹没真正有用的记忆，检索精度下降。</p></details>
+  <p>Q2. Sleep Time Compute 的思路是什么？为什么整理放到离线更好？</p>
+  <details><summary>展开答案</summary><p>借鉴生物睡眠整理记忆，把记忆的整理、合并、重组放到空闲时段（夜间）做，在线时段只做最轻的写入和检索。好处：不阻塞用户等待；整理时不赶时间，可以用更复杂的方法让模型深入思考"这些记忆该怎么组织"，质量更高。</p></details>
+  <p>Q3. Mem0 的四个动作是什么？其中哪个最容易被忽略、为什么它重要？</p>
+  <details><summary>展开答案</summary><p>ADD（新增）、UPDATE（修改已有）、DELETE（删除失效）、NOOP（不操作）。最容易被忽略的是 NOOP——没有它，系统会把每句重复的话再存一遍，记忆库迅速膨胀且充满重复项。四动作的价值是把记忆更新变成可枚举、可测试、可审计的操作。</p></details>
+  <p>Q4. 在你的场景里，为什么"直接追加一条新记忆"处理阈值变更是错误的？正确做法是什么？</p>
+  <details><summary>展开答案</summary><p>因为直接追加会让库里同时存在"1.5mm"和"2.5mm"两条矛盾记忆，下次检索不知道用哪个。正确做法是识别出已有那条记忆，执行 UPDATE（把 1.5 改成 2.5），并留痕记录何时、由谁、从什么改成什么——这同时满足医疗设备的变更审计要求。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture07 · 段四 架构模式 4/4（收官）</span><br>
+  ← 上一课 <a href="lecture07-0051-pattern-reflective-memory.html">0059 · 模式三</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture07-0053-evaluating-memory.html">0061 · 如何评估记忆</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture07 课件《Agent Memory Architectures》（Diyi Yang / Michael Ryan / John Yang）· 源文件夹 week4-10.14 · p57-66；参考 Sleep Time Compute (arXiv:2504.13171)、A-Mem (arXiv:2502.12110)、Mem0 (arXiv:2504.19413)<br>
+Lesson 52 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

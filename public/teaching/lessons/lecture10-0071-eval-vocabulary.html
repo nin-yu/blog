@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0071 — 评测的基本词汇：Task、Trial、Verifier、Trajectory</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture10 · Lesson 0071</span>
+  <h1>评测的基本词汇：Task、Trial、Verifier、Trajectory</h1>
+  <div class="meta">第 0071 课（Lecture10 第 3 课）· 来源：lecture10.pdf p41-43 · 来源文件夹：week6-10.26 · 本课成果：掌握七个标准术语的定义与相互关系，能区分 Evaluation Harness 与 Agent Harness，并用这套词汇描述本项目的评测设计</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+讲座给了七个定义（p42），这是评测领域的标准词汇：<br><br>
+<strong>Task</strong> 任务——单个测试，有明确输入和成功标准<br>
+<strong>Trial</strong> 试验——对一个任务的一次尝试<br>
+<strong>Benchmark</strong> 基准——衡量特定能力的一组任务<br>
+<strong>Verifier</strong> 验证器——给 agent 表现打分的逻辑<br>
+<strong>Trajectory</strong> 轨迹——一次试验的完整记录<br>
+<strong>Evaluation Harness</strong> 评测脚手架——端到端跑评测的基础设施<br>
+<strong>Agent Harness</strong> 代理脚手架——让模型能作为 agent 行动的系统<br><br>
+最后两个词容易混：<strong>一个跑评测，一个跑 agent</strong>。
+</div>
+
+<h2>一、七个定义逐条（p42）</h2>
+<table>
+  <tr><th>术语</th><th>课件的定义</th><th>要点</th></tr>
+  <tr><td><strong>Task</strong></td><td>single test with defined inputs and success criteria</td><td>必须有<strong>明确的成功标准</strong>，否则不可评</td></tr>
+  <tr><td><strong>Trial</strong></td><td>attempt at a task</td><td>同一任务可以多次试验（→ Pass^k，Lecture04）</td></tr>
+  <tr><td><strong>Benchmark [evaluation suite]</strong></td><td>task set measuring specific capabilities</td><td>是<strong>任务集合</strong>，衡量"特定能力"而非"通用能力"</td></tr>
+  <tr><td><strong>Verifier [grader]</strong></td><td>logic that scores agent's performance</td><td>打分逻辑，可以是程序也可以是 LLM</td></tr>
+  <tr><td><strong>Trajectory [trace][transcript]</strong></td><td>complete record of a trial</td><td>完整记录——调试和审计的基础</td></tr>
+  <tr><td><strong>Evaluation Harness</strong></td><td>infrastructure that runs evals end-to-end</td><td>跑评测的基础设施</td></tr>
+  <tr><td><strong>Agent Harness</strong></td><td>system that enables a model to act as an agent</td><td>跑 agent 的系统</td></tr>
+</table>
+
+<h2>二、最容易混的两组词</h2>
+
+<h3>2.1 Evaluation Harness vs Agent Harness</h3>
+<pre class="loop">Agent Harness（Lecture05 讲过）
+  · 把模型变成 agent 的那层系统
+  · 负责：工具、上下文管理、循环、历史
+  · 例：OpenHands、Pi、Mini SWE-Agent
+
+Evaluation Harness
+  · 把任务喂给 agent harness、收集结果、验证的系统
+  · 负责：启动环境、跑 trial、调 verifier、记录结果
+  · 例：Terminal-Bench 的 runner、Harbor
+
+关系：
+  Evaluation Harness ──(启动)──► Agent Harness ──(动作)──► Environment
+          ▲                                                    │
+          └──────────(轨迹 + 结果)── Verifier ◄────────────────┘
+</pre>
+<h3>2.2 Task vs Benchmark</h3>
+<pre class="loop">Task     = 一个具体的测试
+Benchmark = 一组 task 的集合，用来衡量某项能力
+
+关键区别（p42 原文）：
+  benchmark 衡量的是「specific capabilities」——特定能力
+  不是「通用智能」
+
+→ 所以「某个模型在 X benchmark 上 85 分」只能推出
+  「它在 X 这类任务上表现不错」
+  推不出「它很聪明」或「它在你的场景能work」
+</pre>
+<h2>三、Trial 这个概念的重要性</h2>
+<pre class="loop">为什么要把「任务」和「试验」分开？
+
+因为 agent 是随机的（Lecture02 的温度、Lecture04 的 Pass^k）
+  · 同一个 task，跑两次可能一次过一次不过
+  · 只看「一个任务跑一次」的通过率会严重高估
+
+于是有：
+  pass@k = k 次中至少 1 次成功   （探索场景）
+  Pass^k = k 次全部成功          （生产场景）
+
+→ Trial 是计算这些指标的最小单位
+→ 没有 Trial 概念，就无法讨论可靠性
+</pre>
+<h2>四、Verifier 的三种形态（预告）</h2>
+<pre class="loop">p42 定义只说了"打分逻辑"，具体形态有三类（0073 课详讲）：
+
+  程序化检查   → 确定性、可靠、但窄
+    （跑测试、检查文件是否存在、比对数值）
+  Agent/LLM 判官 → 通用、但模糊
+    （让模型判断"这个回答好不好"）
+  人类判断     → 最通用、最贵、最慢
+
+选择原则：
+  能用程序判的，绝不用 LLM 判
+  因为程序判官不会漂移、不会被讨好
+</pre>
+<h2>SGRT 工程桥：用这套词汇描述你的评测</h2>
+<pre class="loop">【把你的评测翻译成标准词汇】
+
+Task（你有 50 个？先做 30 个）
+  输入：故障场景（日志摘要 + 参数 + 图像指标）
+  成功标准：结论命中真实根因，且引用了正确证据
+
+Trial
+  每个任务跑 3 次（同一输入）
+
+Benchmark
+  30 个任务的集合，衡量"标定故障诊断能力"
+  → 注意它衡量的不是"通用智能"，是这一项能力
+
+Verifier
+  两级：
+    ① 程序化：结论的 root_cause 字段是否等于标注值（确定性命中）
+    ② 程序化：evidence 里是否包含关键证据项（如"呼吸抖动>阈值"）
+    → 都可用程序判，不需要 LLM 判官
+
+Trajectory
+  每一步的 action + observation 全存
+  → 既是调试材料，也是合规证据
+
+Evaluation Harness
+  你自己写的小脚本：循环跑 30 个 task × 3 trial，输出指标表
+  → 不需要 Harbor 这种平台级设施（规模不够）
+
+Agent Harness
+  你的排查助手本体（工具 + 循环 + 上下文）
+
+【关键指标】
+  单次准确率 = 90 次里对的次数 / 90
+  Pass^3      = 30 个任务里 3 次全对的个数 / 30
+  → 后者才是可信度指标
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>七个词</strong>：Task（测试）／Trial（尝试）／Benchmark（任务集）／Verifier（打分）／Trajectory（记录）／Evaluation Harness（跑评测）／Agent Harness（跑 agent）。<br>
+<strong>易混</strong>：Evaluation Harness 跑评测，Agent Harness 跑 agent。<br>
+<strong>Benchmark 的限定</strong>：衡量「特定能力」，推不出通用能力。<br>
+<strong>Trial 的意义</strong>：没有它就无法讨论 Pass^k 这种可靠性指标。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 七个评测词汇是什么？各用一句话说明。</p>
+  <details><summary>展开答案</summary><p>Task：单个测试，有明确输入和成功标准；Trial：对一个任务的一次尝试；Benchmark：一组任务，衡量特定能力；Verifier：给 agent 表现打分的逻辑；Trajectory：一次试验的完整记录；Evaluation Harness：端到端跑评测的基础设施；Agent Harness：让模型能作为 agent 行动的系统。</p></details>
+  <p>Q2. Evaluation Harness 和 Agent Harness 有什么区别？</p>
+  <details><summary>展开答案</summary><p>Agent Harness 是把模型变成 agent 的那层系统，负责工具、上下文管理、循环、历史（如 OpenHands、Pi）。Evaluation Harness 是把任务喂给 agent harness、收集结果并验证的系统，负责启动环境、跑 trial、调 verifier、记录结果。链路是：Evaluation Harness 启动 Agent Harness，Agent Harness 在 Environment 里动作，轨迹和结果交给 Verifier 打分。</p></details>
+  <p>Q3. 为什么「benchmark 衡量特定能力」这个限定很重要？</p>
+  <details><summary>展开答案</summary><p>因为它划定了结论的边界：「某模型在某 benchmark 上 85 分」只能推出「它在那一类任务上表现不错」，推不出「它很聪明」也推不出「它在你的场景能 work」。benchmark 是任务的集合，任务集定义了测什么——换个场景就是另一套任务，分数不可迁移。所以课件在 Lecture05 就强调「标准编码榜不是你该爬的榜」，必须用领域 eval。</p></details>
+  <p>Q4. Trial 为什么必须和 Task 分开？它支撑了什么指标？</p>
+  <details><summary>展开答案</summary><p>因为 agent 是随机的——同一任务跑两次可能一次过一次不过（受温度、工具返回时序影响）。如果只看「一个任务跑一次」的通过率会严重高估可用性。分开后可以每个任务跑 k 次，计算 pass@k（至少一次成功，用于探索场景）和 Pass^k（全部成功，用于生产场景）。Trial 是计算这些可靠性指标的最小单位，没有它就无法讨论稳定性。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture10 · 段二 评测词汇</span><br>
+  ← 上一课 <a href="lecture10-0070-agent-data.html">0070 · agent 的数据长什么样</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture10-0072-writing-tasks.html">0072 · 怎么写任务：指令与环境</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture10 课件《Evaluating Agents: Terminal-Bench and Harbor》· 源文件夹 week6-10.26 · p41-43；Demystifying evals for AI agents (Anthropic)<br>
+Lesson 0071 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

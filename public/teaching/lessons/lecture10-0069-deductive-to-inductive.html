@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0069 — 从演绎到归纳：为什么 agent 必须靠评估</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture10 · Lesson 0069</span>
+  <h1>从演绎到归纳：为什么 agent 必须靠评估</h1>
+  <div class="meta">第 0069 课（Lecture10 第 1 课）· 来源：lecture10.pdf p3-31 · 来源文件夹：week6-10.26 · 本课成果：理解演绎（规则→输出）与归纳（样例→规则）的范式差别、归纳时代的三层产物，以及为什么 agent 这一层是「评出来」而不是「训出来」</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+这堂嘉宾讲座（Alex Shaw、Ryan Marten，2026-10-26）的主线是<strong>技术创造方式的一次范式转变</strong>：<br><br>
+<strong>演绎式（deductive）</strong>：规则 + 输入 → 输出（人写规则，程序应用）<br>
+<strong>归纳式（inductive）</strong>：输入 + 输出 → 规则（人给样例，训练推出规则）<br><br>
+讲座的判断（p19）：<strong>所有数字技术的发展都在变成归纳式的。</strong><br>
+而归纳时代的三层产物（p20）：<strong>① 模型（从数据学习） ② agent（通过评估开发） ③ 软件（由 agent 生成）</strong><br><br>
+关键：<strong>agent 这一层不是「训出来」的，是「评出来」的</strong>——这就是为什么整讲都在讲评测。
+</div>
+
+<h2>一、从手写指令到演绎（p3-12）</h2>
+<pre class="loop">1940s：直接给 CPU 写数字指令（p3）
+  → 没有语言、没有抽象，人脑直接映射机器
+
+1950s：程序员把自己看作「守护技艺的祭司」（p7）
+  → 编程是稀缺的专门技能
+
+后来出现那句名言（p10）：
+  「计算机编程是一门精确科学，
+    程序的所有属性和所有后果都能被推导出来」
+  → 这是演绎式的极致信念
+
+演绎式技术创造（p11）：
+  规则 + 输入 → 输出
+  · 人写规则（代码）
+  · 程序把规则应用到新输入
+</pre>
+<p>课件还引了 1954 年 IBM FORTRAN 报告的乐观预言（p12）：</p>
+<blockquote>
+<strong>「FORTRAN 应当几乎消除编码和调试。」</strong>
+</blockquote>
+<pre class="loop">这句 70 多年前的话，今天听起来很熟悉
+→ 每一代工具都宣称要消灭编程
+→ 实际上它们改变的是"编程在做什么"
+  FORTRAN 消灭的是"写机器码"
+  → 现在你写 Python
+  agent 消灭的可能是"写具体实现"
+  → 但你仍要定义问题、验证结果
+</pre>
+
+<h2>二、归纳式技术创造（p15-18）</h2>
+<pre class="loop">归纳式（p15）：
+  输入 + 输出 → 规则
+  · 人提供样例（数据 + 标签）
+  · 训练推断出规则（模型）
+
+这个转向的实质：
+  演绎：人把知识写成规则  → 规则是显式的、可读的
+  归纳：人给样例，机器提取规则 → 规则是隐式的、在权重里
+
+课件引了一句 1961 年的愿景（p18）：
+  「我最深的梦想是某天造出一台真正会思考、会学习、
+    能与人类交流并操作物体的机器」
+  → 这个梦想今天部分实现了，但方式不是"造出规则"，是"从数据学"
+</pre>
+<h2>三、关键论断：三层产物（p19-20）</h2>
+<blockquote>
+<strong>所有数字技术的发展都在变成归纳式的</strong>
+</blockquote>
+<pre class="loop">归纳时代的三层产物（p20）：
+
+  ① Models  —— 从数据学习
+  ② Agents  —— 通过评估开发
+  ③ Software —— 由 agent 生成
+
+注意第 ② 层的措辞：developed via evaluation
+  → 不是 trained from data
+  → 是「通过评估来开发」
+
+这是整讲的立论：
+  agent 的能力不是「训出来的」，是「评出来的」
+  → 你没法穷举 agent 会遇到的情况
+  → 只能不断构造任务、跑、看失败、改进
+</pre>
+<h2>四、为什么 agent 必须靠评估（p29-31）</h2>
+<pre class="loop">讲座提出的问题（p29）：
+  对 agent 来说，训练数据和测试数据长什么样？
+
+一个关键的观察（p31）：
+  aws ec2 run-instances --image-id ... --instance-type ...
+  vs
+  bash
+
+  "bash is the one tool to rule them all"
+  → agent 的动作空间可以极度统一（一个 bash）
+  → 但这就意味着：任务空间无限
+  → 你无法用有限数据覆盖
+  → 只能用「任务 + 验证器」的方式评估
+</pre>
+<h2>五、本讲的展开路线</h2>
+<pre class="loop">0069 从演绎到归纳（本课）
+0070 agent 的数据长什么样：bash 与统一动作空间
+0071 评测的基本词汇：Task/Trial/Benchmark/Verifier/Trajectory
+0072 怎么写任务：指令（instruction）与环境（environment）
+0073 怎么写验证器：混淆矩阵、防奖励黑客、解题脚本
+0074 评测基础设施与持续基准（收官）
+</pre>
+
+<h2>SGRT 工程桥：你的场景也是「评出来」的</h2>
+<pre class="loop">【这个判断对你的直接含义】
+
+你不可能「训一个」标定诊断模型
+  因为：
+    · 故障组合无穷（图像+呼吸+机械的组合）
+    · 每个医院设备状态不同
+    · 新故障类型不断出现
+
+你能做的是：
+  构造任务 + 构造验证器 + 跑 + 看失败 + 改进
+  → 这就是 "developed via evaluation"
+
+【你的任务长什么样】
+  Task: 给定一份故障场景（含日志、图像、参数）
+  Verifier: 检查结论是否命中真实根因 + 是否引用了正确证据
+  → 50 个历史案例 = 50 个 task
+  → 这就是你的 benchmark
+
+【为什么这比"堆数据"更现实】
+  堆数据需要：海量标注、覆盖各种情况、防止过拟合
+  → 你没有这个规模
+  
+  建任务需要：50 个历史案例 + 每条的真实结论
+  → 你有这个（历史记录里就有）
+  → 这是你唯一可行的路径
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>演绎</strong>：规则+输入→输出，人写规则（显式可读）。<br>
+<strong>归纳</strong>：输入+输出→规则，训练推出规则（隐式在权重里）。<br>
+<strong>判断</strong>：所有数字技术都在变成归纳式的。<br>
+<strong>三层产物</strong>：模型（从数据学习）／agent（通过评估开发）／软件（由 agent 生成）。<br>
+<strong>核心</strong>：agent 是「评出来」的，不是「训出来」的。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 演绎式与归纳式技术创造的区别是什么？各举一例。</p>
+  <details><summary>展开答案</summary><p>演绎式是「规则+输入→输出」——人把知识写成显式规则（代码），程序把规则应用到新输入，如传统软件（写一个排序算法）。归纳式是「输入+输出→规则」——人提供样例（数据+标签），训练过程推断出规则（模型），如训练一个分类器。区别在于规则的载体：演绎把规则写在代码里（可读可审），归纳把规则隐式编码在权重里。</p></details>
+  <p>Q2. 归纳时代的三层产物是什么？为什么说 agent 这一层是「developed via evaluation」？</p>
+  <details><summary>展开答案</summary><p>三层：① Models（从数据学习）；② Agents（通过评估开发）；③ Software（由 agent 生成）。agent 是「通过评估开发」而非「从数据训练」，因为 agent 的任务空间是无限的（动作空间可以统一成 bash，但能做的事无限组合），无法用有限训练数据覆盖。唯一可行的路径是不断构造任务、跑、看失败、改进——用任务+验证器的评估循环来驱动开发。</p></details>
+  <p>Q3. 为什么「bash is the one tool to rule them all」这个观察，反而说明了评测的必要性？</p>
+  <details><summary>展开答案</summary><p>因为一个统一的动作空间（bash）意味着「agent 能做的事」变成了开放集合——任何能用命令完成的任务都在范围内，任务空间无限。既然无法用有限训练数据覆盖无限任务空间，就只能用「任务 + 验证器」的方式：构造具体任务、定义成功标准、跑 agent 看结果。所以工具越统一，越需要靠评测来界定和衡量能力。</p></details>
+  <p>Q4. 为什么你不可能「训一个」标定诊断模型，但可以「评出来」？</p>
+  <details><summary>展开答案</summary><p>不可能训：故障组合无穷（图像+呼吸+机械的组合）、每个医院设备状态不同、新故障类型不断出现——没有训练数据能覆盖，也没有质量不重训的资源。可以评：构造任务+构造验证器+跑+看失败+改进。你有 50 个历史案例和它们的真实结论，这就构成 50 个 task 和对应 verifier，是最现实的路径——把开发变成评估驱动的迭代，而不是数据驱动的训练。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture10 · 段一 范式转变</span><br>
+  <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture10-0070-agent-data.html">0070 · agent 的数据长什么样</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture10 课件《Evaluating Agents: Terminal-Bench and Harbor》· 源文件夹 week6-10.26 · p3-31；嘉宾讲座：Alex Shaw、Ryan Marten (2026-10-26)<br>
+Lesson 0069 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0043 — 上下文隔离与渐进披露</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture06 · Lesson 0043</span>
+  <h1>上下文隔离与渐进披露</h1>
+  <div class="meta">第 0043 课（Lecture06 第 6 课）· 来源：lecture06.pdf p69-75 · 来源文件夹：week3-10.12 · 本课成果：理解隔离与做减法模式的根本差异、渐进披露的收益与代价，能为本项目设计技能文件与子 agent 的分工</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+上下文隔离是五种模式里<strong>唯一「不动已有内容、而是另开一个上下文」</strong>的做法。<br><br>
+核心（p69）：<strong>用子 agent 做特定任务，只把「手头任务实际需要的东西」放进上下文</strong><br>
+具体形式（p70）——<strong>渐进披露</strong>：<br>
+<strong>你不需要把所有的工具和上下文都放进初始 prompt，可以按需稍后披露</strong>（如 skill 文件）。
+</div>
+
+<h2>一、为什么隔离有效</h2>
+<pre class="loop">前四种模式都在「同一个上下文里做减法」：
+  遮蔽 → 删掉旧输出
+  压缩 → 总结成短文本
+  卸载 → 移到外部存储
+  → 都在和「信息损失」作斗争
+
+隔离是另一个思路：
+  不在原上下文里删，而是把「信息量大的工作」搬到别处
+  → 子 agent 在那个上下文里读大量材料
+  → 只把结论带回主上下文
+
+结果：
+  主上下文永远干净（只有结论）
+  子上下文可以很脏（原始材料很多）
+  → 两边各得其所
+</pre>
+
+<h2>二、隔离的两种用法</h2>
+
+<h3>2.1 子 agent 处理重任务（p69）</h3>
+<pre class="loop">场景：要读一份 50 页的设备手册某一章
+
+【不隔离】
+  把 50 页塞进主上下文
+  → 主上下文被淹没
+  → 后续对话都受这 50 页干扰（context rot）
+
+【隔离】
+  派子 agent：「读这份手册，回答：残差阈值的默认值是多少，依据哪一节」
+  子 agent 在自己的上下文里读 50 页
+  → 返回：「默认 1.5mm，依据第 4.2 节」
+  主上下文只多了这一句
+
+关键：子 agent 返回的应该是【结论 + 出处】
+    而不只是结论
+    → 否则无法核查，也无法定位原文
+</pre>
+
+<h3>2.2 渐进披露（p70）</h3>
+<blockquote>
+你不需要把所有的工具和上下文都放到初始 prompt 里，你可以按需稍后披露
+</blockquote>
+<pre class="loop">传统做法：
+  prompt 里列出全部 8 类排查技能，每类 500 token
+  → 4000 token 常驻，其中 7/8 用不上
+
+渐进披露：
+  prompt 里只写：
+    「可用技能（按需读取）：
+       1. image_quality.md — 图像质量类问题
+       2. respiratory.md   — 呼吸信号类问题
+       3. mechanical.md    — 机械状态类问题
+       4. rare.md          — 罕见故障」
+  → 模型判断属于哪类 → 读那一个文件
+  → 常驻只有 100 token
+
+代价：
+  · 多一次工具调用（读文件）
+  · 模型要能正确判断「该读哪个」
+  → 分类错了就读错文件
+
+所以配套要求：
+  技能文件的 description 必须写得能区分
+  （就像 Lecture04 的工具描述一样重要）
+</pre>
+
+<h2>三、隔离的代价</h2>
+<pre class="loop">① 信息损失风险
+   子 agent 可能没把你需要的信息带回来
+   → 因为它不知道你后面要什么
+   → 对策：让子 agent 的任务描述非常具体
+
+② 无法追查推理过程
+   主上下文只看到结论，看不到子 agent 怎么得出
+   → 出问题时难以判断
+   → 对策：要求子 agent 同时返回关键证据/来源
+
+③ 成本增加
+   子 agent 也要跑完整循环（Prefill + Decode）
+   → 总 token 更多（虽然主上下文更少）
+   → 适合「主上下文很宝贵」的场景，不适合「到处都是子 agent」
+
+④ 调试复杂
+   多层嵌套后 trace 很长
+   → 需要好的可观测性（Lecture05 第 0036 讲）
+</pre>
+
+<h2>四、Context Management 分类（p73-74）</h2>
+<p>课件引了 LangChain 的分类框架，把上下文管理分成几类策略。核心思想与前面一致：</p>
+<pre class="loop">四种基本手段（归纳）：
+  · Offload（卸载）——把事情挪出上下文（存外部）
+  · Reduce（削减）——在上下文里减少体积（遮蔽、压缩）
+  · Isolate（隔离）——分开上下文（子 agent）
+  · Retrieve（按需取回）——需要时再查（RAG、渐进披露）
+
+→ 这四类基本覆盖了所有上下文管理技巧
+</pre>
+
+<h2>五、Recap（p75）</h2>
+<blockquote>
+· 事件日志、记忆、压缩、观察遮蔽、上下文隔离构成了上下文管理的几个关键设计模式<br>
+· 真实系统把这些模式组合起来管理上下文<br>
+· 上下文工程是[需要持续实验的]
+</blockquote>
+
+<h2>SGRT 工程桥：你的隔离方案设计</h2>
+<pre class="loop">【该用隔离的两个地方】
+
+① 读长文档（设备手册、规范）
+  派子 agent：读某一章 → 返回「结论 + 章节号」
+  主上下文只留结论
+  ✔ 强烈推荐
+
+② 大范围日志分析
+  派子 agent：分析一周日志 → 返回异常摘要
+  ✔ 推荐
+
+【不该用隔离的地方】
+
+✘ 查单个指标（「当前残差多少」）
+  → 一次工具调用的事，派子 agent 是浪费
+
+✘ 需要多步观察互相影响的任务
+  → 隔离后子 agent 看不到主线进展，可能重复劳动
+
+【渐进披露：你的落地设计】
+
+系统 prompt 里写：
+  「排查技能（按需读取，不要一次全读）：
+     - skills/image_quality.md   ：图像模糊、角点丢失、光照问题
+     - skills/respiratory.md     ：呼吸基线漂移、门控时延、抖动
+     - skills/mechanical.md      ：床板位移、支架松动、等中心偏移
+     - skills/rare.md            ：其他罕见原因
+   先根据现象判断类型，读对应文件后再开始排查。」
+
+→ 4 个文件各写 800-1500 token 的 SOP
+→ 常驻 prompt 只需 150 token
+
+【一个必须配套的机制】
+  子 agent 返回的结论必须带【来源标注】
+    例：「阈值 1.5mm（来源：标定规范 v2.3 第 4.2 节）」
+    → 否则你无法核查，医疗场景不能用
+  → 这是 Lecture03 讲的「引用可校验」在隔离场景的延续
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>隔离的思路</strong>：不在原上下文做减法，而是把重任务搬到别处，只带回结论。<br>
+<strong>子 agent</strong>：处理长文档/大范围分析，返回结论 + 出处。<br>
+<strong>渐进披露</strong>：初始 prompt 只留技能清单，按需读取——常驻 token 从数千降到百余。<br>
+<strong>四项代价</strong>：信息损失／推理不可追／成本增加／调试复杂。<br>
+<strong>四类手段</strong>：Offload／Reduce／Isolate／Retrieve。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 上下文隔离与前面四种模式（遮蔽/压缩/卸载）在思路上有什么根本不同？</p>
+  <details><summary>展开答案</summary><p>前四种都在「同一个上下文里做减法」（删旧输出、总结成短文本、移到外部存储），都在与信息损失作斗争。隔离是另一个思路：不在原上下文里删，而是把「信息量大的工作」搬到另一个上下文——子 agent 在那边读大量材料，只把结论带回主上下文。结果是主上下文永远干净（只有结论），子上下文可以很脏（原始材料很多），两边各得其所。</p></details>
+  <p>Q2. 渐进披露是什么？有什么代价和配套要求？</p>
+  <details><summary>展开答案</summary><p>渐进披露是不把全部工具和上下文放进初始 prompt，而是只列出清单、按需稍后读取（如 skill 文件）。代价是：① 多一次工具调用（读文件）；② 模型必须能正确判断「该读哪个」，分类错了就读错文件。配套要求是技能文件的 description 必须写得能清晰区分（就像工具描述一样重要），否则模型无法正确选择。</p></details>
+  <p>Q3. 隔离的四项代价是什么？哪些场景不该用隔离？</p>
+  <details><summary>展开答案</summary><p>四项代价：① 信息损失风险（子 agent 可能没带回你需要的信息，因为不知道你后面要什么）；② 无法追查推理过程（主上下文只看到结论）；③ 成本增加（子 agent 也要跑完整循环，总 token 更多）；④ 调试复杂（多层嵌套 trace 很长）。不该用的场景：查单个指标（一次工具调用的事）、需要多步观察互相影响的任务（隔离后看不到主线进展会重复劳动）。</p></details>
+  <p>Q4. 为什么子 agent 的返回必须带「来源标注」？这和 Lecture03 的什么原则一致？</p>
+  <details><summary>展开答案</summary><p>因为主上下文看不到子 agent 的推理过程，如果只返回结论就无法核查、无法定位原文——医疗场景下不可接受的结论不能用。带来源（如「阈值 1.5mm，来源：标定规范 v2.3 第 4.2 节」）才能追溯验证。这与 Lecture03 讲的「引用可校验」原则一致：检索/隔离产生的结论都必须能回溯到原始出处，这是可审计性的基础。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture06 · 段四 上下文管理 · 隔离</span><br>
+  ← 上一课 <a href="lecture06-0042-context-patterns.html">0042 · 上下文五种模式</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture06-0044-case-pi.html">0044 · 案例：Pi 极简 harness</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture06 课件《Agent Design Patterns and Scaffolds》· 源文件夹 week3-10.12 · p69-75；Equipping agents with Agent Skills (Anthropic)、Context Engineering for Agents (LangChain)<br>
+Lesson 0043 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

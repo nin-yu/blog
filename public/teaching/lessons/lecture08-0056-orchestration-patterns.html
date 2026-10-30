@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0056 — 四种编排模式：独立、集中、去中心、混合</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture08 · Lesson 0056</span>
+  <h1>四种编排模式：独立、集中、去中心、混合</h1>
+  <div class="meta">第 0056 课（Lecture08 第 2 课）· 来源：lecture08.pdf p16-29 · 来源文件夹：week5-10.19 · 本课成果：记住四种编排模式的通信拓扑、各自适用场景与代价，理解成本结构顺序（单 agent < 编排式 < 蜂群）</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+四种编排模式（p17）：<br><br>
+<strong>Independent 独立</strong>——agent 之间不通信，只有一个聚合器收结果<br>
+<strong>Centralized (Orchestrator) 集中</strong>——一个编排者分别跟所有 agent 通信<br>
+<strong>Decentralized (Swarm) 去中心</strong>——所有 agent 两两互通，共享消息板<br>
+<strong>Hybrid 混合</strong>——有编排者，但 worker 之间可以直连<br><br>
+成本结构（p24）：<strong>单 agent &lt; 编排式 &lt; 蜂群</strong>。
+</div>
+
+<h2>一、Independent（p18）</h2>
+<pre class="loop">   Agent 1 ──┐
+   Agent 2 ──┼──► Aggregator ──► 结果
+   Agent 3 ──┘
+   
+· agent 之间不交换中间消息
+· 最后一步合并或选择各 agent 的工作</pre>
+<p><strong>本质</strong>：这其实就是并行化（L06 讲的 parallelization），只是把"并行"落实到不同 agent 上。它的"编排"最少——没有真正的编排，只有聚合。</p>
+<pre class="loop">最适合：多个独立视角同时评估同一件事
+  例：让 3 个 agent 各自审查同一份代码（安全/性能/可读性）
+     → 三者不需要对话，最后汇总
+
+不适合：后一步依赖前一步的结论</pre>
+
+<h2>二、Centralized / Orchestrator（p19）</h2>
+<pre class="loop">              ┌──► Worker 1 ──┐
+Orchestrator ─┼──► Worker 2 ──┼──► Orchestrator 决定下一步
+              └──► Worker 3 ──┘
+              
+· 编排者拆分任务、分配给专精的 agent
+· worker 返回结果，编排者决定接下来发生什么</pre>
+<p>课件的取舍判断（p19 原文）：</p>
+<blockquote>
+<strong>集中监督简化了协调，但编排者可能成为瓶颈。</strong>
+</blockquote>
+<p>这个瓶颈有两种：</p>
+<ul>
+  <li><strong>吞吐瓶颈</strong>：所有决策都要过一次编排者，串行化。</li>
+  <li><strong>上下文瓶颈</strong>：编排者要汇总所有 worker 的结果，它自己的上下文会爆。</li>
+</ul>
+
+<h2>三、Decentralized / Swarm（p20）</h2>
+<pre class="loop">   Worker 1 ◄──► Worker 2
+       ▲    ╲    ╱    ▲
+       │     ╲  ╱     │
+       ▼      ╳      ▼
+   Worker 3 ◄──► Worker 4
+        （全互通 + 共享状态追踪）
+
+· agent 可以生成子 agent
+· 所有 agent 通过共享消息板或通信通道交流（all-to-all）
+· 适合大规模的独立探索与发现</pre>
+<p>课件的定位很明确：<strong>「Good for large independent exploration and discovery at scale」</strong>——<strong>大规模独立探索</strong>。</p>
+<p>关键词是"独立"。蜂群在这种场景下很强（每个 agent 探不同的方向，谁先找到算谁的）；但它也是最难控制的（见第 67 课的失败模式）。</p>
+
+<h2>四、Hybrid（p21）</h2>
+<pre class="loop">              ┌──► Worker 1 ◄──┐
+Orchestrator ─┼──► Worker 2 ◄──┼── 直连
+              └──► Worker 3 ◄──┘
+              
+· 编排者管理整体任务并整合结果
+· worker 在需要协调时直接交流
+· 结合了全局监督与局部灵活，但需要明确的责任与信息共享规则</pre>
+<p>课件的判断：<strong>「结合了全局监督与局部灵活，但需要清晰的责任划分和信息共享规则」</strong>。</p>
+<p>这个"但"是关键：混合模式把两边的优点和两边的复杂度都拿来了。没有明确规则，它会退化成"编排者管不住 + worker 乱沟通"。</p>
+
+<h2>成本结构（p24）</h2>
+<blockquote>
+<strong>Cost Structure: Single Agent &lt; Orchestrated &lt; Swarms</strong>
+</blockquote>
+<pre class="loop">为什么蜂群最贵：
+  · 通信是 all-to-all，消息数量随 agent 数平方增长
+  · 每个 agent 都要维护自己的上下文
+  · 冲突和重复工作的概率最高，需要更多 token 去协调
+  · 难以提前估算总成本（拓扑是动态的）
+
+为什么编排式居中：
+  · 通信是星型，消息数量线性增长
+  · 编排者的上下文是瓶颈，但至少是可观测的
+
+为什么单 agent 最便宜：
+  · 零协调开销
+  · 上下文只有一份</pre>
+<p>p23 还强调：<strong>「用什么架构取决于你的任务」</strong>——没有普适最优。</p>
+
+<h2>动态架构（p25-28）</h2>
+<p>课件提了 DyLAN（Liu et al. 2023）：<strong>不是固定拓扑，而是运行时决定谁参与、谁跟谁连</strong>。</p>
+<pre class="loop">静态架构：agent 数量和连接关系写在代码里
+动态架构：根据任务难度/进展，动态组建 agent 团队
+
+好处：简单任务不浪费 agent
+代价：动态性本身带来不可预测性（更难调试、更难估成本）</pre>
+
+<h2>SGRT 工程桥：你的排查该用哪种</h2>
+<pre class="loop">【Independent】适合：多视角并行审查
+  让 3 个 agent 各自独立审查同一份标定结果
+    · A 看几何一致性（重投影残差）
+    · B 看时间稳定性（连续帧漂移）
+    · C 看与历史案例的相似性
+  → 互不通信，最后汇总成一份报告
+  → 这就是 Independent，成本低、易实现
+
+【Centralized】适合：有明确分诊的排查
+  编排者先判断"问题大致在哪一类"
+  → 分给对应的专家 agent（呼吸专家 / 机械专家 / 光学专家）
+  → 专家返回结论，编排者整合并决定是否继续下探
+  → 注意编排者上下文会累积所有专家的输出
+
+【Swarm】不适合你的场景
+  大规模独立探索（如"同时试 50 种配准参数组合"）确实适合蜂群
+  但医疗场景要求可复现、可审计 → 蜂群的动态拓扑难以复现
+
+【Hybrid】如果你要"专家之间能互相质疑"
+  编排者统筹 + 专家可直接对话（"你说光学没问题，但我这里残差还是高"）
+  → 需要明确规则：谁能否决谁？冲突怎么收敛？
+  → 没有规则会更乱</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>Independent</strong>：不通信，只聚合——并行评估多视角。<br>
+<strong>Centralized</strong>：星型，编排者协调——简化协调但有瓶颈。<br>
+<strong>Swarm</strong>：全互通——大规模独立探索，最难控也最贵。<br>
+<strong>Hybrid</strong>：编排 + 局部直连——兼顾但需要明确责任规则。<br>
+<strong>成本</strong>：单 agent &lt; 编排式 &lt; 蜂群；选型取决于任务而非潮流。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 四种编排模式的通信拓扑分别是什么形状？</p>
+  <details><summary>展开答案</summary><p>① Independent：agent 之间不通信，各自连到一个聚合器（星型但不双向）；② Centralized：编排者在中心，与每个 worker 单独双向通信（星型）；③ Decentralized/Swarm：所有 agent 两两互通（全连接/single mesh）；④ Hybrid：有编排者，但 worker 之间也可直连（星型 + 部分全连）。</p></details>
+  <p>Q2. Centralized 模式的"编排者可能成为瓶颈"具体指哪两种瓶颈？</p>
+  <details><summary>展开答案</summary><p>① 吞吐瓶颈——所有决策都要经过编排者，形成串行化；② 上下文瓶颈——编排者要汇总所有 worker 的结果，它自己的上下文窗口会被撑爆。</p></details>
+  <p>Q3. 为什么 Swarm 是成本最高的？</p>
+  <details><summary>展开答案</summary><p>① 通信是 all-to-all，消息数量随 agent 数量平方增长；② 每个 agent 都要维护自己的上下文；③ 冲突和重复工作概率最高，需要额外 token 去协调；④ 拓扑是动态的，难以提前估算总成本。</p></details>
+  <p>Q4. 你的排查场景里，Independent 和 Centralized 分别对应什么用法？</p>
+  <details><summary>展开答案</summary><p>Independent：让多个 agent 各自从不同角度独立审查同一份标定结果（几何一致性/时间稳定性/历史案例相似性），互不通信最后汇总——成本低易实现。Centralized：编排者先分诊判断问题大致类别，再分给呼吸/机械/光学专家 agent，专家返回结论由编排者整合并决定是否继续下探——注意编排者上下文会累积。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture08 · 段二 编排模式</span><br>
+  ← 上一课 <a href="lecture08-0055-sas-vs-mas.html">0063 · 单 vs 多 agent</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture08-0057-communication.html">0065 · 通信：对话、handoff、消息板</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture08 课件《Multi-Agent Systems》· 源文件夹 week5-10.19 · p16-29；参考 Towards a Science of Scaling Agent Systems (arXiv:2512.08296)、DyLAN (arXiv:2310.02170)<br>
+Lesson 64 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

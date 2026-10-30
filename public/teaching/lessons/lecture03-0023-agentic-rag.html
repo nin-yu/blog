@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0023 — Agentic RAG：把检索变成 agent 的一个动作</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture03 · Lesson 0023</span>
+  <h1>Agentic RAG：把检索变成 agent 的一个动作</h1>
+  <div class="meta">第 0023 课（Lecture03 第 6 课）· 来源：lecture03.pdf p55-61 · 来源文件夹：week2-9.30 · 本课成果：理解静态 RAG 的三个缺口、Self-RAG/CRAG/Search-R1 三条路线的差别，能设计出带轮数上限的检索循环</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+前面所有方法（BM25/DPR/ColBERT）都只做一件事：<strong>给一个问题找最相关的段落</strong>。<br><br>
+但它们<strong>都不决定三件事</strong>（p56 原文）：<br>
+<strong>① 要不要检索</strong>（还是直接答）<br>
+<strong>② 检索什么查询</strong>（用户的问题未必是最好的查询）<br>
+<strong>③ 结果够不够好</strong>（要不要再查一次 / 何时停）<br><br>
+把检索变成 <strong>agent 的一个动作</strong>，就是 Agentic RAG。
+</div>
+
+<h2>一、静态 RAG 的结构性局限（p56）</h2>
+<pre class="loop">静态 RAG 的流程是固定的一条线：
+  问题 → 检索 top-k → 塞进上下文 → 生成答案
+
+问题在于：
+  · 用户问"上次那个问题后来怎么解决的？"
+    → 这个查询本身信息不足，直接检索效果差
+    → 应该先问清"哪个问题"，或在检索后根据结果改写查询
+  · 检索回来的内容不相关
+    → 静态 RAG 不管，直接塞进去
+    → 模型被迫基于无关材料回答（或忽略材料乱答）
+  · 一次检索不够，需要多轮
+    → 静态 RAG 没有第二轮
+</pre>
+<h2>二、Self-RAG：学会自我批判（p57）</h2>
+<blockquote>
+<strong>SELF-RAG 学会检索、批判、然后再生成文本，以提升整体生成质量、事实性和可验证性。</strong>
+</blockquote>
+<pre class="loop">关键：不是"总是检索"，而是学出几个判断
+
+  判断类型（论文的 reflection tokens）：
+    · Retrieve?      —— 这个问题需要检索吗？
+    · IsRel?         —— 检索到的段落相关吗？
+    · IsSup?         —— 生成的内容被段落支持吗？
+    · IsUse?         —— 这个答案有用吗？
+
+  这些判断由模型自己产出，作为特殊 token 控制流程
+  → 于是模型可以：不检索直接答 / 检索后放弃无关内容 / 重写
+</pre>
+
+<h2>三、CRAG：用评估器给检索结果打分（p58）</h2>
+<blockquote>
+<strong>评估检索文档与输入的相关性，并基于此估计置信度，从而触发不同的知识检索动作。</strong>
+</blockquote>
+<pre class="loop">CRAG 的流程：
+  检索 → 评估器给每个文档打"相关/不相关/模糊"
+  → 三种分支：
+     相关   → 直接用（并且可以"细化"抽取有用部分）
+     不相关 → 丢弃，改用网络搜索等其他来源
+     模糊   → 两者结合
+
+和 Self-RAG 的差别：
+  Self-RAG：模型内部产出判断 token
+  CRAG：    外挂一个评估器模块（可以单独训练/替换）
+</pre>
+<h2>四、Search-R1：用 RL 学检索策略（p59-61）</h2>
+<blockquote>
+<strong>Search-R1 用多轮搜索交互来优化 LLM 的推理轨迹。</strong>
+</blockquote>
+<pre class="loop">做法：
+  让模型在推理过程中自己决定何时发起搜索
+  用 RL 训练（奖励 = 最终答案对不对）
+
+特点：
+  · 不需要监督"该在第几步搜索"
+  · 模型自己学出"什么时候该搜、搜什么"
+  · 代价：需要大量 rollout（且每次都要真的调检索）
+
+→ 这是"把检索策略训进权重"的路线
+</pre>
+<h2>五、三种路线的对比</h2>
+<table>
+  <tr><th>方法</th><th>判断由谁做</th><th>成本</th><th>适用</th></tr>
+  <tr><td><strong>Self-RAG</strong></td><td>模型内部产出的判断 token</td><td>需要专门训练</td><td>端到端优化、可训练模型时</td></tr>
+  <tr><td><strong>CRAG</strong></td><td>外挂评估器模块</td><td>中（评估器可轻量）</td><td>用现成模型 + 加一层质量把关</td></tr>
+  <tr><td><strong>Search-R1</strong></td><td>RL 训出的策略</td><td>高（要 rollout）</td><td>有大量可验证 QA 数据时</td></tr>
+</table>
+<p>对大多数工程场景，<strong>CRAG 的思路最实用</strong>：不训模型，只加一个"检索结果好不好"的评估环节。</p>
+
+<h2>六、另一种更简单的 Agentic 做法</h2>
+<pre class="loop">不用这套学术方法，也可以直接在 agent 循环里做：
+
+  while 未解决 and 轮数 < 上限:
+      判断：现在信息够吗？
+        够 → 直接答
+        不够 → 决定查什么（改写查询）
+                → 检索
+                → 评估检索结果相关性
+                → 不够好就换个查询再查
+
+  → 这就是把检索当成一个工具（Lecture04/06 的内容）
+  → 不需要专门训练，靠 prompt 就能实现
+</pre>
+<h2>SGRT 工程桥：你的排查助手该怎么设计检索</h2>
+<pre class="loop">【静态 RAG 不够用的场景】
+
+用户："残差又升高了"
+  → 静态 RAG：拿这句话去检索，效果很差（信息不足）
+  → Agentic：先判断"需要先查设备状态和最近报警"
+             → 查完发现"腹部区域升高"
+             → 改写查询："腹部区域残差升高原因"
+             → 检索案例库
+             → 评估：找到的案例相关吗？
+             → 不相关就换查询词再查
+
+【推荐方案：CRAG 式的"检索 + 评估"】
+  ① 检索前：判断信息是否足够（不够就先查设备状态）
+  ② 检索后：评估相关性（不相关就换查询）
+  ③ 上限：最多 3 轮检索（防死循环）
+
+【关键的工程约束】
+  · 必须设检索轮数上限
+  · 每轮检索都要记录（可追溯）
+  · "判断是否相关"这一环节建议用规则 + 阈值，
+    不要完全交给模型（否则可能"觉得相关"就停止）
+    
+【不建议做的事】
+  · 不要上 Search-R1 那种 RL 训练（没有那个数据量和算力）
+  · 不要指望模型自己学会"何时检索"（不稳定）
+  → 用显式规则 + prompt 引导
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>静态 RAG 的缺口</strong>：不决定要不要检索、检索什么、够不够好。<br>
+<strong>Self-RAG</strong>：模型内部产出判断 token（Retrieve/IsRel/IsSup/IsUse）。<br>
+<strong>CRAG</strong>：外挂评估器给检索结果打分，触发不同动作——最实用。<br>
+<strong>Search-R1</strong>：RL 学检索策略，需大量 rollout。<br>
+<strong>简化路线</strong>：把检索当工具 + 显式规则，不训练也能实现。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 静态 RAG 有三个不决定的事，分别是什么？各举一个失败例子。</p>
+  <details><summary>展开答案</summary><p>① 要不要检索——比如问"1+1等于几"不需要检索，但静态流程照查不误，浪费还可能引入干扰；② 检索什么查询——用户说"上次那个问题后来怎么解决的"，这句话本身信息不足，直接检索效果差，应该先澄清或改写；③ 结果够不够好——检索回来的全是不相关内容，静态 RAG 不管照样塞进上下文，模型被迫基于无关材料回答。</p></details>
+  <p>Q2. Self-RAG 和 CRAG 在做判断这件事上的机制差别是什么？</p>
+  <details><summary>展开答案</summary><p>Self-RAG 让模型自己产出判断 token（Retrieve?/IsRel?/IsSup?/IsUse?），判断内嵌在生成过程中，需要专门训练模型学会输出这些 token。CRAG 是外挂一个独立的评估器模块给检索文档打相关性分数，再据此触发不同分支（直接用/丢弃改搜/混合）。Self-RAG 更端到端但训练成本高，CRAG 更模块化、可以用现成模型加一层把关。</p></details>
+  <p>Q3. 为什么说对多数工程场景 CRAG 的思路最实用？</p>
+  <details><summary>展开答案</summary><p>因为它不需要训练模型——用现成的 LLM 加一个轻量的评估环节（可以是规则、小分类器、或一次 LLM 调用判断相关性）就能实现"检索后质量把关"。而 Self-RAG 需要专门训练模型产出判断 token，Search-R1 需要大量 rollout 训练，两者都要求模型可训练且有数据。绝大多数企业场景用的是 API 模型、没有训练能力，CRAG 的路线成本最低。</p></details>
+  <p>Q4. 你的排查助手的 Agentic 检索该怎么设计？为什么"判断是否相关"不建议完全交给模型？</p>
+  <details><summary>展开答案</summary><p>设计：① 检索前判断信息是否足够（不够先查设备状态）；② 检索后评估相关性；③ 最多 3 轮防死循环；④ 每轮记录可追溯。不建议完全交给模型判断相关性的原因：模型可能"觉得相关"就停止检索，而实际上漏了关键证据；在医疗场景这种误判会导致排查不充分。应该用规则+阈值（如关键词命中数、检索分数阈值）做客观判断，模型只做辅助。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture03 · 段四 Agentic RAG</span><br>
+  ← 上一课 <a href="lecture03-0022-colbert.html">0022 · ColBERT 与混合检索</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture03-0024-rag-failure-modes.html">0024 · RAG 失败模式（收官）</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件《RAG + Agents》· 源文件夹 week2-9.30 · p55-61；Self-RAG (arXiv:2310.11511)、CRAG (arXiv:2401.15884)、Search-R1 (arXiv:2503.09516)<br>
+Lesson 0023 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

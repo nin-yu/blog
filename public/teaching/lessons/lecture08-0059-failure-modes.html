@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0059 — 多 agent 为什么会失败：三类失败模式</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture08 · Lesson 0059</span>
+  <h1>多 agent 为什么会失败：三类失败模式</h1>
+  <div class="meta">第 0059 课（Lecture08 第 5 课）· 来源：lecture08.pdf p69-82 · 来源文件夹：week5-10.19 · 本课成果：掌握多 agent 失败的三大类（一般/协调/行为），理解"协调的诅咒"这个反直觉结论，能识别从众与目标不兼容这两类行为病</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件（p82）把失败归为三类：<br><br>
+<strong>General Failures 一般性失败</strong>：系统设计 / agent 之间 / 验证<br>
+<strong>Coordination Failures 协调失败</strong>：期望 / 承诺 / 通信<br>
+<strong>Behavioral Failures 行为失败</strong>：缺乏多样性 / 敌意式冲突解决<br><br>
+最反直觉的一条（p73-75）：<strong>「协调的诅咒」——单 agent 分别做两件事，好过两个 agent 协调着做。</strong>
+</div>
+
+<h2>一、一般性失败（p70-72）</h2>
+<p>来自 Cemri et al. 2025 的方法论：<strong>收集大量多 agent 轨迹，把失败整理成分类学</strong>。</p>
+<pre class="loop">三大类：
+  · System Design      系统设计问题（架构选错、角色划分不合理）
+  · Inter-Agent         agent 之间的交互问题
+  · Verification        验证缺失（没人检查结果对不对）</pre>
+<p>第三类最容易被忽略：<strong>多 agent 系统里"谁来验收"经常是空的</strong>。每个 agent 都完成了自己的部分，但没人为整体负责。</p>
+
+<h2>二、协调的诅咒（p73-76）——本课重点</h2>
+<blockquote>
+<strong>The Curse of Coordination</strong>（Khatua et al. 2026）<br>
+CoachBench 实验结论（p75）：<strong>「单个 agent 分别解决两个任务，好过两个 agent 协调着做。」</strong>
+</blockquote>
+<p>CoachBench 的规模（p74）：<strong>600 个协作编程任务，跨 4 种编程语言的 12 个库</strong>。</p>
+<pre class="loop">实验对比：
+  A) 一个 agent 把两个任务都做了（串行）
+  B) 两个 agent 各做一个，需要协调
+
+结果：A 更好
+
+原因分析：
+  · 协调成本（沟通、同步、整合）超过了并行省下的时间
+  · 交接时信息丢失
+  · 两个 agent 的改动可能冲突，需要额外整合
+  · 一处出错会传播给另一个</pre>
+<p>这条结论直接呼应第 63 课的五项代价——<strong>它是那些代价的实证</strong>。</p>
+
+<h2>三、行为失败（p77-81）</h2>
+<p>来自 Zou 2026《Patterns and Problems in Emerging Multi-Agent Systems》。</p>
+
+<h3>3.1 从众 Conformity（p78）</h3>
+<blockquote>
+<strong>「我们让一群 agent 协作，各自独立做一些出色的东西，结果超过一半的 agent 决定去造光线追踪器或自举编译器。」</strong>
+</blockquote>
+<pre class="loop">现象：本该多样化探索，结果大家都做同一件事
+
+原因推测：
+  · 共享上下文里看到别人在做什么 → 跟随
+  · 模型训练数据里"出色项目"的分布本身就集中
+
+后果：多样性丧失 → 多 agent 的"broader exploration"收益消失
+     （第 63 课列的第 4 项收益，直接失效）</pre>
+
+<h3>3.2 目标不兼容 Incompatible Goals（p79-81）</h3>
+<blockquote>
+<strong>「每个模型被要求把第四台 VM 上的 Python 后端迁移到另一种语言，但给每个模型不同的目标语言。」</strong>
+</blockquote>
+<pre class="loop">这是人为设置的陷阱，用来暴露问题：
+  · Agent A 把后端改成 Go
+  · Agent B 把后端改成 Rust
+  · 两者都"完成了任务"，但结果互相冲突
+  · 没有机制发现"我们目标根本不一样"
+
+真实场景里这个陷阱常常是隐式的：
+  · 两个 agent 对"优化"理解不同（一个优化延迟，一个优化成本）
+  · 两个 agent 对"完成"的标准不同（一个认为测试过了，一个认为要压测）</pre>
+<p>第二类更隐蔽：<strong>目标表述相同但判据不同</strong>，agent 自己发现不了。</p>
+
+<h2>三类失败的完整清单（p82）</h2>
+<table>
+  <tr><th>大类</th><th>子类</th><th>典型表现</th><th>对策</th></tr>
+  <tr><td rowspan="3"><strong>General</strong></td><td>System Design</td><td>架构选错、角色划分不合理</td><td>先用单 agent 基线（第 63 课）</td></tr>
+  <tr><td>Inter-Agent</td><td>agent 之间传错信息或格式</td><td>明确接口契约</td></tr>
+  <tr><td>Verification</td><td>没人验收整体结果</td><td>指定明确的验收责任（人或专门的 agent）</td></tr>
+  <tr><td rowspan="3"><strong>Coordination</strong></td><td>Expectation</td><td>对"完成"的期望不一致</td><td>账本里写清验收标准</td></tr>
+  <tr><td>Commitment</td><td>承诺了但没做/重复做</td><td>角色分工 + 资源划分锁定</td></tr>
+  <tr><td>Communication</td><td>该说的没说/说给错的人</td><td>明确通信通道与订阅关系</td></tr>
+  <tr><td rowspan="2"><strong>Behavioral</strong></td><td>Lack of Diversity</td><td>从众，大家做一样的事</td><td>刻意分配不同目标/约束</td></tr>
+  <tr><td>Hostile Conflict Resolution</td><td>冲突解决方式有害</td><td>禁止自主协商，分歧上报</td></tr>
+</table>
+
+<h2>SGRT 工程桥：你的场景最怕哪几种失败</h2>
+<pre class="loop">【最怕：Verification 缺失】
+  假设你有"标定审查 agent"和"配准审查 agent"
+  两个都说"我这部分没问题"
+  → 但没人检查"两者的结论是否自洽"
+  → 标定说没问题、配准说残差高 → 矛盾无人发现
+  ✔ 对策：设一个明确的"一致性验收"环节，
+          由规则检查（而不是让 agent 自己判断）
+
+【次怕：Incompatible Goals】
+  两个 agent 对"标定合格"的判据不同：
+    · A 认为 RMS < 1.5mm 就算合格
+    · B 认为还要加上"覆盖角度 > 30°"
+  → 都"完成了"，结论不一致
+  ✔ 对策：判据写进任务账本，两个 agent 都从账本读，不各自解释
+
+【Behavioral 的从众】
+  如果让多个 agent 独立分析同一批数据
+  可能都得出"是呼吸问题"（因为前一个说了，后面的跟随）
+  ✔ 对策：独立分析时**不让它们看彼此的结论**（真正的 independent）
+
+【Negotiation 的敌意冲突】
+  两个 agent 争论"是床板还是呼吸"
+  → 不要让它俩自动收敛
+  ✔ 对策：把分歧和证据一起上报给人</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>三类失败</strong>：一般性（设计/交互/验证）／协调（期望/承诺/通信）／行为（从众/敌意冲突）。<br>
+<strong>协调的诅咒</strong>：单 agent 串行做两个任务，好过两个 agent 协调——协调成本常超过并行收益。<br>
+<strong>行为病</strong>：从众让多样性消失；目标不兼容让各自"成功"却互相冲突。<br>
+<strong>最易漏的</strong>：Verification——没人验收整体结果。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 多 agent 的失败分成哪三大类？各包含什么？</p>
+  <details><summary>展开答案</summary><p>① General Failures 一般性失败：System Design（系统设计）、Inter-Agent（agent 之间）、Verification（验证缺失）；② Coordination Failures 协调失败：Expectation（期望不一致）、Commitment（承诺问题）、Communication（通信问题）；③ Behavioral Failures 行为失败：Lack of Diversity（缺乏多样性/从众）、Hostile Conflict Resolution（敌意式冲突解决）。</p></details>
+  <p>Q2. "协调的诅咒"这个结论是什么？为什么会出现？</p>
+  <details><summary>展开答案</summary><p>CoachBench（600 个协作编程任务，4 种语言 12 个库）的实验结论：单个 agent 分别解决两个任务，好过两个 agent 协调着做。原因是协调成本（沟通、同步、整合）超过了并行省下的时间，同时伴随交接信息丢失、改动冲突需额外整合、一处出错传播给另一个。</p></details>
+  <p>Q3. 从众（Conformity）这个失败模式为什么特别讽刺？</p>
+  <details><summary>展开答案</summary><p>因为它直接摧毁了多 agent 的核心收益之一"更广探索"。本该多样化探索，结果超过一半的 agent 都去做同一件事（光线追踪器或自举编译器），多样性丧失。原因可能是共享上下文里看到别人做什么就跟随，也可能是训练数据里"出色项目"分布本身集中。</p></details>
+  <p>Q4. 你的场景里最该防哪种失败？为什么？</p>
+  <details><summary>展开答案</summary><p>最该防 Verification 缺失——各 agent 都说自己那部分没问题，但没人检查整体结论是否自洽（标定说没问题、配准说残差高），矛盾无人发现。对策是设置明确的一致性验收环节，由规则检查而非让 agent 自己判断整体是否成立。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture08 · 段五 失败模式</span><br>
+  ← 上一课 <a href="lecture08-0058-coordination.html">0066 · 协调</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture08-0060-case-engineering-swarm.html">0068 · 案例：工程化蜂群（收官）</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture08 课件《Multi-Agent Systems》· 源文件夹 week5-10.19 · p69-82；参考 Why Do Multi-Agent LLM Systems Fail? (arXiv:2503.13657)、CooperBench (arXiv:2601.13295)、Zou 2026<br>
+Lesson 67 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0014 — 推理期扩展：用推理算力换准确率</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture02 · Lesson 0014</span>
+  <h1>推理期扩展：用推理算力换准确率</h1>
+  <div class="meta">第 0014 课（Lecture02 第 6 课）· 来源：lecture02.pdf p138-148 · 来源文件夹：week2-9.28 · 本课成果：理解推理期扩展（test-time scaling）的三种手段：思维链、重复采样、自洽性投票，以及它们的成本效益关系</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+推理期扩展（test-time scaling）的核心思想：<strong>不改模型权重，只在推理时多花算力，换更高的准确率</strong>。<br><br>
+三条主要路径：<br>
+<strong>① 思维链 CoT</strong>——让它多想几步（p139）<br>
+<strong>② 重复采样</strong>——同一问题生成多个答案（p145）<br>
+<strong>③ 自洽性投票</strong>——多个答案里选最一致的那个（p147）<br><br>
+关键前提：<strong>第 ②③ 需要能判断哪个答案是对的</strong>——要么有验证器，要么答案可比较。
+</div>
+
+<h2>一、思维链（p139-144）</h2>
+<blockquote>
+<strong>Chain-of-Thought：让模型把推理过程写出来再给答案</strong>
+</blockquote>
+<pre class="loop">直接回答：
+  Q: 一件夹克 80 美元，涨价 25%，再打 25% 折，最终价格？
+  A: 80 美元    ← 错（直觉陷阱：涨25%再降25% ≠ 原价）
+
+思维链：
+  Q: 同上
+  A: 原价 80 → 涨 25% = 100 → 打 25% 折 = 75
+     所以最终 75 美元  ← 对
+</pre>
+<p>课件还讲了"推理模型"和"推理强度控制"（p140-144）：</p>
+<pre class="loop">现代推理模型（如 o 系列、DeepSeek-R1）的特点：
+  · 内置了"先想再答"的行为（不需要 prompt 提示）
+  · 可以控制推理强度：low / medium / high（p142-143）
+
+实现方式（p144）：
+  · 调 λ 参数（Inkling：低努力时 λ 高，高努力时 λ 低）
+  · 或者控制 token 预算（Kimi K3 等）
+  
+→ 推理强度 = 愿意花多少 token 在"想"上
+</pre>
+
+<h2>二、重复采样（p145-146）</h2>
+<blockquote>
+<strong>Large Language Monkeys：用重复采样扩展推理算力</strong>
+</blockquote>
+<pre class="loop">做法：
+  同一个问题，让模型独立生成 N 个答案
+  → 如果有一个是对的，就算成功
+
+关键发现（论文结论）：
+  · 覆盖率随采样数呈对数线性增长
+  · 也就是说：采样越多，至少有一个正确答案的概率越高
+  · 但单次采样的准确率不提升
+
+命名来源："无限猴子定理"——猴子敲键盘够久也能打出莎士比亚
+</pre>
+
+<h2>三、自洽性投票（p147-148）</h2>
+<blockquote>
+<strong>如果没有验证器怎么办？用自洽性（Self-Consistency）</strong>
+</blockquote>
+<pre class="loop">做法：
+  ① 用 CoT 生成多条不同的推理路径
+  ② 收集所有最终答案
+  ③ 投票选出现次数最多的那个
+
+前提假设：
+  正确答案有多条到达路径（所以会重复出现）
+  错误答案往往各不相同（所以票数分散）
+
+→ 不需要外部验证器，只需要"答案可比较"
+</pre>
+
+<h2>四、三种方法的成本效益</h2>
+<table>
+  <tr><th>方法</th><th>成本</th><th>前提</th><th>效果</th></tr>
+  <tr><td><strong>CoT</strong></td><td>输出变长（多花 decode）</td><td>无</td><td>复杂推理显著提升</td></tr>
+  <tr><td><strong>重复采样</strong></td><td>N 倍</td><td><strong>需要验证器</strong>判断对错</td><td>覆盖率对数线性增长</td></tr>
+  <tr><td><strong>自洽性</strong></td><td>N 倍</td><td>答案可比较（无需验证器）</td><td>比单次好，但不如有验证器</td></tr>
+</table>
+<p>这条线的工程含义：</p>
+<pre class="loop">有验证器        → 重复采样（最优，能确认对错）
+无验证器        → 自洽性投票（次优，靠共识）
+两者都没有      → 只能靠 CoT（最省但上限低）
+
+成本上：CoT 最便宜（只多花输出 token）
+       N 次采样贵 N 倍（Preill + Decode 都 N 倍）
+</pre>
+
+<h2>五、这和第 0013 课的关系</h2>
+<pre class="loop">0013 讲的是"怎么让单次推理更快"
+0014 讲的是"多花算力换更准"
+
+两者是相反方向：
+  0013 → 同样的钱更快
+  0014 → 同样的时间更准
+
+工程上要选：
+  · 交互式场景（用户等）→ 优先 0013（快）
+  · 批处理/离线（可等）  → 可用 0014（准）
+</pre>
+
+<h2>SGRT 工程桥：你的场景该不该用推理期扩展</h2>
+<pre class="loop">【场景一：实时门控判断 → 不要用】
+  时间预算 0.5s，多采样 N 倍直接超时
+  → 用规则或轻量模型
+
+【场景二：离线排查分析 → 可以用】
+  "这次残差升高的根因是什么？"
+  · 没有严格时间限制（几分钟对用户可接受）
+  · 有客观验证手段（历史结论、事后复查）
+  → 适合自洽性投票：独立判断 3-5 次
+
+【场景三：标定参数优化 → 最适合】
+  "哪组参数能让残差最小？"
+  · 有明确的验证器（算出来就知道）
+  · 可以并行试多组
+  → 适合重复采样 + 验证器筛选
+  → 这本质上就是自动搜索
+
+【一个实用建议】
+  把"自洽性"用在关键判断点上，而不是整段排查
+  例："这次是不是呼吸问题？" → 独立判断 3 次
+      → 3 次一致 → 高置信度
+      → 不一致 → 提示"证据不足，需更多数据"
+  这比让模型跑三遍完整排查便宜得多
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>CoT</strong>：让模型写出推理再答；现代推理模型内置了这个行为，还能控制强度。<br>
+<strong>重复采样</strong>：N 个答案里只要有一个对就算成功，覆盖率对数线性增长；需要验证器。<br>
+<strong>自洽性</strong>：多条推理路径投票选最一致的；不需要验证器，但需要答案可比较。<br>
+<strong>取舍</strong>：有验证器用重复采样，没有用自洽性，都做不到就只用 CoT。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 推理期扩展的核心思想是什么？三条主要路径分别是什么？</p>
+  <details><summary>展开答案</summary><p>核心思想是不改模型权重，只在推理时多花算力换更高准确率。三条路径：① 思维链 CoT——让模型把推理过程写出来再答；② 重复采样——同一问题独立生成 N 个答案；③ 自洽性投票——多个答案里选出现次数最多的那个。</p></details>
+  <p>Q2. 重复采样和自洽性投票的区别是什么？各自需要什么前提？</p>
+  <details><summary>展开答案</summary><p>重复采样是生成 N 个答案后，用验证器判断其中有没有正确答案（只要有一个对就算成功），前提是必须有可靠的验证器——能客观判断答案对错。自洽性投票是把多个答案收集起来投票选最多的，不需要验证器，但前提是答案可比较（离散答案如数字/选项），且假设正确答案有多条到达路径而错误答案分散。</p></details>
+  <p>Q3. 为什么说"有验证器时重复采样优于自洽性"？</p>
+  <details><summary>展开答案</summary><p>因为有验证器能确认到底哪个是对的——只要 N 个采样里出现一个正确答案就能识别出来，成功率随采样数对数线性增长。自洽性只能靠"多数一致"这个间接信号，当多数人都错时（系统性偏差）会投出错误答案；而且连续型答案（如数值）无法投票。所以验证器提供的信号质量高于共识投票。</p></details>
+  <p>Q4. 你的排查场景里，哪里适合用自洽性投票、哪里不适合？</p>
+  <details><summary>展开答案</summary><p>适合用在关键判断点上，比如"这次是不是呼吸问题"——让模型独立判断 3 次，一致则高置信、不一致则提示证据不足需更多数据，这比跑三遍完整排查便宜得多。不适合用在实时门控判断（0.5s 预算下 N 倍采样直接超时），也不适合整段排查（成本高且排查路径本就不唯一）。参数优化场景则适合重复采样+验证器（残差可计算）。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture02 · 段四 推理 · 推理期扩展</span><br>
+  ← 上一课 <a href="lecture02-0013-prefill-decode.html">0013 · Prefill 与 Decode</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture02-0015-structured-io.html">0015 · 结构化输出与约束解码</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件《LLMs for Builders》· 源文件夹 week2-9.28 · p138-148；Chain-of-Thought (arXiv:2201.11903)、Large Language Monkeys (arXiv:2407.21787)、Self-Consistency (arXiv:2203.11171)<br>
+Lesson 0014 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

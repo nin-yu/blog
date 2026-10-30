@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0002 — agent 的历史：从拉丁词源到 LLM 时代</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture01 · Lesson 0002</span>
+  <h1>agent 的历史：从拉丁词源到 LLM 时代</h1>
+  <div class="meta">第 0002 课（Lecture01 第 2 课）· 来源：lecture01.pdf p18-27 · 来源文件夹：week1-9.23 · 本课成果：掌握 agent 概念的四个发展阶段（前 1990/1990s/RL 时代/LLM 时代），理解每个阶段的定义如何变化，以及 LLM 让什么成为可能</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+"agent" 这个词的历史分四段（p19-23）：<br><br>
+<strong>① 前 1990</strong>——拉丁语 agens（"行动者"），AI 语境首次出现在 1973 年的 ACTOR 形式化<br>
+<strong>② 1990s</strong>——学术界给出正式定义：autonomy、social ability、reactivity、proactivity<br>
+<strong>③ RL 时代</strong>——agent = 在环境里通过试错学习策略的东西（Sutton & Barto）<br>
+<strong>④ LLM 时代</strong>——GPT-3 的 in-context learning 让"语言模型当大脑"成为可能<br><br>
+关键认知：<strong>每一代定义的"agent"都不完全一样</strong>，今天说的是第 ④ 种。
+</div>
+
+<h2>阶段一：词源与最早的 AI 用法（p19）</h2>
+<pre class="loop">词源：
+  "agent" 来自拉丁语 agens（15 世纪末）
+  意思就是「一个行动的人/物」——纯字面，没有智能含义
+
+AI 语境首次出现：
+  Hewitt, Bishop, Steiger, 1973
+  《A Universal Modular ACTOR Formalism》
+  → ACTOR 模型：并发计算的基本单位是"能收发消息的 actor"
+  → 这是 agent 概念的技术雏形（自主 + 通信）
+</pre>
+<p>值得注意的是：<strong>ACTOR 模型里的 agent 是纯技术概念，没有"智能"的要求</strong>。它只是"一个能自己行动并响应的实体"。</p>
+
+<h2>阶段二：1990s 的正式定义（p21）</h2>
+<p>这是 agent 概念真正被学术界定义清楚的年代，三个来源并立：</p>
+<table>
+  <tr><th>来源</th><th>定义要点</th></tr>
+  <tr><td>Pattie Maes, 1994《Designing Autonomous Agents》</td><td>强调<strong>自主性</strong>——agent 自己决定行动</td></tr>
+  <tr><td>Wooldridge & Jennings, 1995</td><td>四个特征：<strong>autonomy（自主）、social ability（社交能力）、reactivity（反应性）、proactivity（主动性）</strong></td></tr>
+  <tr><td>Russell & Norvig, 1995 教材</td><td><strong>通过传感器感知、通过执行器行动的东西</strong></td></tr>
+</table>
+<p>Wooldridge 的四个特征值得记住，因为今天还在用：</p>
+<pre class="loop">autonomy     —— 不需要每一步被指挥
+social ability —— 能与其他 agent/人交互
+reactivity   —— 对环境变化有反应
+proactivity  —— 不只是被动反应，还会主动追求目标
+
+→ 注意 proactivity：这是区分"响应式程序"和"agent"的关键
+  一个 if-else 也能 react，但不会 proactively 去找目标
+</pre>
+
+<h2>阶段三：RL 时代（p22）</h2>
+<pre class="loop">Sutton & Barto, 1998 —— agent-environment loop
+
+        ┌─────────────┐
+        │    Agent    │
+        └──┬───────▲──┘
+     action│       │state, reward
+           ▼       │
+        ┌─────────────┐
+        │ Environment │
+        └─────────────┘
+
+里程碑：DQN on Atari (Mnih et al., 2015)
+  → 同一套算法从像素玩几十种游戏
+  → 证明了"端到端学习策略"的可行性
+</pre>
+<p>RL 时代的 agent 定义和 1990s 不同：<strong>不要求"社交能力"或"主动性"这种语义特征，只要求"在环境中通过奖励信号学习行动策略"</strong>。这个定义更窄但更可操作。</p>
+
+<h2>阶段四：LLM 时代（p23-27）</h2>
+<p>GPT-3 带来的关键能力：<strong>in-context learning</strong>——不用改权重，只靠 prompt 里的例子就能学新任务。</p>
+<pre class="loop">为什么这改变了 agent：
+  · 在 LLM 之前，agent 的"大脑"要靠 RL 训练，每个任务重训
+  · 有了 in-context learning，一个通用模型能适应各种任务
+  → 于是"用语言模型当 agent 的决策核心"变得可行
+</pre>
+<p>课件给了一条时间线（p25）：</p>
+<pre class="loop">2022-10   ReAct（Yao et al.）——推理与行动交替
+2022-11-30 ChatGPT 发布
+2023-03-14 GPT-4 发布
+2023-03-28 BabyAGI——第一个"自主任务循环"演示
+2023-03-30 AutoGPT——爆火，让公众认识 agent
+</pre>
+<p>还有两页讲能力增长（p26-27）：模型能力和 agent 能力都在快速提升。这不是重点，重点是<strong>这个时间线告诉你：现代 agent 概念只有三年多历史</strong>。</p>
+
+<h2>四个阶段对比</h2>
+<table>
+  <tr><th>阶段</th><th>agent 是什么</th><th>决策核心</th></tr>
+  <tr><td>前 1990</td><td>能收发消息的并发单元</td><td>程序逻辑</td></tr>
+  <tr><td>1990s</td><td>自主、社交、反应、主动的实体</td><td>规则/符号推理</td></tr>
+  <tr><td>RL 时代</td><td>在环境中学习策略的东西</td><td>学到的策略网络</td></tr>
+  <tr><td>LLM 时代</td><td>用 LLM 决定下一步的系统</td><td>语言模型</td></tr>
+</table>
+<p>看这张表会发现一件事：<strong>"agent"这个词一直在被重新定义</strong>。所以讨论"什么是 agent"时，先明确说的是哪一代，否则容易鸡同鸭讲。</p>
+
+<h2>SGRT 工程桥：你的领域里"agent"的两层含义</h2>
+<pre class="loop">你在做 SGRT 表面追踪，可能会遇到两种"agent"：
+
+【RL 意义的 agent】
+  你的呼吸门控预测器：从历史信号学"什么时候是呼气末"
+  → 有 state、action、reward（预测对不对）
+  → 这是 RL agent，但它不"说话"，也不"调用工具"
+
+【LLM 意义的 agent】
+  你要做的排查助手：读日志、调工具、给建议
+  → 有 LLM 当大脑，有工具，有循环
+
+【关键区分】
+  前者是"学出来的策略"，后者是"调出来的系统"
+  两者都叫 agent，但工程做法完全不同：
+    RL agent → 要采样、要奖励设计、要训练
+    LLM agent → 要 prompt、要工具、要评估
+
+→ 不要因为都叫 agent 就用同一套方法
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>词源</strong>：拉丁 agens，本义只是"行动者"。<br>
+<strong>1973</strong>：ACTOR 形式化——并发消息单元。<br>
+<strong>1990s</strong>：正式定义——自主/社交/反应/主动（Wooldridge）。<br>
+<strong>RL 时代</strong>：环境中的策略学习（Sutton & Barto、DQN）。<br>
+<strong>LLM 时代</strong>：in-context learning 让语言模型当决策核心；概念只有三年多历史。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. agent 概念的历史分为哪四个阶段？各自的决策核心是什么？</p>
+  <details><summary>展开答案</summary><p>① 前 1990：能收发消息的并发单元（ACTOR 模型），决策核心是程序逻辑；② 1990s：自主/社交/反应/主动的实体（Wooldridge 定义），决策核心是规则与符号推理；③ RL 时代：在环境中通过奖励学习策略的东西（Sutton & Barto），决策核心是学到的策略网络；④ LLM 时代：用语言模型决定下一步的系统，决策核心是 LLM。</p></details>
+  <p>Q2. Wooldridge 的四个特征里，哪一个最能区分"agent"和"普通程序"？为什么？</p>
+  <details><summary>展开答案</summary><p>proactivity（主动性）。autonomy 可以靠硬编码实现（不需要每步指挥但按固定规则走），social ability 和 reactivity 也能用 if-else 做到——一个响应式程序同样能 react。但 proactivity 要求不只是被动响应环境，还要主动追求目标、自己发起行动，这是普通响应式程序不具备的。</p></details>
+  <p>Q3. GPT-3 的 in-context learning 为什么是 LLM agent 出现的关键前提？</p>
+  <details><summary>展开答案</summary><p>因为在此之前，agent 的决策核心要靠 RL 训练，每个新任务都要重新训练。有了 in-context learning，一个通用模型不改权重、仅靠 prompt 就能适应各种任务，于是"用语言模型当 agent 的决策核心"第一次变得可行——一个模型可以服务无数种任务，不需要各自重训。</p></details>
+  <p>Q4. 你的呼吸门控预测器和排查助手都叫 agent，为什么工程做法完全不同？</p>
+  <details><summary>展开答案</summary><p>因为分属两个不同定义。呼吸门控预测器是 RL 意义的 agent——有 state/action/reward，从历史信号学策略，工程上要做采样、奖励设计、训练。排查助手是 LLM 意义的 agent——有 LLM 当大脑、有工具、有循环，工程上要写 prompt、接工具、建评估集。虽然都叫 agent，但前者是"学出来的策略"，后者是"调出来的系统"，不能套用同一套方法。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture01 · 段二 历史</span><br>
+  ← 上一课 <a href="lecture01-0001-course-why.html">0001 · 这门课为什么存在</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture01-0003-anatomy-of-agent.html">0003 · agent 的解剖：五个组件</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture01 课件《Intro to Agentic Systems》· 源文件夹 week1-9.23 · p18-27；ReAct (arXiv:2210.03629)、Sutton & Barto (1998)、DQN (Mnih et al. 2015)<br>
+Lesson 0002 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

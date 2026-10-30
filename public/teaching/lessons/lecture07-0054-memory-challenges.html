@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0054 — 记忆的挑战与开放问题（Lecture07 收官）</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture07 · Lesson 0054</span>
+  <h1>记忆的三个开放问题：记什么、信不信、用得对不对</h1>
+  <div class="meta">第 0054 课（Lecture07 第 9 课）· 来源：lecture07.pdf p95-103 · 来源文件夹：week4-10.14 · 本课成果：理解记忆的三大未解难题（记/忘的取舍、信任与隐私、过度个性化），并能判断哪些在你的场景里是硬约束</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+三个开放问题（p96）：<br><br>
+<strong>① 记什么、忘什么</strong>——记忆创建时，未来的相关性是未知的<br>
+<strong>② 信任、隐私与用户控制</strong>——记忆是 agent 的<strong>攻击面</strong>，也有隐私含义<br>
+<strong>③ 正确使用记忆</strong>——大量"过度个性化"源于记忆误用<br><br>
+这三个问题<strong>都没有解</strong>。课件把它们放在最后，是告诉你：记忆这块地还没修完。
+</div>
+
+<h2>问题一：记什么、忘什么（p97）</h2>
+<pre class="loop">困境（p97 原文）：
+  · 记忆创建的那一刻，"未来会不会用到"是未知的
+  · 全部保留 → 检索、上下文、维护成本都上升
+  · 忘记 → 可能丢掉有用的证据，或未完成的承诺</pre>
+<p>课件举了个很妙的例子：</p>
+<blockquote>
+<strong>"记忆还是玩笑？？？该记哪一面？"</strong>
+</blockquote>
+<p>这句话点出了难点：同一句话，<strong>记字面还是记语境，结果完全不同</strong>。用户说"这个阈值随便啦"，是玩笑还是真的放宽？记错了就是事故。</p>
+<pre class="loop">同样一句 "阈值放宽点吧"：
+  记成事实   → 下次真的按放宽执行（如果是玩笑 → 事故）
+  记成偏好   → 下次只提示"你倾向放宽"（更安全）
+  不记       → 下次再问一遍（低效但无损）
+  
+→ 医疗场景的默认选择：宁可低效，不能记错</pre>
+
+<h2>问题二：信任、隐私与用户控制（p98-99）</h2>
+<h3>记忆是攻击面（p98）</h3>
+<blockquote>
+可能诱导模型执行<strong>被投毒的程序记忆</strong>，从而做出危险行为。（Chen et al. 2024, arXiv:2407.12784）
+</blockquote>
+<pre class="loop">攻击路径：
+  攻击者在某个数据源里埋一段"程序记忆"
+      ↓
+  记忆系统把它存下来（看起来像正常经验）
+      ↓
+  agent 在关键时刻召回它、并照着执行
+      ↓
+  造成危险行为
+
+为什么危险：程序记忆是"怎么做"的规则，
+被骗一次，之后每次都会重复执行</pre>
+<p>这比一次性提示注入更严重：<strong>提示注入只影响当次，投毒记忆会持续影响</strong>。</p>
+
+<h3>隐私（p99）</h3>
+<blockquote>
+agent 与世界交互时并不完全理解你想保密什么；带着记忆去做这件事，会暴露个人细节。（Shao et al. 2025, arXiv:2409.00138）
+</blockquote>
+<p>核心问题：<strong>模型不知道什么该保密</strong>，而记忆让它可以长期、跨会话地累积这些信息。</p>
+
+<h2>问题三：正确使用记忆（p100）</h2>
+<blockquote>
+LLMs 有时<strong>过度热衷</strong>使用上下文里的东西。这可以通过更好的检索、或训练模型忽略不重要的上下文来缓解，但<strong>两者都没完全解决</strong>。而且<strong>有些用户比其他人更喜欢个性化</strong>。（Hu et al. 2026, arXiv:2601.13722）
+</blockquote>
+<pre class="loop">过度个性化的典型表现：
+  用户上周提过一次"我对 Python 更熟"
+  → 之后所有代码示例都用 Python，哪怕这次需要 C++
+  
+  用户上个月说"简洁点"
+  → 之后连安全警告都用一句话带过
+
+根因：模型"过度热衷"用上下文里的东西，
+     缺少"这次该不该用"的判断</pre>
+
+<h2>SGRT 工程桥：三个问题在你场景里的严重度</h2>
+<table>
+  <tr><th>问题</th><th>你的场景</th><th>严重度</th><th>对策</th></tr>
+  <tr><td><strong>记什么忘什么</strong></td><td>技师口语化指令（"随便啦""差不多就行"）</td><td><strong>高</strong></td><td>语含歧义时不自动写入记忆，转为确认；记偏好而非事实</td></tr>
+  <tr><td><strong>投毒记忆</strong></td><td>排查 SOP 若来自外部/众包，可能被污染</td><td><strong>极高</strong></td><td>SOP 变更必须走审批；记忆写入带来源；定期审计</td></tr>
+  <tr><td><strong>隐私</strong></td><td>患者信息、操作员信息</td><td><strong>极高</strong></td><td>记忆脱敏；患者信息根本不进记忆；按账号隔离</td></tr>
+  <tr><td><strong>过度个性化</strong></td><td>偏好套用到不该用的场景</td><td>中</td><td>偏好只影响呈现方式，不影响安全判断</td></tr>
+</table>
+<p>特别强调第二条：<strong>程序记忆被投毒是最危险的一种</strong>，因为它是"怎么做"的规则，一旦被骗，之后每次都会重复执行。你的 SOP 必须有审批流程和来源记录。</p>
+
+<h2>Lecture07 全讲总结</h2>
+<pre class="loop">一、动机（p8-13）：三类损失（流程/知识/进度）+ 三项收益（个性化/经验/状态）
+二、类型（p14-22）：工作/情景/语义/程序；参数记忆 vs 上下文记忆
+三、三问（p23-28）：What 存什么 / When 何时触发 / How 存哪里
+四、四模式（p29-66）：
+     ① 从经验学流程（Voyager / AWM / Skill Files）
+     ② 分层记忆（MemGPT / MemoryOS）
+     ③ 反思式巩固（Generative Agents）
+     ④ 记忆维护（Sleep Time / A-Mem / Mem0 四动作）
+五、评估（p67-94）：四条标准 + 四个基准的演进
+六、挑战（p95-103）：记与忘 / 信任与隐私 / 正确使用
+</pre>
+<p>贯穿全讲的主线：<strong>记忆系统的每个设计选择，都是在"能记住"和"不添乱"之间选一个点</strong>。记得越多，检索越难、矛盾越多、攻击面越大。</p>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>记与忘</strong>：创建时不知未来相关性；全留则成本高，忘则可能丢证据。<br>
+<strong>信任与隐私</strong>：记忆是攻击面（投毒的程序记忆会持续生效）；模型不知道什么该保密。<br>
+<strong>正确使用</strong>：模型过度热衷用上下文里的东西，导致过度个性化，两种缓解手段都没完全解决。<br>
+<strong>共同点</strong>：三个问题都没有解——记忆还是个开放领域。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. "记什么、忘什么"这个困境的本质是什么？课件用"记忆还是玩笑"举例想说明什么？</p>
+  <details><summary>展开答案</summary><p>本质是：记忆创建的那一刻，未来会不会用到是未知的；全留则检索/上下文/维护成本上升，忘记则可能丢掉有用证据或未完成承诺。举例想说明：同一句话记字面还是记语境，结果完全不同——"阈值随便啦"如果记成事实会按放宽执行（若是玩笑就是事故），记成偏好则更安全，不记则低效但无损。</p></details>
+  <p>Q2. 为什么"投毒的程序记忆"比一次性的提示注入更危险？</p>
+  <details><summary>展开答案</summary><p>因为程序记忆是"怎么做"的规则，会被长期保存并在未来反复召回执行。提示注入只影响当次对话，而投毒记忆一旦被存下来，之后每次遇到相关场景都会被激活，"被骗一次，之后每次都重复执行"，且很难被察觉。</p></details>
+  <p>Q3. "过度个性化"的表现和根因是什么？</p>
+  <details><summary>展开答案</summary><p>表现：用户提过一次"我更熟 Python"，之后所有代码示例都用 Python 哪怕这次需要 C++；说过一次"简洁点"，连安全警告都一句带过。根因：LLM 有时过度热衷使用上下文里的东西，缺少"这次该不该用"的判断；更好的检索和训练模型忽略不重要上下文两种手段都没完全解决。</p></details>
+  <p>Q4. 在你的医疗场景里，哪个挑战最严重？为什么？</p>
+  <details><summary>展开答案</summary><p>投毒的程序记忆最严重。因为你的记忆里存的很大一部分是排查 SOP（"怎么做"的规则），一旦被污染，之后每次排查都会照着错误规则执行，且程序记忆会被反复召回、很难察觉。另外隐私（患者/操作员信息）也极高。对策：SOP 变更必须审批、记忆写入带来源、定期审计、患者信息不进记忆。</p></details>
+</div>
+
+<h2>综合结业考试题</h2>
+<div class="takeaway">
+<strong>Lecture07 结业考试</strong>（把本讲当一个整体来考）：给一个真实的多会话 agent 场景，要求你完整设计记忆系统——四类记忆怎么分、What/When/How 怎么答、用哪种架构模式、怎么评估、怎么防投毒。<br>
+<strong>→ 领取结业考试题</strong>：<a href="../综合题/Lecture07/结业考试-Lecture07-记忆系统.html">结业考试-Lecture07-记忆系统.md</a>（Markdown 作答制，作答区就在题目下方；答完对我说"评卷"）。
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture07 · 段六 挑战与开放问题 · Lecture07 收官</span><br>
+  ← 上一课 <a href="lecture07-0053-evaluating-memory.html">0061 · 如何评估记忆</a> · <a href="../index.html">课程大纲</a> · 回顾 <a href="lecture07-0046-why-memory.html">0054 · 为什么需要记忆</a><br>Lecture07 完结 → 回到 <a href="../index.html">课程大纲</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture07 课件《Agent Memory Architectures》（Diyi Yang / Michael Ryan / John Yang）· 源文件夹 week4-10.14 · p95-103；参考 Chen et al. 2024 (arXiv:2407.12784)、Shao et al. 2025 (arXiv:2409.00138)、Hu et al. 2026 (arXiv:2601.13722)<br>
+Lesson 54 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

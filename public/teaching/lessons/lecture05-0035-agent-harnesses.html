@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0035 — Agent Harness 四种设计对比：Mini SWE-Agent、OpenHands、Pi、OpenClaw</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture05 · Lesson 0035</span>
+  <h1>Agent Harness 四种设计对比：Mini SWE-Agent、OpenHands、Pi、OpenClaw</h1>
+  <div class="meta">第 0035 课（Lecture05 第 4 课）· 来源：lecture05.pdf p78-89 · 来源文件夹：week3-10.7 · 本课成果：掌握 harness 的四类设计选择与四个尖点、三种历史结构的取舍，以及 HarnessTax 揭示的成本真相</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件先说清楚什么在变（p81）：<br>
+<strong>搭一个 agent 涉及四类设计选择：工具、记忆、上下文管理、执行方式。</strong><br>
+<strong>不同的 harness 针对自己的任务和运行环境做不同取舍。</strong><br>
+<strong>好的 harness 在任务成功率、成本、延迟、用户控制四者间取得平衡——而正确的平衡取决于用例。</strong><br><br>
+四个真实 harness 的对比（p82-85），差别集中体现在<strong>四个尖点</strong>上：工具数量、历史结构、执行方式、自主节奏。
+</div>
+
+<h2>一、四个 harness 逐一看</h2>
+
+<h3>1. Mini SWE-Agent（p82）——最极端的极简</h3>
+<pre class="loop">三个特点：
+  · 除了 bash 没有任何工具
+  · 完全线性的历史——每一步都往 messages 里追加，仅此而已
+  · 用 subprocess.run 执行动作——每个动作完全独立
+    （不像有状态的 shell 会话那样保留状态）
+</pre>
+<h3>2. OpenHands（p83）——“工程化"做得最多的</h3>
+<pre class="loop">三个特点：
+  · 每一步存成一个事件——磁盘上每个事件一个 JSON 文件，
+    发给模型的消息每步都从这些事件重建
+  · 保持持久终端——一个 tmux 会话，所以 cd、环境变量、
+    virtualenv 会在命令之间保留下来
+  · 卡住时自己停止——检测器发现"同一个动作和结果重复 4 次"就结束运行
+</pre>
+<h3>3. Pi Agent（p84）——刻意简单</h3>
+<pre class="loop">四个特点：
+  · 只有四个工具——read、write、edit、bash，系统提示不到 1000 token
+  · 没有权限系统——用你启动它时的权限运行
+  · 历史存成树而不是列表——可以回到更早的消息并从那里分叉
+  · 刻意简单——没有 plan mode，没有 sub-agent 工具
+</pre>
+<h3>4. OpenClaw（p85）——常驻型</h3>
+<pre class="loop">四个特点：
+  · 每 30 分钟自己醒来——心跳回合按计划运行，
+    agent 回 NO_REPLY 表示保持沉默
+  · 作为单个长活 Gateway 运行——一个进程拥有所有聊天频道
+  · 身份由 Markdown 文件构成——AGENTS.md、SOUL.md、
+    IDENTITY.md、USER.md、MEMORY.md 注入系统提示
+  · 每晚存记忆——凌晨 3 点后台任务读当天的笔记，
+    把值得留的部分移进 MEMORY.md
+</pre>
+<h2>二、四个尖点对比表</h2>
+<table>
+  <tr><th></th><th>Mini SWE-Agent</th><th>OpenHands</th><th>Pi</th><th>OpenClaw</th></tr>
+  <tr><td><strong>工具</strong></td><td>只有 bash</td><td>多种</td><td>read/write/edit/bash</td><td>多频道能力</td></tr>
+  <tr><td><strong>历史结构</strong></td><td><strong>完全线性</strong></td><td><strong>事件重建</strong></td><td><strong>树（可分叉）</strong></td><td>Markdown 文件</td></tr>
+  <tr><td><strong>执行方式</strong></td><td>subprocess 无状态</td><td><strong>tmux 持久终端</strong></td><td>常规</td><td>常驻进程</td></tr>
+  <tr><td><strong>自主节奏</strong></td><td>被动</td><td>被动 + 自停检测</td><td>被动</td><td><strong>每 30 分钟自唤醒</strong></td></tr>
+  <tr><td><strong>安全</strong></td><td>—</td><td>—</td><td><strong>无权限系统</strong></td><td>—</td></tr>
+</table>
+
+<h2>三、为什么这些差别重要</h2>
+
+<h3>3.1 历史结构：线性 vs 事件 vs 树</h3>
+<pre class="loop">线性（Mini SWE-Agent）：
+  · 最简单
+  · 但试错会留在历史里，污染上下文
+  · 上下文会无限增长
+
+事件重建（OpenHands）：
+  · 事件是唯一真相，消息是每步重建的
+  · 可以自由裁剪：需要时只把部分事件转成消息
+  · 代价：需要事件存储 + 重建逻辑
+
+树（Pi）：
+  · 可以回到任何节点分叉
+  · 试错不污染主线
+  · 代价：结构复杂，需要 UI 支持
+</pre>
+<h3>3.2 执行方式：无状态 vs 持久终端</h3>
+<pre class="loop">无状态（subprocess.run）：
+  ✔ 干净——每个动作互不影响，可复现
+  ✘ 无法保留状态——cd 之后下一条命令又回到原目录
+     环境变量、venv 都要重新设置
+
+持久终端（tmux）：
+  ✔ 符合人的使用习惯——就像你自己用终端
+  ✘ 状态会漂移——前一条命令留下的副作用会影响后一条
+     出问题时很难复现
+
+→ 这个取舍在 agent 里特别重要：
+  状态漂移会让"同样的输入得到不同结果"（Pass^k 下降）
+</pre>
+<h3>3.3 自主节奏：被动 vs 定时唤醒</h3>
+<pre class="loop">被动（前三个）：
+  只有用户说话才动
+
+定时唤醒（OpenClaw）：
+  每 30 分钟自己检查一次
+  · 适合"盯着某个状态"的场景（如监控、等条件满足）
+  · 关键设计：不需要动作时回 NO_REPLY 保持沉默
+    → 否则会不断打扰用户
+
+→ 这是"主动式 agent"的基础机制（Lecture11 会讲）
+</pre>
+<h2>四、Harness 的差别有多大（p86）</h2>
+<p>课件引了 Arena 的 HarnessTax 研究——这就是那篇在 lecture 目录里缺图的文章：</p>
+<pre class="loop">核心结论：
+  同一个模型，换个 harness，成本可能翻倍
+  而任务成功率几乎不变
+
+→ 也就是说：你花的钱有很大一部分花在 harness 上
+→ 而不是花在"模型更聪明"上
+</pre>
+<h2>五、Meta-Harness：让 agent 自己改 harness（p87-88）</h2>
+<blockquote>
+<strong>让一个 meta agent 看到所有先前的经验，并决定下一步该改什么。</strong>
+</blockquote>
+<pre class="loop">思路：
+  harness 的设计选择（工具、历史、上下文管理）
+  本身可以交给 agent 去优化
+
+  meta agent 看历史实验记录
+  → 决定改哪个配置
+  → 跑实验看效果
+  → 记录结果
+
+这和 Lecture09 的 agent 作为优化器是同一思路
+</pre>
+<h2>六、课件的明确表态（p89）</h2>
+<blockquote>
+· <strong>没有唯一正确的搭 agent 方式</strong><br>
+· 本课程中你会尝试所有这些设计决策<br>
+· 也许你能做出下一个流行的 agent harness
+</blockquote>
+
+<h2>SGRT 工程桥：你的 harness 该怎么设计</h2>
+<pre class="loop">【从四个 harness 各取一点】
+
+从 Mini SWE-Agent 取"极简"：
+  工具少，系统提示短
+  → 你的排查助手不需要 20 个工具
+  → 4-6 个够用
+
+从 OpenHands 取"事件 + 自停"：
+  ① 每步存成事件（这是你的合规要求）
+  ② 自停检测：同一个动作重复 N 次就停
+     → 对你的场景是关键安全机制
+     → 防止 agent 反复查同一个没有结果的数据源
+
+从 Pi 取"树形历史"（有条件）：
+  试错的分支不必污染主线
+  → 但注意：分叉记录本身也要进事件日志（可追溯）
+
+从 OpenClaw 取"记忆整理"：
+  夜间整理记忆的思路
+  → 你的案例库可以每晚做一次聚类/去重
+
+【绝对不能学的】
+  Pi 的"没有权限系统"
+  → 你的场景必须有写操作闸门
+
+【你的具体配置建议】
+  工具      5-6 个专用工具，不用 bash
+  历史      事件日志（合规）+ 主线上只保留结论
+  执行      无状态（每次查询独立，可复现）
+  自停      相同动作重复 3 次即停并上报
+  权限      只读自动，写操作需确认
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>四类设计选择</strong>：工具、记忆、上下文管理、执行方式。<br>
+<strong>四个尖点</strong>：工具数量／历史结构（线性/事件/树）／执行方式（无状态/持久）／自主节奏（被动/定时）。<br>
+<strong>无最优解</strong>：好的 harness 在成功率、成本、延迟、用户控制间平衡，取决于用例。<br>
+<strong>HarnessTax</strong>：同模型换 harness，成本可能翻倍而成功率不变。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 搭 agent 涉及哪四类设计选择？为什么说"没有唯一正确的方式"？</p>
+  <details><summary>展开答案</summary><p>四类：工具、记忆、上下文管理、执行方式。没有唯一正确方式，因为不同 harness 针对不同任务和运行环境做不同取舍，好的 harness 是在任务成功率、成本、延迟、用户控制四者间取得平衡，而正确的平衡取决于具体用例——一个为个人本机使用优化的 harness（如 Pi 无权限系统）绝不能照搬到生产医疗系统。</p></details>
+  <p>Q2. 三种历史结构（线性/事件重建/树）各有什么优缺点？</p>
+  <details><summary>展开答案</summary><p>线性（Mini SWE-Agent）：最简单，但试错污染上下文且无限增长。事件重建（OpenHands）：事件是唯一真相、消息每步重建，可自由裁剪（需多少转多少），代价是事件存储和重建逻辑。树（Pi）：可回到任意节点分叉、试错不污染主线，代价是结构复杂需要 UI 支持。三者在"简单"与"可控"之间取舍。</p></details>
+  <p>Q3. 无状态执行（subprocess）和持久终端（tmux）各有什么问题？对 agent 可靠性有什么影响？</p>
+  <details><summary>展开答案</summary><p>无状态：干净可复现，但无法保留状态——cd、环境变量、venv 都要重设，不符合真实使用习惯。持久终端：符合人的使用习惯，但状态会漂移——前一条命令的副作用影响后一条，出问题时很难复现。对可靠性的影响是：状态漂移会让"同样输入得到不同结果"，直接降低 Pass^k（重复运行的稳定性）。</p></details>
+  <p>Q4. OpenClaw 的"每 30 分钟自唤醒 + 回 NO_REPLY"设计解决了什么问题？</p>
+  <details><summary>展开答案</summary><p>解决"主动监控"与"不打扰用户"的矛盾：定时唤醒让 agent 能主动检查状态（适合监控、等条件满足的场景，而不是只能被动等用户说话）；但每次醒来都发消息会不断打扰用户，所以设计成"不需要动作时回 NO_REPLY 保持沉默"。这是主动式 agent 的基础机制。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture05 · 段三 Agent Harness</span><br>
+  ← 上一课 <a href="lecture05-0034-langgraph.html">0034 · LangGraph</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture05-0036-orchestration-telemetry.html">0036 · 编排与遥测：Temporal 与可观测性</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture05 课件《Frameworks & Orchestration》· 源文件夹 week3-10.7 · p78-89；HarnessTax (Arena 2026)、Meta-Harness (arXiv:2603.28052)<br>
+Lesson 0035 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

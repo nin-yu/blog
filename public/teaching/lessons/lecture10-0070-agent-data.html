@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0070 — agent 的数据长什么样：bash 与统一动作空间</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture10 · Lesson 0070</span>
+  <h1>agent 的数据长什么样：bash 与统一动作空间</h1>
+  <div class="meta">第 0070 课（Lecture10 第 2 课）· 来源：lecture10.pdf p29-40 · 来源文件夹：week6-10.26 · 本课成果：理解 bash 作为唯一工具的好处与代价、动作空间与任务空间的不对称为何使评估成为唯一手段，能判断本项目工具集该多大</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+讲座提出一个尖锐的问题（p29）：<strong>对 agent 来说，训练数据和测试数据长什么样？</strong><br><br>
+答案的关键在 p31 的那个对比：<br>
+<strong>一长串 <code>aws ec2 run-instances --image-id ... --instance-type ...</code></strong><br>
+<strong>vs</strong><br>
+<strong>一个 <code>bash</code></strong><br><br>
+课件的判断：<strong>bash 是唯一的那个工具（bash is the one tool to rule them all）</strong>。<br><br>
+这个观察带来两个后果：<strong>动作空间极简，任务空间无限</strong>——正是评测存在的理由。
+</div>
+
+<h2>一、两个真实历史节点（p37）</h2>
+<pre class="loop">First Terminal-Bench Commit   (2025-01)
+Claude Code Released          (2025-02)
+
+→ 这两个时间点很近，不是巧合
+  agent 能真的在终端里干活（Claude Code）
+  → 才需要一套基准来衡量它干得好不好（Terminal-Bench）
+</pre>
+<h2>二、一个任务长什么样（p38）</h2>
+<pre class="loop">课件给的真实任务示例：
+
+  INSTRUCTION.MD 里写着：
+  「我希望你在 /app/out.step 输出一个 STEP 文件，
+    内容包含下面 2D 图描述的那个物体…」
+
+→ 三类信息齐备：
+  ① 目标（输出什么文件、在哪）
+  ② 输入（2D 图描述）
+  ③ 成功标准（文件存在且内容正确）
+
+这就是 p42 定义的 TASK：
+  「一个带有明确输入和成功标准的单个测试」
+</pre>
+<h2>三、为什么要统一到 bash（p31）</h2>
+<pre class="loop">对比两种工具设计：
+
+【给每个操作一个专用工具】
+  aws_ec2_run_instances(...)
+  aws_s3_upload(...)
+  git_commit(...)
+  pytest_run(...)
+  → 工具列表爆炸，每个都要写 schema，占满上下文
+
+【只给 bash】
+  上面所有事都能用 bash 做
+  → 工具列表 1 个
+  → 上下文极短
+  → 模型自由组合
+
+【代价】
+  自由度越大 → 越难预测
+  → 越需要"能判断做得对不对"的机制
+  → 所以必须有 verifier 和 benchmark
+</pre>
+<h2>四、动作空间与任务空间的不对称</h2>
+<pre class="loop">这是整讲的理论支点：
+
+  动作空间（可做的动作）       → 很小（一个 bash）
+  任务空间（要做的事情）       → 无限（任何能用命令完成的事）
+
+不对称的后果：
+  · 覆盖不完 → 不能靠"收集所有案例来训练"
+  · 只能抽样 → 只能靠"构造有代表性的任务来评估"
+  · 评估不是补充手段，是唯一手段
+
+这就是 0069 课说的「developed via evaluation」的技术根据
+</pre>
+<h2>五、Terminal-Bench 与 Harbor 的分工（p39-40）</h2>
+<pre class="loop">p39 的对照很清楚：
+
+  ~ONE BENCHMARK          →  ENABLE MILLIONS OF BENCHMARKS
+  WE MAKE THE EVAL        →  YOU MAKE THE EVAL
+  TBENCH                  →  harbor
+
+  一个团队做一套基准        →   一个平台让每个团队做自己的基准
+
+p40 的定位：
+  harbor = TOOLS FOR EVAL-DRIVEN DEVELOPMENT
+  harborframework.com
+
+  [BEFORE] 传统软件        [NOW] agent 时代
+  CODE AS SOURCE OF TRUTH  EVALS AS SOURCE OF TRUTH
+  DETERMINISTIC            STOCHASTIC
+  DEDUCTIVE                EMPIRICAL
+  SOFTWARE IS HANDCRAFTED  SOFTWARE IS LEARNED
+  → UNDERSTAND AND IMPROVE AGENTS
+</pre>
+<p>这张对比表是本讲最凝练的一页，值得记住：</p>
+<pre class="loop">「代码是真理之源」→「评估是真理之源」
+
+含义：
+  传统软件：代码写什么就是什么，代码是权威
+  agent：代码只定义框架，agent 行为由模型决定
+  → 唯一能说"它做对了没有"的是评估
+  → 所以评估成为 ground truth
+</pre>
+<h2>SGRT 工程桥：你的动作空间该多大</h2>
+<pre class="loop">【你现在的设计 vs 两种极端】
+
+极端 A（Pi 风格）：只给 bash
+  → 自由度最大，但：
+    · 医疗设备软件里不能给 agent 任意命令权限
+    · 无法审计"它执行了什么危险操作"
+    · 与等保/医疗器械法规冲突
+  → 不可用
+
+极端 B（每个操作一个工具）：30+ 个专用工具
+  → 安全可控，但：
+    · 工具列表占满上下文（Lecture02 的 bloat）
+    · 模型选择困难，选错概率上升
+  → 也不理想
+
+【你的合理区间：5-8 个工具】
+  查（只读）：
+    get_device_status      设备当前状态
+    query_logs             日志（内部做筛选，返回摘要）
+    get_calibration        标定信息
+    query_cases            历史案例检索
+  算：
+    compute_residual       残差统计
+  写（需确认）：
+    update_config          修改配置（二次确认）
+
+【关键：动作空间和任务空间不对称原则对你的启示】
+  你的任务空间（可能遇到的故障）也是无限的
+  → 不要幻想"把常见故障都写成规则"
+  → 要建"任务 + 验证器"的评测集
+  → 而验证器可以来自：真实根因（历史结论）、RMS 数值、规则检查
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>问题</strong>：agent 的训练/测试数据长什么样？<br>
+<strong>回答的支点</strong>：bash is the one tool to rule them all——动作空间极简。<br>
+<strong>不对称</strong>：动作空间小、任务空间无限 → 覆盖不完，只能抽样评估。<br>
+<strong>分工</strong>：Terminal-Bench 做「一套基准」，Harbor 做「让每个团队做自己的基准」。<br>
+<strong>真理之源转移</strong>：从「代码是真理之源」到「评估是真理之源」。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 「bash is the one tool to rule them all」有什么好处和代价？</p>
+  <details><summary>展开答案</summary><p>好处：工具列表只有 1 个，上下文极短，模型可以自由组合命令完成任何事——避免了为每个操作写专用工具（工具列表爆炸、schema 占满上下文）。代价：自由度越大越难预测，行为空间开放意味着无法预判 agent 会做什么，因此必须有 verifier 和 benchmark 来判断「它做得对不对」。所以统一工具反而强化了评测的必要性。</p></details>
+  <p>Q2. 动作空间和任务空间的不对称指的是什么？它为什么决定「评估是唯一手段」？</p>
+  <details><summary>展开答案</summary><p>动作空间（可做的动作）很小——一个 bash；任务空间（要做的事）无限——任何能用命令完成的事。不对称的后果是无法覆盖：你不可能收集所有案例来训练，只能抽样。抽样之后就必须判断「这个抽样任务做对了没有」，于是需要构造有代表性的任务 + 验证器来评估。所以评估不是训练的补充手段，而是唯一可行的开发手段。</p></details>
+  <p>Q3. 「代码是真理之源」变成「评估是真理之源」意味着什么？</p>
+  <details><summary>展开答案</summary><p>传统软件里代码写什么就是什么，代码是权威——行为由代码完全确定（deterministic、deductive、handcrafted）。agent 时代代码只定义框架，真正行为由模型决定（stochastic、empirical、learned），代码无法再断言「它做对了」。唯一能判断对错的是评估（task + verifier 的结果）。所以评估从「验证手段」升格为「判断标准本身」。</p></details>
+  <p>Q4. 你的工具集该多大？为什么 bash-only 和 30 个专用工具都不行？</p>
+  <details><summary>展开答案</summary><p>合理区间是 5-8 个工具。bash-only 不行：医疗设备软件不能给 agent 任意命令权限，无法审计危险操作，与等保和医疗器械法规冲突。30 个专用工具也不行：工具列表占满上下文（context bloat）、模型选择困难导致选错概率上升。折中方案：4 个只读查询（设备状态/日志/标定/案例）+ 1 个计算 + 1 个写操作（需二次确认），每个工具内部做筛选、返回结构化摘要。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture10 · 段一 范式转变 · 数据与工具</span><br>
+  ← 上一课 <a href="lecture10-0069-deductive-to-inductive.html">0069 · 从演绎到归纳</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture10-0071-eval-vocabulary.html">0071 · 评测的基本词汇</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture10 课件《Evaluating Agents: Terminal-Bench and Harbor》· 源文件夹 week6-10.26 · p29-40；Terminal-Bench、Harbor (harborframework.com)<br>
+Lesson 0070 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

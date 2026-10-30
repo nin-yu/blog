@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0008 — Lecture01 总结：拿到一个任务，先判断它属于哪一层</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture01 · Lesson 0008</span>
+  <h1>Lecture01 总结：拿到一个任务，先判断它属于哪一层</h1>
+  <div class="meta">第 0008 课（Lecture01 第 8 课Lecture01 收官）· 来源：lecture01.pdf p70-71,全讲 · 来源文件夹：week1-9.23 · 本课成果：把第一讲七课串成一条线，掌握三层划分与五组件的配合，能对一个新需求做出该不该上 agent 的初步判断</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+第一讲的七课，其实在回答三个问题：<br><br>
+<strong>① 为什么需要这门课</strong>（0001）——建模 + 系统双视角，AI 辅助会降低掌握度<br>
+<strong>② agent 是什么、从哪来</strong>（0002-0003）——四段历史 + 五个组件<br>
+<strong>③ 它怎么工作、难在哪</strong>（0004-0007）——推理/记忆/工具/复合系统 + 五大挑战<br><br>
+一句话总结：<strong>agent = 一个 LLM 内核 + 四类能力扩展，套在一个会累积误差的循环里。</strong>
+</div>
+
+<h2>七课一条线</h2>
+<pre class="loop">0001 这门课为什么存在
+      ↓ 双视角 + 三层划分（系统/数据/评估）
+0002 agent 的历史
+      ↓ 四段：词源 → 1990s 定义 → RL 时代 → LLM 时代
+0003 agent 的解剖
+      ↓ 五组件：LLM Core + 推理 + 记忆 + 工具 + 环境
+0004 推理为什么有用
+      ↓ ReAct / Self-Consistency / Reflexion / 辩论
+0005 记忆与工具
+      ↓ 三类记忆读写机制 + Toolformer/Gorilla
+0006 复合 AI 系统
+      ↓ workflow vs agent 判据 + RAG 三步 + 工具四步 + MCP
+0007 五大挑战
+      ↓ 可靠性/训练/长程/安全/评估
+0008 总结
+</pre>
+
+<h2>本讲最重要的四个判断</h2>
+
+<h3>判断一：属于哪一层？（0001）</h3>
+<pre class="loop">任何时候遇到 agent 问题，先问：
+  · 系统层（架构、流程、harness）
+  · 数据层（示例、上下文、训练数据）
+  · 评估层（metric、测试集）
+
+层不同 → 解法完全不同
+最常见错误：明明是评估问题，却在改架构
+</pre>
+
+<h3>判断二：步骤谁定？（0006）</h3>
+<pre class="loop">代码定步骤 → workflow（可复现、好调试）
+模型定步骤 → agent（灵活、但要观测兜底）
+
+这个判断在第一讲就给了，在 Lecture06 展开成完整判据。
+它是所有 agent 架构讨论的起点。
+</pre>
+
+<h3>判断三：可靠性够不够？（0007）</h3>
+<pre class="loop">不要问能不能做，要问能不能稳定做对。
+  单步 95% → 20 步 36%
+  → 关键是减少步数 或 每步加校验
+  → 还要问：失败了会怎样？可读吗？可恢复吗？
+</pre>
+
+<h3>判断四：任务成功＝安全吗？（0007）</h3>
+<pre class="loop">这是两个独立指标。
+  · 任务完成率
+  · 安全合规率
+
+很多系统第一个高、第二个低。
+医疗场景里，第二个是红线。
+</pre>
+
+<h2>五组件与三层的关系</h2>
+<table>
+  <tr><th>三层划分（0001）</th><th>对应的组件（0003）</th></tr>
+  <tr><td><strong>系统层</strong></td><td>LLM Core、Tools、Environment（架构、接口、环境设计）</td></tr>
+  <tr><td><strong>数据层</strong></td><td>Memory、上下文（示例、轨迹、检索内容）</td></tr>
+  <tr><td><strong>评估层</strong></td><td>不属于任何单一组件——横切所有组件</td></tr>
+</table>
+<p>这个对照说明：<strong>组件是"系统长什么样"，三层是"改动从哪下手"</strong>。同一个组件的问题，可能要在不同层解决——比如"记忆不够好"，可能是系统层（存储结构不对），也可能是数据层（存的示例不对）。</p>
+
+<h2>回头看那个警告（0001 的 RCT）</h2>
+<blockquote>
+RCT：52 名工程师学新 Python 库，用 AI 辅助的人后测低 17%，调试能力受损最重。
+</blockquote>
+<p>学完第一讲，更能理解这个结果为什么成立：</p>
+<pre class="loop">因为 agent 工程的难点不是写代码，是判断：
+  · 判断该用 workflow 还是 agent
+  · 判断问题在哪一层
+  · 判断可靠性够不够
+  · 判断失败可不可接受
+
+这些判断，让 AI 代劳就永远学不会。
+而调试能力正是做这些判断的基础。
+</pre>
+
+<h2>SGRT 工程桥：用四个判断审一遍你的排查助手</h2>
+<pre class="loop">【判断一：属于哪一层？】
+  你现在想做"排查助手"，但要先分清问题在哪层：
+    · 如果问题是"判断总出错" → 评估层（缺诊断标注集）
+    · 如果问题是"每次从零开始" → 数据层（缺记忆）
+    · 如果问题是"上下文爆掉"   → 系统层（缺上下文管理）
+  → 别一上来就改架构
+
+【判断二：步骤谁定？】
+  排查 = agent（根因未知，必须边查边定）
+  但"检查是否超过阈值"这一步 = workflow（规则判断）
+  → 混合：workflow 判阈值 → agent 做根因分析 → workflow 判安全红线
+
+【判断三：可靠性够不够？】
+  粗算：如果每步 95% 准，15 步排查 = 0.95^15 ≈ 46%
+  → 两条改进路径：
+     ① 减少步数（先分诊，别每步都全查）
+     ② 每步加校验（查到数据先验证是否可信）
+  → 目标：把关键路径压到 8 步以内
+
+【判断四：任务成功 = 安全吗？】
+  两个指标分开测：
+    · 诊断准确率（结论对不对）
+    · 建议安全率（建议会不会导致危险操作）
+  医疗场景：第二个是红线，不达标就不能上线
+
+【五组件自查】
+  LLM Core  ✔ 有
+  推理       ✔ ReAct（0004）
+  记忆       ✘ 缺（L07 补）
+  工具       ⚠️ 部分有，接口要结构化（L04）
+  环境       ✔ 有，但反馈可复现性要确认
+</pre>
+<p>这四项判断做完，你得到的不是"要不要做"，而是<strong>一张问题清单</strong>——按层分类，按优先级排序。这比直接动手写代码有用得多。</p>
+
+<h2>本讲小结</h2>
+<blockquote>
+<strong>三个问题</strong>：为什么需要（双视角+三层）／是什么（历史+五组件）／怎么工作与难在哪（推理记忆工具+五大挑战）。<br>
+<strong>四个判断</strong>：属于哪一层／步骤谁定／可靠性够不够／任务成功是否等于安全。<br>
+<strong>关系</strong>：组件是"长什么样"，三层是"从哪下手"。<br>
+<strong>警告</strong>：让 AI 代劳判断，你就永远学不会判断。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 第一讲的七课在回答哪三个问题？</p>
+  <details><summary>展开答案</summary><p>① 为什么需要这门课——建模与系统双视角、agent 工程三层划分、AI 辅助会降低掌握度的 RCT 证据；② agent 是什么、从哪来——四段历史（词源/1990s/RL/LLM）与五个组件（LLM Core+推理+记忆+工具+环境）；③ 它怎么工作、难在哪——推理的各种增强方法、记忆与工具、复合 AI 系统的三种形态、以及五大挑战。</p></details>
+  <p>Q2. 三层划分和五个组件之间是什么关系？</p>
+  <details><summary>展开答案</summary><p>组件是系统长什么样（有哪些部件），三层是改动从哪下手（系统层改架构工具环境、数据层改记忆与上下文、评估层改 metric 与测试集）。同一个组件的问题可能在不同层解决——比如记忆不够好，可能是系统层（存储结构不对）也可能是数据层（存的示例不对），要先定位到层再动手。</p></details>
+  <p>Q3. 步骤谁定这个判据和 0007 课的可靠性有什么关系？</p>
+  <details><summary>展开答案</summary><p>紧密相关：模型定步骤（agent）意味着路径不确定、步数不固定，错误累积风险更高——20 步每步 95% 就只剩 36%；代码定步骤（workflow）步数固定、路径确定，误差可控。所以"步骤谁定"不只是架构分类，它直接决定了可靠性风险的量级，这也是为什么建议先建 workflow 基线。</p></details>
+  <p>Q4. 为什么说让 AI 代劳判断会让你永远学不会？</p>
+  <details><summary>展开答案</summary><p>因为 agent 工程的难点不是写代码，而是做判断：该用 workflow 还是 agent、问题在哪一层、可靠性够不够、失败是否可接受。这些判断没有标准答案，只能靠反复实践建立直觉。让 AI 代劳等于跳过建立直觉的过程——RCT 显示被跳过的恰恰是调试类技能，而那正是做这些判断的基础。</p></details>
+</div>
+
+<h2>综合结业考试题</h2>
+<div class="takeaway">
+<strong>Lecture01 结业考试</strong>（把本讲当一个整体来考）：给一个真实的业务需求，要求你判断它该不该做成 agent、属于哪一层问题、五组件怎么配、最可能踩哪几个挑战。<br>
+<strong>→ 领取结业考试题</strong>：<a href="../综合题/Lecture01/结业考试-Lecture01-系统全设计.html">结业考试-Lecture01-系统全设计.md</a>（Markdown 作答制，作答区就在题目下方；答完对我说"评卷"）。
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture01 · 段六 总结 · Lecture01 收官</span><br>
+  ← 上一课 <a href="lecture01-0007-reliability-eval.html">0007 · 五大挑战</a> · <a href="../index.html">课程大纲</a> · 回顾 <a href="lecture01-0001-course-why.html">0001 · 这门课为什么存在</a><br>Lecture01 完结 → 回到 <a href="../index.html">课程大纲</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture01 课件《Intro to Agentic Systems》· 源文件夹 week1-9.23 · p70-71<br>
+Lesson 0008 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

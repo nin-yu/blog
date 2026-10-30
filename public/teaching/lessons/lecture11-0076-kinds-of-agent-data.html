@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0076 — agent 数据的两种形态：轨迹与环境</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture11 · Lesson 0076</span>
+  <h1>agent 数据的两种形态：轨迹与环境</h1>
+  <div class="meta">第 0076 课（Lecture11 第 2 课）· 来源：lecture11.pdf p12-18 · 来源文件夹：week6-10.28 · 本课成果：掌握 Trajectory 与 Environment 的用途差别、轨迹中哪些部分学习哪些只作上下文、四种奖励的可靠-通用取舍，能判断本项目该先建环境</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件引 Karpathy 的二分法（p13）：<strong>「conversations」与「environments」</strong><br><br>
+落到实操就是两种数据形态：<br>
+<strong>🎞 Trajectory 轨迹</strong>——一个 agent 解决任务的记录（任务文本 + 沙箱）→ 用来做 <strong>SFT</strong>，LM 模仿行为<br>
+<strong>📦 Environment 环境</strong>——任务（文本 + 沙箱）加上<strong>验证成功的机制</strong> → 用来做 <strong>RL</strong>，LM 练习 ReAct<br><br>
+一句话区分：<strong>轨迹告诉模型「该怎么做」，环境让模型「自己试到会」</strong>。
+</div>
+
+<h2>一、两种形态（p13）</h2>
+<pre class="loop">🎞 Trajectory（轨迹）
+  一个 agent 解决一个任务的记录
+  内容：Think / Act / Obs / Act / Obs / Submit
+  配：Task + Sandbox
+  用法：在这些 trace 上做监督微调（SFT）→ LM 模仿行为
+
+📦 Environment（环境）
+  一个任务（任务文本 + 沙箱）
+  + 一个验证成功的机制（Verifier）
+  用法：对这些任务做强化学习（RL）→ LM 练习 ReAct
+
+关键差别：
+  轨迹 = 有"标准答案路径"
+  环境 = 只有"对错判定"，没有路径
+</pre>
+<h2>二、轨迹的解剖（p14）——这一页极其重要</h2>
+<blockquote>
+<strong>轨迹的解剖：模型的训练目标就是预测动作。</strong><br>
+· <strong>学习部分</strong>：agent 的思考与动作<br>
+· <strong>仅作上下文</strong>：系统提示、任务、工具输出<br>
+· 格式（工具调用、ReAct 文本、代码动作）<strong>由 LM 周围的系统决定</strong>
+</blockquote>
+<pre class="loop">这个区分决定了训练做什么、不做什么：
+
+┌─────────────────────────────┐
+│ 系统提示      ← 仅上下文     │  不学
+│ 任务文本      ← 仅上下文     │  不学
+│ Think ...     ← 学习         │  ✓ 学
+│ Act ...       ← 学习         │  ✓ 学
+│ Obs ...       ← 仅上下文     │  不学
+│ Think ...     ← 学习         │  ✓ 学
+│ Act ...       ← 学习         │  ✓ 学
+│ Obs ...       ← 仅上下文     │  不学
+│ Submit        ← 学习         │  ✓ 学
+└─────────────────────────────┘
+
+为什么 Obs 不学：
+  观察是环境给的，不是模型产生的
+  让模型"学会输出观察"= 学会幻觉工具结果
+  → 这是最关键的一条训练纪律
+
+为什么格式由外围系统决定（p14 原话）：
+  "The format (e.g., tool calls, ReAct text, code actions)
+   is dictated by system around LM."
+  → 也就是说：训练数据和你的 harness 格式强绑定
+  → 这就是 0081 课要讲的"过拟合到 harness"的根源
+</pre>
+<h2>三、环境的解剖（p15）</h2>
+<blockquote>
+<strong>后训练任务/环境的解剖。轨迹可以通过在环境上跑 LM 并记录求解过程来生成。<br>
+（这个图在讲 agent 基准时会再出现！）</strong>
+</blockquote>
+<pre class="loop">Environment 的三个组成部分：
+  Sandbox / Environment   ← 可执行的世界
+  Task                    ← 问题描述
+  Verifier                ← 成功判定
+
+与 Lecture10 的对应关系：
+  Lecture10 的 Task + Environment + Verifier
+  = 这里的 Environment（整体）
+
+轨迹怎么来：
+  在环境上跑 LM → 记录过程 = 轨迹
+  → 所以"环境"是源，"轨迹"是产物
+  → 有环境就能持续产出轨迹（这是可扩展的关键）
+</pre>
+<h2>四、RL 的奖励从哪来（p16）——四种奖励</h2>
+<blockquote>
+对轨迹/SFT，奖励来自"预测正确的动作"。<br>
+那么对环境/RL，奖励来自哪？
+</blockquote>
+<table>
+  <tr><th>奖励类型</th><th>做法</th><th>特性</th></tr>
+  <tr><td><strong>Code Tests</strong> 代码测试</td><td>跑一套单元测试，确定性检查</td><td><strong>可靠，但窄</strong></td></tr>
+  <tr><td><strong>Rubrics</strong> 评分细则</td><td>让 LM/人检查一份清单是否满足</td><td>中等</td></tr>
+  <tr><td><strong>LM-as-a-Judge</strong> 模型判官</td><td>看 2+ 个解并排序</td><td>通用，但模糊</td></tr>
+  <tr><td><strong>Human Preference</strong> 人类偏好</td><td>实时评测，让人选最佳</td><td>最通用，最贵</td></tr>
+</table>
+<pre class="loop">课件给的两个标签（p16）：
+  Code Tests → "Reliable, but narrow"（可靠但窄）
+  其余三类 → "General, but fuzzy"（通用但模糊）
+
+这是 Lecture11 里最重要的一个取舍：
+  可靠 ↔ 通用，二者不可兼得
+
+对你的直接含义：
+  你的场景有 Code Tests 式的奖励吗？
+  ✔ 有：RMS 数值、角标率、阈值判定
+  → 所以你的场景天然适合"可靠但窄"的奖励
+  → 比通用但模糊的 LLM 判官好得多
+</pre>
+<h2>五、两种形态怎么训练（p17）</h2>
+<blockquote>
+<strong>📦 Environment</strong>：多次 rollout → 筛选 ⇒ SFT 数据（模仿保留的）<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;打分 ⇒ RL 更新（按奖励给尝试加权）
+</blockquote>
+<pre class="loop">这张图说明了环境是"上游"：
+
+  Environment
+      │
+      ├── 多次 rollout ──┬──► 筛选（保留成功的）──► SFT 数据
+      │                  │
+      │                  └──► 打分 ─────────────────► RL 更新
+      
+  → 一个环境能产出两种训练信号
+  → 这就是为什么"造环境"比"造轨迹"更有价值
+  → 轨迹是一次性的，环境是可复用的
+
+这个判断对资源有限的人特别重要：
+  · 标一条轨迹 = 一次性投入
+  · 建一个环境 = 可持续产出
+  → 优先建环境
+</pre>
+<h2>六、数据量级（p18）——一个真实参考</h2>
+<blockquote>
+各阶段用多少数据？实验室通常不披露。DeepSeek v3（两年前）、v3.2（一年前）是一个数据点：
+</blockquote>
+<pre class="loop">DeepSeek v3：
+  148 万亿 预训练 token
+  150 万   SFT 样例
+  v3.2：8.5 万  RL 任务提示
+
+算力对比（H800 GPU 小时）：
+  Pre  2,664k
+  Mid    119k
+  Post     5k
+  → 后训练算力只有预训练的约 0.2%
+
+一年后（v3.2）：后训练预算超过预训练的 10%
+  → 增长了 50 倍
+  → 说明"后训练/agent 数据"的投入在快速上升
+</pre>
+<p>这组数字的实际含义：</p>
+<pre class="loop">SFT 样例 150 万 vs 预训练 148 万亿 token
+  → 相差约 100 万倍
+  → 但后训练对最终体验的影响最大（Lecture02 讲过的结论）
+  
+"数据量小但影响大" → 所以质量比数量重要得多
+→ 这也是 0075 课 OT-Agent 发现的根据
+</pre>
+<h2>SGRT 工程桥：你该建环境还是攒轨迹</h2>
+<pre class="loop">【结论：两个都要，但顺序是先环境】
+
+为什么先建环境：
+  环境 = 任务 + 沙箱 + 验证器
+  → 有了它，你能反复跑、产生大量轨迹
+  → 轨迹是副产品，不需要人工标注
+
+你的"环境"长什么样：
+  Sandbox   : 一份脱敏的设备数据快照
+              （日志片段 + 参数配置 + 图像指标 + 案例库）
+  Task      : "为什么 10 月 29 日夜间残差升高？"
+  Verifier  : ① 结论码是否等于标注值
+              ② 证据是否包含关键项
+              ③ 是否建议了危险操作
+  → 30 个这样的环境 = 你的评测集 + 训练数据源
+
+【学 p16 的"可靠但窄"】
+  不要用 LLM 判官评"这个诊断好不好"
+  ✔ 用程序判定：结论码对不对、证据在不在
+  → 可靠、可复现、不会被讨好
+  → 这正是你的优势（医疗场景有客观数值）
+
+【学 p14 的"Obs 不学"纪律】
+  如果你将来做 few-shot 或微调：
+  ✔ 示例里给 Think 和 Act
+  ✘ 但不要把 Obs 当作"模型该输出的内容"
+  → Obs 是环境给的
+  → 否则模型会学会编造工具返回结果（幻觉工具输出）
+
+【学 p17 的"环境在上游"】
+  与其精心标注 50 条"完美排查过程"
+  不如建 30 个可反复跑的故障场景
+  → 后者能产出无限条轨迹
+  → 且能做 Pass^k 可靠性评估
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>两种形态</strong>：Trajectory（做 SFT，模仿）／Environment（做 RL，练习）。<br>
+<strong>轨迹解剖</strong>：学 Think/Act，不学 Obs（否则学成幻觉工具输出）；格式由 harness 决定。<br>
+<strong>四种奖励</strong>：Code Tests 可靠但窄；Rubrics/Judge/Human 通用但模糊——不可兼得。<br>
+<strong>环境在上游</strong>：一个环境可产出 SFT 数据 + RL 信号，轨迹是副产品。<br>
+<strong>量级参考</strong>：DeepSeek v3 预训练 148T token / SFT 150 万 / RL 提示 8.5 万；一年后后训练预算涨 50 倍。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. Trajectory 和 Environment 各用来做什么训练？核心差别是什么？</p>
+  <details><summary>展开答案</summary><p>Trajectory（轨迹）用来做 SFT——在记录的行为上做监督微调，LM 模仿。Environment（环境）用来做 RL——任务+沙箱+验证器，LM 自己练习 ReAct，靠奖励信号学习。核心差别：轨迹有「标准答案路径」（告诉模型该怎么做），环境只有「对错判定」没有路径（让模型自己试到会）。</p></details>
+  <p>Q2. 轨迹里的哪些部分是「学习」的、哪些只是「上下文」？为什么 Obs 不学？</p>
+  <details><summary>展开答案</summary><p>学习的是 agent 的思考（Think）、动作（Act）、提交（Submit）；仅作上下文的是系统提示、任务文本、工具输出（Obs）。Obs 不学因为观察是环境给的、不是模型产生的——让模型学会输出观察等于教它幻觉工具结果，部署时它会编造不存在的数据。这是训练数据构造中最关键的一条纪律。</p></details>
+  <p>Q3. 四种奖励各有什么特性？为什么说「可靠」和「通用」不可兼得？</p>
+  <details><summary>展开答案</summary><p>① Code Tests（跑单元测试）——可靠但窄；② Rubrics（LM/人检查清单）——中等；③ LM-as-a-Judge（看多个解排序）——通用但模糊；④ Human Preference（人实时选）——最通用最贵。不可兼得因为：程序化检查能给出确定答案但只能验证能写成代码的东西（窄）；人类偏好能评任何东西但没有客观标准、会漂移（模糊）。你的医疗场景有 RMS、角点率这类客观数值，所以天然适合「可靠但窄」的奖励。</p></details>
+  <p>Q4. 为什么说「造环境比造轨迹更有价值」？你的第一份环境该怎么建？</p>
+  <details><summary>展开答案</summary><p>因为环境是上游：一个环境可以反复 rollout，既产出 SFT 数据（筛选成功轨迹）又产出 RL 信号（按奖励加权），轨迹只是副产品。而标注一条轨迹是一次性投入。第一份环境：Sandbox = 一份脱敏设备数据快照（日志片段+参数配置+图像指标+案例库）；Task = 「为什么某夜残差升高」；Verifier = 结论码是否等于标注值 + 证据是否含关键项 + 是否建议危险操作。30 个这样的环境既是评测集也是训练数据源。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture11 · 段二 数据类型</span><br>
+  ← 上一课 <a href="lecture11-0075-why-data-matters.html">0075 · 为什么数据是主要杠杆</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture11-0077-human-demonstrations.html">0077 · 来源一：人类示范</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture11 课件《What Data Do Agents Need?》· 源文件夹 week6-10.28 · p12-18；DeepSeek v3 / v3.2 数据披露<br>
+Lesson 0076 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

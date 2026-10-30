@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0018 — 为什么需要检索：从猜答案到查证据</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture03 · Lesson 0018</span>
+  <h1>为什么需要检索：从猜答案到查证据</h1>
+  <div class="meta">第 0018 课（Lecture03 第 1 课）· 来源：lecture03.pdf p9-21 · 来源文件夹：week2-9.30 · 本课成果：理解 LLM 单独使用的三重局限、检索的三个价值，以及 Retriever-Reader 与 RAG 的形式化表述</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件用一个例子点破问题（p10）：<br><br>
+<strong>问："这周哪个答疑时间最不挤？"</strong><br>
+<strong>纯 LLM</strong>："试试周三下午——周中人通常最少"（<strong>猜的</strong>）<br>
+<strong>LLM + 检索</strong>：检索到"队列日志：周二16点平均14人等待；周四9点3人"→"周四9点，前面大概3个人"<br><br>
+检索解决三件事（p11）：<strong>动态更新</strong>、<strong>可解释（能给出引用）</strong>、<strong>不用模型记住一切</strong>。
+</div>
+
+<h2>一、LLM 单独用的问题（p10-11）</h2>
+<pre class="loop">LLM 的知识有三种局限：
+
+① 时效性 —— 训练截止后的事不知道
+② 私有性 —— 你公司的内部数据它没见过
+③ 精确性 —— 具体数字、日志、ID 它只会"编个像的"
+
+课件的例子正好命中第③点：
+  模型不知道这周真实的排队情况
+  但它不会说"我不知道"，而是给出一个"听起来合理"的答案
+  → 这是最危险的：错误但自信
+</pre>
+
+<h2>二、检索的三个价值（p11）</h2>
+<blockquote>
+· 不是让 LM 记住一切，而是<strong>在需要时提供相关且有用的内容</strong><br>
+· <strong>动态</strong>：容易更新/添加文档<br>
+· <strong>可解释</strong>：LM 能给出指向检索文档的引用，支持人工核实
+</blockquote>
+<pre class="loop">第三条最被低估：
+
+  没有检索："根据我的理解，你的阈值应该是 1.5mm"
+    → 你无法验证它从哪来的
+
+  有检索："根据《Trio-Track 标定规范 v2.3》第 4.2 节，阈值 1.5mm"
+    → 你能点开原文核对
+    → 这是医疗场景的刚需
+</pre>
+
+<h2>三、Retriever-Reader 框架（p12-13）</h2>
+<pre class="loop">输入：文档集合 D = {D₁, D₂, ..., D_N} 和一个问题 Q
+输出：答案字符串 A
+
+两步（p13）：
+  Retriever: f(D, Q) → P₁, ..., P_K     （K 预先定，比如 100）
+  Reader:    g(Q, {P₁..P_K}) → A
+
+课件把它叫"阅读理解问题"：
+  · Retriever 可以是标准 TF-IDF 稀疏模型（固定模块，不需要训练）
+  · Reader 可以是神经网络阅读理解模型，或零样本 LLM
+</pre>
+
+<h2>四、RAG 的形式化（p16-19）</h2>
+<pre class="loop">RAG 用概率语言重新表述：
+
+  retriever:  p(z|x)  —— 给定查询 x，返回 top-K 段落
+  generator:  p(y|x,z) —— 给定查询 x 和段落 z，逐 token 写答案
+
+最终概率：
+  p(y|x) ≈ Σ_{z ∈ top-K} p(z|x) · p(y|x,z)
+           ↑ 每个段落的答案，按检索器认为它有多相关来加权
+
+两种变体：
+  RAG-Sequence：选一个段落，用整段生成完整答案
+  RAG-Token   ：生成每个 token 时重新选段落
+</pre>
+<p>具体实现（p18-19）：<strong>DPR 当 retriever</strong>（p(z|x) ∝ exp(d(z)ᵀq(x))，d 和 q 都是 BERT 编码），<strong>BART 当 generator</strong>。</p>
+
+<h2>五、RAG 的变体家族（p21）</h2>
+<pre class="loop">Gao et al. 2024 的分类，课件只用一页图带过：
+  从"检索一次"到"多次检索"、从"固定流程"到"模型决定"
+  → 这条演进线就是后面 0024 课（Agentic RAG）的内容
+</pre>
+<h2>SGRT 工程桥：你的场景为什么必须用检索</h2>
+<pre class="loop">【如果不用检索，会发生什么】
+
+  问："这台设备上次标定是什么时候？"
+  纯 LLM 回答："根据常规做法，建议每三个月标定一次"
+  → 它把"不知道"变成了"给建议"
+  → 在医疗场景这是危险行为
+
+【用检索】
+  检索 → 命中标定记录表 → "2026-09-14，操作员张某，RMS 1.1mm"
+  → 精确、可核对、可追溯
+
+【你的三类可检索资产】
+  ① 技术文档（设备手册、标定规范）
+  ② 历史记录（标定日志、排查案例）
+  ③ 实时状态（当前设备参数、最近报警）
+
+【关键的合规价值】
+  检索结果可以带出处
+  → "依据《标定规范 v2.3》4.2 节"
+  → 这是审计能接受的
+  → 纯模型生成的结论审计不认
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>为什么</strong>：LLM 有时效/私有/精确三重局限，且会把"不知道"变成"听起来合理的错答案"。<br>
+<strong>三价值</strong>：动态更新、可解释（引用）、不必记住一切。<br>
+<strong>框架</strong>：Retriever f(D,Q)→P₁..P_K，Reader g(Q,{P})→A。<br>
+<strong>形式化</strong>：p(y|x) ≈ Σ p(z|x)p(y|x,z)；RAG-Sequence vs RAG-Token。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 纯 LLM 回答有哪些局限？为什么说"编造一个听起来合理的答案"比"说不知道"更危险？</p>
+  <details><summary>展开答案</summary><p>三重局限：① 时效性（训练截止后的事不知道）；② 私有性（内部数据没见过）；③ 精确性（具体数字、日志、ID 只会编个像的）。编造比说不知道更危险，因为它错误但自信——用户无法从语气判断这是真答案还是猜测，会直接采信。在医疗场景这种错误可能直接导致误判。</p></details>
+  <p>Q2. 检索的三个价值是什么？哪一个对医疗场景最关键？</p>
+  <details><summary>展开答案</summary><p>① 动态——容易更新和添加文档；② 可解释——LM 能给出指向检索文档的引用，支持人工核实；③ 不必让模型记住一切，按需提供相关内容。对医疗场景最关键的是可解释性：检索结果能带出处（"依据《标定规范 v2.3》4.2 节"），这是审计能接受的；纯模型生成的结论无法追溯，审计不认。</p></details>
+  <p>Q3. Retriever-Reader 框架的两步各做什么？K 是什么？</p>
+  <details><summary>展开答案</summary><p>Retriever 从文档集合 D 中为查询 Q 找出 K 个候选段落（f(D,Q) → P₁..P_K）；Reader 根据查询 Q 和这 K 个候选段落生成答案（g(Q,{P₁..P_K}) → A）。K 是预先定义的数量（如 100），代表检索阶段保留多少候选交给阅读阶段。</p></details>
+  <p>Q4. 你的三类可检索资产是什么？为什么检索对合规特别重要？</p>
+  <details><summary>展开答案</summary><p>① 技术文档（设备手册、标定规范）；② 历史记录（标定日志、排查案例）；③ 实时状态（当前设备参数、最近报警）。对合规重要是因为检索结果可带出处，形成可审计的证据链——监管和审计要求结论可追溯，而纯模型生成的结论无法追溯来源，无法作为合规依据。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture03 · 段一 为什么 RAG</span><br>
+  <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture03-0019-chunking-indexing.html">0019 · 分块与索引</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件《RAG + Agents》· 源文件夹 week2-9.30 · p9-21；RAG (Lewis et al. 2021, arXiv:2005.11401)、DPR (Karpukhin et al. 2020)<br>
+Lesson 0018 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

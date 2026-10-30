@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0050 — 模式二：分层记忆架构</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture07 · Lesson 0050</span>
+  <h1>模式二：分层记忆——MemGPT 与 MemoryOS 把内存/硬盘之分搬到 agent 上</h1>
+  <div class="meta">第 0050 课（Lecture07 第 5 课）· 来源：lecture07.pdf p42-49 · 来源文件夹：week4-10.14 · 本课成果：理解分层记忆的核心机制（让模型自己管理记忆）、工作区/回忆/归档三层各自装什么，以及 MemoryOS 的三层扩展</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+第二种模式（p42）：<strong>Tiered Memory Hierarchy——把长短期记忆分层组织</strong>。<br><br>
+<strong>MemGPT</strong>（p43-47）的核心洞察一句话：<strong>给 LLM 工具，让它自己管理自己的记忆</strong>。<br>
+它把操作系统那套搬了过来：<strong>Working Context</strong>（相当于内存）+ <strong>Recall Storage</strong>（可检索的近期历史）+ <strong>Archival Storage</strong>（长期归档）。<br><br>
+<strong>MemoryOS</strong>（p48-49）把层次细分：短期 / 中期 / 长期 + Persona（人格）记忆。
+</div>
+
+<h2>MemGPT 的核心洞察（p43）</h2>
+<blockquote>
+<strong>Give the LLM tools to manage its own memory.</strong>（给 LLM 管理自己记忆的工具）
+</blockquote>
+<p>这句话的分量在于：它把"记忆管理"从<strong>外部程序逻辑</strong>变成了<strong>模型的工具调用</strong>。模型自己决定"这条要记住""这条该忘了""去检索一下之前的"。</p>
+<pre class="loop">【传统做法】上下文满了 → 程序按规则截断最老的 → 模型无感知
+  问题：程序不知道什么重要，一刀切可能砍掉关键约束
+
+【MemGPT】模型看到上下文快满了 → 自己调用工具把某段写入归档
+        → 需要时再调用工具检索回来
+  好处：模型知道什么重要
+  代价：多消耗工具调用（延迟 + 成本），且依赖模型判断正确</pre>
+
+<h2>三层结构（p45-46）</h2>
+<pre class="loop">┌─────────────────────────────────────────────────┐
+│  Working Context（工作上下文）                    │
+│  相当于内存 / 寄存器                              │
+│  · 当前对话 + 系统指令                            │
+│  · 容量受限，就是模型的上下文窗口                  │
+│  → 已在上下文里，不需要检索（p46 原话）           │
+└───────────────┬─────────────────────────────────┘
+                │ Write / Replace
+                ▼
+┌─────────────────────────────────────────────────┐
+│  Recall Storage（回忆存储）                       │
+│  相当于近期历史 / 可检索的对话缓存                 │
+│  · 完整对话历史（超出工作窗口的部分）              │
+│  → 需要时 search 检索回来                         │
+└───────────────┬─────────────────────────────────┘
+                │
+                ▼
+┌─────────────────────────────────────────────────┐
+│  Archival Storage（归档存储）                     │
+│  相当于硬盘                                       │
+│  · 长期知识、文档、事实                            │
+│  → 同样通过 search 检索                           │
+└─────────────────────────────────────────────────┘</pre>
+<p>记忆操作（p45-46）：</p>
+<ul>
+  <li><strong>Write</strong>——把内容写入工作上下文</li>
+  <li><strong>Replace</strong>——替换工作上下文里的某段</li>
+  <li><strong>Search</strong>——从 Recall / Archival 里检索</li>
+</ul>
+
+<h2>这个类比的边界（很重要）</h2>
+<p>"内存 vs 硬盘"很好用，但有两个地方不成立，必须知道：</p>
+<table>
+  <tr><th>操作系统的假设</th><th>LLM 记忆的实际情况</th></tr>
+  <tr><td>内存换出/换入是<strong>无损</strong>的（字节原样搬运）</td><td>写进记忆时是<strong>有损</strong>的——模型要"总结"才能存下</td></tr>
+  <tr><td>寻址是<strong>精确</strong>的（地址给定就取到）</td><td>检索是<strong>相似度</strong>的——可能取到"看起来像"但不该用的东西</td></tr>
+</table>
+<p>这两个差异决定了：<strong>分层记忆不是免费的扩容，而是"用检索精度换容量"</strong>。</p>
+
+<h2>MemoryOS：更细的分层（p48-49）</h2>
+<pre class="loop">Short Term Memory（短期）
+    → 当前会话的即时上下文
+Medium Term Memory（中期）
+    → 会话级别的摘要 / 主题
+Long Term Memory（长期）
+    → 跨会话的稳定知识
+Persona Memory（人格记忆）
+    → 用户是谁、偏好什么、怎么说话</pre>
+<p>多出来的两层都很有实际意义：</p>
+<ul>
+  <li><strong>Medium</strong>：解决"整个会话讲完后,怎么快速回顾"——不是逐条翻历史，而是有主题摘要。</li>
+  <li><strong>Persona</strong>：把"用户画像"独立出来，直接对应第 54 课讲的 Personalization 收益。</li>
+</ul>
+
+<h2>SGRT 工程桥：分层在医疗场景里的特殊约束</h2>
+<pre class="loop">【MemGPT 的核心洞察在你的场景里要打折扣】
+
+课件说：给 LLM 工具让它自己管记忆
+你的场景：不能完全照搬
+原因：  让模型自主决定"哪条记忆被替换/归档"，
+       意味着关键信息可能在无审计的情况下被改写或移走。
+
+【可借鉴的部分】
+ 分层本身：工作区（当前排查）/ 回忆区（本次会话历史）/ 归档区（历史案例）
+ 用工具暴露"检索"接口，但"写入/替换"由规则触发
+
+【建议的分层设计】
+  Working   : 当前排查的 10-20 步上下文
+  Recall    : 本次排查的完整轨迹（只读，可检索）
+  Archival  : 历史案例库（跨会话，带设备/版本标记）
+  Persona   : 医疗设备不建议做"用户人格记忆"
+              （不同技师用同一台机器，混淆身份有风险）</pre>
+<p>最后一条是主动取舍：课件把 Persona Memory 当特性，但<strong>多用户共用设备的场景下,人格记忆会带来身份混淆风险</strong>。不是课件说错了，是场景不同。</p>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>模式二</strong>：分层组织长短期记忆，解决"上下文窗口装不下长期历史"。<br>
+<strong>MemGPT</strong>：给模型工具让它自管记忆（Write/Replace/Search）；三层=工作区/回忆/归档。<br>
+<strong>类比边界</strong>：换入换出有损、寻址靠相似度——分层是"用检索精度换容量"。<br>
+<strong>MemoryOS</strong>：短期/中期/长期/人格四层，中期=会话摘要，人格=用户画像。<br>
+<strong>医疗场景</strong>：分层可借鉴，但"让模型自主写入/替换"和"人格记忆"要谨慎。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. MemGPT 的核心洞察是什么？它相对"程序按规则截断"有什么优势、什么代价？</p>
+  <details><summary>展开答案</summary><p>核心洞察是给 LLM 工具让它自己管理记忆。优势：模型知道什么重要，可以主动把关键内容写入归档、需要时检索回来，而不是被程序一刀切砍掉关键约束。代价：多消耗工具调用（延迟和成本增加），且效果依赖模型的判断是否正确。</p></details>
+  <p>Q2. "内存 vs 硬盘"这个类比在 LLM 记忆里，哪两处不成立？后果是什么？</p>
+  <details><summary>展开答案</summary><p>① 换入换出不是无损的——写进记忆时模型要做总结，信息会丢失；而 OS 的换页是字节原样搬运。② 寻址不是精确的——检索靠相似度，可能取到看起来像但不该用的内容；而 OS 给地址就取到。后果：分层记忆不是免费扩容，而是用检索精度换容量。</p></details>
+  <p>Q3. MemoryOS 相比 MemGPT 多加了哪两层？各解决什么问题？</p>
+  <details><summary>展开答案</summary><p>多了 Medium Term Memory（中期记忆，会话级别的主题摘要，解决整个会话讲完后怎么快速回顾）和 Persona Memory（人格记忆，记录用户是谁、偏好什么、怎么说话，直接支撑个性化收益）。</p></details>
+  <p>Q4. 为什么医疗设备场景不建议做"用户人格记忆"？</p>
+  <details><summary>展开答案</summary><p>因为多用户共用同一台设备——不同技师、不同班次都会用。人格记忆会把 A 的偏好套用到 B 的操作上，造成身份混淆和误判风险，而且难以审计这条偏好是谁的。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture07 · 段四 架构模式 2/4</span><br>
+  ← 上一课 <a href="lecture07-0049-pattern-learning-procedures.html">0057 · 模式一</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture07-0051-pattern-reflective-memory.html">0059 · 模式三：反思式巩固</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture07 课件《Agent Memory Architectures》（Diyi Yang / Michael Ryan / John Yang）· 源文件夹 week4-10.14 · p42-49；参考 MemGPT (arXiv:2310.08560)、MemoryOS (arXiv:2506.06326)<br>
+Lesson 50 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0031 — 工具失败模式全景：单次、多步、对话三层</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture04 · Lesson 0031</span>
+  <h1>工具失败模式全景：单次、多步、对话三层</h1>
+  <div class="meta">第 0031 课（Lecture04 第 7 课Lecture04 收官）· 来源：lecture04.pdf p67-68 · 来源文件夹：week3-10.5 · 本课成果：掌握三层工具失败清单与各自的对策，理解为什么能在代码里拦的不要靠 prompt（Lecture04 收官）</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件把工具失败按<strong>三层</strong>归类（p67）——这是 L04 的收束：<br><br>
+<strong>单次调用 Single call</strong>：选错工具／参数错／调了不存在的工具<br>
+<strong>多步链 Multi-step chain</strong>：顺序错／错误恢复不当<br>
+<strong>对话 Conversation</strong>：违反策略／该问用户却自己假设／非确定性<br><br>
+最容易被忽略的是第三层：<strong>"非确定性——通过一次，重试失败"</strong>（就是上一课的 Pass^k）。
+</div>
+
+<h2>一、完整的三层失败清单（p67）</h2>
+<table>
+  <tr><th>层</th><th>失败类型</th><th>具体表现</th></tr>
+  <tr><td rowspan="3"><strong>单次调用</strong></td><td>Selection 选择</td><td>选错工具，或者在根本不需要工具时调了工具</td></tr>
+  <tr><td>Arguments 参数</td><td>编造字段、类型错、单位错</td></tr>
+  <tr><td>Hallucinated tool 幻觉工具</td><td>调用一个不存在的 API</td></tr>
+  <tr><td rowspan="2"><strong>多步链</strong></td><td>Sequencing 顺序</td><td>跳过前置调用，或顺序错</td></tr>
+  <tr><td>Recovery 恢复</td><td>重试同一个失败的调用，而不是退一步换方法</td></tr>
+  <tr><td rowspan="3"><strong>对话</strong></td><td>Policy 策略</td><td>规则明说不要做的地方做了</td></tr>
+  <tr><td>Interaction 交互</td><td>该问用户的时候自己假设了</td></tr>
+  <tr><td>Non-determinism 非确定性</td><td>通过一次，重试时失败（Pass^k）</td></tr>
+</table>
+
+<h2>二、逐类分析</h2>
+
+<h3>2.1 Selection：不该调却调了</h3>
+<pre class="loop">这类最隐蔽，因为输出"看起来完成了"：
+
+  用户："1+1 等于几？"
+  agent：调计算器 → 返回 2
+  → 结果对了，但这一步完全没必要
+  → 浪费一次调用/延迟/成本
+
+  更严重的：
+  用户："设备现在状态怎么样？"
+  agent：调了"修改阈值"工具（因为名字里有"设备"）
+  → 这是危险行为
+
+对策：
+  · 明确每个工具的"什么时候用"
+  · 提供"不需要工具"的路径（BFCL 那个相关性测试）
+  · 只读工具和写工具分开设计，写工具要求更强的前置判断
+</pre>
+<h3>2.2 Arguments：单位错是重灾区</h3>
+<pre class="loop">编造字段：{"path": "test.py", "encoding": "utf-8", "mode": "fast"}
+          ← mode 这个字段不存在
+
+类型错：  {"count": "5"} 该是数字却给了字符串
+
+单位错（最危险）：
+  阈值这个参数，代码 expecting mm，模型传了 0.15 以为是 15% 比例
+  → 实际阈值变成 0.15mm
+  → 系统以为一切正常，实际完全失效
+
+对策：
+  · schema 里写清 unit（"单位：毫米"）
+  · 参数名带单位（threshold_mm 而不是 threshold）
+  · 约束解码保证类型正确（Lecture02 讲过）
+  · 范围校验（reasoning：拒绝不合理的值）
+</pre>
+<h3>2.3 Hallucinated tool：调不存在的 API</h3>
+<pre class="loop">表现：
+  agent 输出 {"tool": "get_device_history", ...}
+  但这个工具从来没定义过
+  
+  来源：
+    · 训练数据里有类似工具的名字
+    · 模型按命名规律"推测"应该有一个
+
+对策：
+  · 严格校验工具名必须在注册表里
+  · 未知名要返回明确错误（"工具不存在，可用的是..."）
+  · 这个错误要能被模型看到，让它换
+</pre>
+<h3>2.4 Sequencing：跳过前置</h3>
+<pre class="loop">例：排查助手直接调"分析残差"工具
+    但没先调"获取标定信息"
+    → 拿到的残差没有基准，无法判断是否异常
+
+原因：模型不知道工具之间有依赖
+对策：
+  · 工具描述里写明前置条件
+    "recon_get_residual 需要先调用 device_get_calibration 获取基准"
+  · 或在工具内部自动补齐依赖（更可靠）
+  · 或在 agent 外层做顺序校验
+</pre>
+<h3>2.5 Recovery：重试同一个失败的调用</h3>
+<pre class="loop">典型死循环：
+  调 log_query(device, "2026-10-30") → 超时
+  agent 想："失败了我再试一次"
+  调 log_query(device, "2026-10-30") → 超时
+  ……重复 N 次
+
+为什么这是错"恢复"：
+  同样的输入 + 同样的环境 → 大概率同样的结果
+  正确的"退一步"应该是：
+    · 换查询范围（缩短时间窗）
+    · 换工具（查本地缓存而非远程）
+    · 上报（"该数据源不可用"）
+
+对策：
+  · 相同参数的重试上限（比如 2 次）
+  · 失败后强制要求"换一种方法"
+  · 明确告知模型可用的替代路径
+</pre>
+<h3>2.6 Policy：违反规则</h3>
+<pre class="loop">规则说："agent 不得修改任何影响照射的参数"
+agent 却调了 set_threshold(2.5)
+→ 即使这个修改"合理"，也违反了策略
+
+为什么会出现：
+  · 规则写在 prompt 里，模型可能"忽略"
+  · 模型可能认为"这是为用户好"
+  
+对策：
+  · 不能在 prompt 层解决（模型可以被说服）
+  · 必须在工具执行层拦截（写操作需要显式授权）
+  · 这就是 Lecture06 会讲的"闸门在代码里"
+</pre>
+<h3>2.7 Interaction：该问不问</h3>
+<pre class="loop">用户："把阈值调一下"
+agent：直接调 set_threshold(2.0)   ← 假设"调"=2.0
+→ 用户的意思可能是"调到 2.5"，也可能是"调低"
+
+对策：
+  · 参数缺失时要求澄清，而不是猜默认值
+  · 危险操作必须显式确认
+  · 在 prompt 里明确"参数不明确时必须询问"
+</pre>
+<h2>SGRT 工程桥：你的工具失败防护清单</h2>
+<pre class="loop">【按严重度】
+
+极高 · Policy 违反
+  必须：写操作在工具层拦截，不在 prompt 层
+  因为：模型可以被说服，代码不会
+
+极高 · Arguments 单位错
+  必须：参数名带单位（threshold_mm），schema 里写 unit
+  因为：单位错导致系统静默失效，最难发现
+
+极高 · Interaction 该问不问
+  必须：参数缺失/歧义时强制澄清
+  因为：医疗场景"猜用户意图"是事故源
+
+高 · Sequencing 跳过前置
+  建议：工具内部自动补齐依赖（比要求模型记住更可靠）
+
+高 · Recovery 死循环
+  建议：相同参数重试上限 2 次，之后强制换方法或上报
+
+中 · Selection 选错
+  建议：工具名语义化，只读/写分开，写工具额外确认
+
+中 · Hallucinated tool
+  建议：工具名严格校验，未知工具返回可用列表
+
+中 · Non-determinism
+  建议：评测用 Pass^k，降温度，关键判断投票
+
+【一个总体原则】
+  能在代码里拦的，不要靠 prompt
+  能自动补的，不要靠模型记住
+</pre>
+
+<h2>Lecture04 全讲总结</h2>
+<pre class="loop">一、为什么工具（p4-21）：RAG 两个上限 + LLM 四类做不到 + 工具定义
+二、学习调用（p22-45）：
+     Toolformer（自监督损失过滤）→ ToolkenGPT（工具当 token）
+     → ToolLLM（16k API + 检索器）→ Gorilla（RAT + AST 匹配）
+三、标准接口（p46-56）：REST（面向人）→ Function Calling（面向模型）
+                         → MCP（面向生态，tools/list + tools/call，inbound/outbound 分离）
+四、评估（p57-66）：BFCL（单次）／ToolBench（规模）／τ-bench（交互 + Pass^k）
+五、失败模式（p67）：单次调用 / 多步链 / 对话 三层
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>单次调用</strong>：选错工具／参数错（尤其单位）／幻觉工具。<br>
+<strong>多步链</strong>：跳过前置依赖／死循环重试。<br>
+<strong>对话</strong>：违反策略／该问不问／非确定性（Pass^k 低）。<br>
+<strong>总体原则</strong>：能在代码里拦的别靠 prompt；能自动补的别靠模型记。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 工具失败的三层是什么？各列三类具体失败。</p>
+  <details><summary>展开答案</summary><p>① 单次调用：Selection（选错工具或不该调却调）、Arguments（编造字段/类型错/单位错）、Hallucinated tool（调不存在的 API）；② 多步链：Sequencing（跳过前置调用或顺序错）、Recovery（重试同一个失败调用而不换方法）；③ 对话：Policy（违反规则）、Interaction（该问用户却自己假设）、Non-determinism（通过一次重试失败，即 Pass^k）。</p></details>
+  <p>Q2. 为什么"参数单位错"是最危险的参数错误？</p>
+  <details><summary>展开答案</summary><p>因为它会导致系统静默失效——代码 expecting mm，模型传了 0.15 以为表示 15% 比例，实际阈值变成 0.15mm。系统运行时不会报错、不会崩溃，而是以为一切正常，但实际的判定完全失效了。相比类型错误（会抛异常）或字段缺失（会报错），单位错最难发现，可能在临床使用很久后才暴露。对策：参数名带单位（threshold_mm）、schema 里写 unit、做范围校验。</p></details>
+  <p>Q3. "重试同一个失败的调用"为什么不是有效的恢复？该怎么改？</p>
+  <details><summary>展开答案</summary><p>因为相同输入 + 相同环境大概率产生相同结果——重试同一调用只是浪费时间和成本。有效的"退一步"应该是换方法：缩短查询时间窗、换数据源（本地缓存而非远程）、或上报"数据源不可用"。改法：设相同参数的重试上限（如 2 次），超过后强制要求换方法，并在 prompt/工具描述里明确列出可用替代路径。</p></details>
+  <p>Q4. 为什么 Policy 违反不能在 prompt 层解决？你的系统该怎么防？</p>
+  <details><summary>展开答案</summary><p>因为模型可以被说服或诱导——写在 prompt 里的规则可能被提示注入绕过，模型也可能自行判断"这是为用户好"。必须在工具执行层拦截：写操作（修改阈值、更新配置）需要显式授权，工具层校验调用者权限和参数范围，与模型说了什么无关。这是权限最小化原则，也是等保和医疗合规的要求。</p></details>
+</div>
+
+<h2>综合结业考试题</h2>
+<div class="takeaway">
+<strong>Lecture04 结业考试</strong>（把本讲当一个整体来考）：给一套设备接口，要求你设计工具层（schema、错误处理、权限分层）、选接口范式（REST/FC/MCP）、设计评测集（含 Pass^k），并预先列出会防哪些失败模式。<br>
+<strong>→ 领取结业考试题</strong>：<a href="../综合题/Lecture04/结业考试-Lecture04-工具与MCP.html">结业考试-Lecture04-工具与MCP.md</a>（Markdown 作答制，作答区就在题目下方；答完对我说"评卷"）。
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture04 · 段五 失败模式 · Lecture04 收官</span><br>
+  ← 上一课 <a href="lecture04-0030-evaluating-tool-use.html">0030 · 评估工具使用</a> · <a href="../index.html">课程大纲</a> · 回顾 <a href="lecture04-0025-why-tools.html">0025 · 为什么需要工具</a><br>Lecture04 完结 → 回到 <a href="../index.html">课程大纲</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture04 课件《Tool Use》· 源文件夹 week3-10.5 · p67-68<br>
+Lesson 0031 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

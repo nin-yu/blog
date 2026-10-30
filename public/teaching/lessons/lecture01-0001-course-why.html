@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0001 — 这门课为什么存在：建模视角 + 系统视角</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture01 · Lesson 0001</span>
+  <h1>这门课为什么存在：建模视角 + 系统视角</h1>
+  <div class="meta">第 0001 课（Lecture01 第 1 课）· 来源：lecture01.pdf p5-16 · 来源文件夹：week1-9.23 · 本课成果：理解 CS329Z 的双重视角定位、agent 工程的三层划分，以及那个反直觉的实验结论：用 AI 学习会降低掌握度</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+这门课存在的理由（p5）：<strong>LLM 时代需要同时具备"建模视角"和"系统视角"的人。</strong><br><br>
+<strong>LLM 的人</strong>知道模型怎么训练、怎么提示、怎么对齐、怎么评估<br>
+<strong>系统的人</strong>知道怎么建可靠软件：工具、API、环境、基础设施<br>
+<strong>这门课要求两边都懂</strong>——因为 agent 恰好长在两者的交界上<br><br>
+以及一个必须先知道的警告（p15）：<strong>用 AI 辅助学习，会让你的掌握度下降。</strong>
+</div>
+
+<h2>为什么需要两个视角（p5）</h2>
+<pre class="loop">只看建模视角的人会犯的错：
+  · 以为"模型更强 → 系统更强"（其实系统设计贡献更大）
+  · 不理解为什么同一个模型换个 harness 效果差一倍
+  · 无法判断"是模型不行还是脚手架不行"
+
+只看系统视角的人会犯的错：
+  · 把 LLM 当成确定性组件（它不会两次给同样答案）
+  · 用传统软件测试思路设计评估（覆盖不了语义正确性）
+  · 不理解 token、上下文、采样温度这些"系统参数"
+
+→ agent 工程要求你同时理解"模型能做什么"和"系统该怎么搭"
+</pre>
+
+<h2>课程的三层划分（p55）</h2>
+<p>课件把所有组件归纳成三层：</p>
+<pre class="loop">尽管 agent 有很多组件，但 agent 工程可以分为：
+
+  ① 系统（System）——架构设计等
+  ② 数据（Data）——训练样例、演示、上下文
+  ③ 评估（Evals 以及 Metric）
+</pre>
+<p>这三层后面在 Lecture09 会再出现一次（三支柱），是贯穿全课程的主轴。<strong>任何 agent 问题，先问它属于哪一层。</strong></p>
+
+<h2>Workflow 与 Agent 的分界（p56）</h2>
+<p>这是全课程最基础的一个判断，第一讲就给出了：</p>
+<blockquote>
+<strong>两者都是 compound AI systems（一个 LLM 加上其他组件）。区别在于：步骤由谁决定。</strong><br>
+<strong>Workflow</strong>：代码固定步骤（例：Agentless、AlphaCode 2）<br>
+<strong>Agent</strong>：LLM 决定步骤（例：SWE-agent）
+</blockquote>
+<p>课件用 AlphaCode 2 举例：<strong>微调 LLM 采样和评分程序 + 代码执行模块，能为一道编程题生成最多 100 万个解，然后过滤和评分</strong>。</p>
+<p>注意这个例子：<strong>它看起来非常"智能"，但步骤完全是代码固定的</strong>——所以它是 workflow，不是 agent。这个区分在 Lecture06 会展开成完整的判据。</p>
+
+<h2>那个必须先知道的警告（p15）</h2>
+<blockquote>
+<strong>技能会退化（The Hidden Cost: Skills Erode）</strong><br>
+RCT 实验，52 名工程师学习一个新的 Python 库，有 AI 辅助 vs 无 AI 辅助<br>
+<strong>用 AI 的人在后测中得分低 17%（约两个字母等级）</strong><br>
+<strong>差距在调试上最明显——而那正是资深工程师的核心技能</strong><br>
+—— Shen & Tamkin (Anthropic, 2026)
+</blockquote>
+<pre class="loop">这个实验的直接含义：
+
+  · 不是"AI 没用"——AI 能让你更快完成任务
+  · 而是"用 AI 完成任务" ≠ "你学会了"
+  · 尤其在调试类技能上，AI 代劳会阻止你建立自己的判断
+
+课件的态度（p16）：
+  "用 AI 来学习如何学习"——AI 是学习工具，不是答案机器
+</pre>
+
+<h2>为什么这一课要放这个警告</h2>
+<p>因为这门课教的正是"怎么用 AI 搭系统"。如果按最省事的方式学——让 AI 写完你就抄——你会得到一堆能跑但不理解的代码。</p>
+<pre class="loop">这门课的正确学法（对照实验结论）：
+  ✔ 先自己想一遍架构，再看课程怎么讲
+  ✔ 每课的折叠自测，先答再展开（这是检索练习，不是阅读）
+  ✔ 综合题必须用自己的话写（写不出来 = 没懂）
+  ✘ 直接看答案、跳过自测、只看结论
+
+这也解释了为什么所有自测的答案都是折叠的：
+  默认展开 → 你只是"读过" → 记住了幻觉
+  默认折叠 → 你先答 → 才是真正的检索练习
+</pre>
+
+<h2>SGRT 工程桥：为什么你必须懂两个视角</h2>
+<pre class="loop">你的处境：做医疗设备的算法（SGRT 表面追踪）
+
+  纯建模视角的局限：
+    你可能知道 ICP 配准的数学，但不知道
+    在 500ms 的时间预算内该降采样到多少、该用几个线程
+
+  纯系统视角的局限：
+    你可能能写出漂亮的 Qt 界面，但不知道
+    为什么刚性配准在腹部会失效、为什么必须做呼吸门控
+
+  agent 时代的新要求：
+    你要判断"这个功能该用规则写还是用 LLM"
+    → 需要同时知道 LLM 的能力边界（建模）和工程约束（系统）
+
+【本课程对你的实际价值】
+  不是教你"怎么调 API"
+  是教你"什么时候该用 agent、什么时候不该"
+  —— 这个判断错了，写再多代码都是白费
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>双视角</strong>：建模 + 系统，缺一个都会判断出错。<br>
+<strong>三层</strong>：系统 / 数据 / 评估——agent 问题的第一分类。<br>
+<strong>分界</strong>：workflow 用代码定步骤，agent 用 LLM 定步骤。<br>
+<strong>警告</strong>：用 AI 完成任务 ≠ 学会；RCT 显示掌握度低 17%，调试能力受损最重。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 为什么这门课强调"建模视角 + 系统视角"必须同时具备？各缺一个会犯什么错？</p>
+  <details><summary>展开答案</summary><p>因为 agent 长在两者交界处。只有建模视角会犯：以为模型更强系统就更强、不理解换 harness 为何效果差一倍、无法判断问题在模型还是脚手架。只有系统视角会犯：把 LLM 当确定性组件、用传统软件测试思路设计评估、不理解 token/上下文/温度这些系统参数。</p></details>
+  <p>Q2. agent 工程的三层划分是什么？为什么说它是"第一分类"？</p>
+  <details><summary>展开答案</summary><p>三层是：① 系统（架构设计等）；② 数据（训练样例、演示、上下文）；③ 评估（以及 metric）。说它是第一分类，因为任何 agent 问题都应该先问"属于哪一层"——层不同解法完全不同：系统层改架构、数据层改样本或上下文、评估层改 metric。搞错层就会用错方法。</p></details>
+  <p>Q3. AlphaCode 2 生成 100 万个解再过滤，为什么它是 workflow 而不是 agent？</p>
+  <details><summary>展开答案</summary><p>因为步骤完全由代码固定：采样、过滤、评分的流程是程序写死的，LLM 只负责在指定环节产出内容，不决定下一步做什么。虽然它看起来非常智能（生成百万级方案），但"智能"不等于"agent"——判据是控制流在哪，不是在代码里还是在模型里。</p></details>
+  <p>Q4. RCT 实验发现用 AI 辅助学习的工程师掌握度低 17%，差距最大在调试——这对你怎么用这门课意味着什么？</p>
+  <details><summary>展开答案</summary><p>意味着"让 AI 写完我抄"会让你得到能跑但不理解的代码。正确用法：先自己想一遍架构再看课程怎么讲；每课折叠自测必须先答再展开（这是检索练习而非阅读）；综合题必须用自己的话写，写不出来说明没懂。这也解释了为什么所有自测答案默认折叠——展开就变成"读过"，折叠才是真正的检索。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture01 · 段一 课程定位</span><br>
+  <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture01-0002-history-of-agents.html">0002 · agent 的历史：从拉美词源到 LLM 时代</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture01 课件《Intro to Agentic Systems》· 源文件夹 week1-9.23 · p5-16；RCT 实验：Shen & Tamkin (Anthropic, 2026)<br>
+Lesson 0001 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

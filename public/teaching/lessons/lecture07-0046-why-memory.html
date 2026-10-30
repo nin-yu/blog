@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0046 — 为什么 agent 需要记忆</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture07 · Lesson 0046</span>
+  <h1>为什么 agent 需要记忆：三类损失与三项收益</h1>
+  <div class="meta">第 0046 课（Lecture07 第 1 课）· 来源：lecture07.pdf p5-13 · 来源文件夹：week4-10.14 · 本课成果：能说出无记忆 agent 的三类损失、记忆带来的三项收益，并理解记忆在长程/多会话场景下为什么是必需品</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件把"为什么"讲成了<strong>账本的两面</strong>（p9-10）：<br><br>
+<strong>没有记忆 → 三类损失</strong>：丢流程（Loss of procedure）／丢知识（Loss of knowledge）／丢进度（Loss of progress）。<br><br>
+<strong>有记忆 → 三项收益</strong>：个性化（Personalization）／从经验学习（Learning from Experience）／有状态（Statefulness）。<br><br>
+一句话：<strong>记忆不是让 agent 变聪明，是让 agent 能"接着干"</strong>。
+</div>
+
+<h2>三类损失（p9）——每一类都是真实事故</h2>
+<pre class="loop">① Loss of procedure（丢流程）
+   "每一次你都得重新教它这个任务怎么做"
+   → 上次教过的三步骤，这次又忘了；你的教学成本永远不下降
+
+② Loss of knowledge（丢知识）
+   "重要的事实、规则、偏好会在会话之间丢失"
+   → 昨天说好的"我们的标定阈值是 1.5mm"，今天它又按 3mm 判
+
+③ Loss of progress（丢进度）
+   "会话越长，agent 会忘记它做过什么、早先的目标、早先的指令"
+   → 排查到第 30 轮，忘了最初要解决的是什么问题</pre>
+<p>注意第三类：它不是"跨会话"问题，是<strong>单次会话内部</strong>的衰减。这就是上下文工程（L06 第 51-52 课）要解决的"聚焦 vs 连续"张力——记忆是它的延伸。</p>
+
+<h2>三项收益（p10）</h2>
+<table>
+  <tr><th>收益</th><th>课件说法</th><th>工程含义</th></tr>
+  <tr><td><strong>Personalization</strong> 个性化</td><td>agent 能学会你的个人偏好</td><td>不再每次重复交代"不要类比、直接给结论"</td></tr>
+  <tr><td><strong>Learning from Experience</strong> 从经验学习</td><td>会话里学到的技能，之后还能用</td><td>解决过一次的问题，下次不必从头推理</td></tr>
+  <tr><td><strong>Statefulness</strong> 有状态</td><td>新对话可以接着上次做</td><td>"把上次那个方案再打开"——跨会话续作</td></tr>
+</table>
+
+<h2>三个例子（p11-13）：每个收益都有论文背书</h2>
+<pre class="loop">p11 个性化      → Jiang et al. 2025 (arXiv:2504.14225, PersonaMem)
+                  agent 记住用户偏好，随时间演化
+p12 从经验学习  → Wang et al. 2024 (arXiv:2409.07429, Agent Workflow Memory)
+                  把成功轨迹归纳成"工作流"复用
+p13 有状态      → Du et al. 2025 (arXiv:2505.20231)
+                  跨会话继续未完成的工作</pre>
+<p>这三个例子不是随便挑的——它们正好对应后面要讲的<strong>四种架构模式</strong>里的三种（见第 57 课）。</p>
+
+<h2>为什么现在才讲记忆（课程位置的含义）</h2>
+<p>前面六讲：L01 讲记忆<strong>类型</strong>（情景/语义/程序）、L02 讲上下文窗口、L06 讲上下文管理五模式。</p>
+<p>这一讲不一样的地方是：<strong>前面都在讲"当前这次会话内"，这一讲第一次跨会话</strong>。</p>
+<pre class="loop">L02 / L06  上下文工程   →  一次会话内，怎么塞下更多、怎么不跑偏
+L07        记忆架构     →  跨会话，怎么把东西留下来、下次还能找到</pre>
+<p>这个区分很重要：上下文工程的解是"删"，记忆的解是"存"。<strong>一个是节流，一个是仓储。</strong></p>
+
+<h2>SGRT 工程桥：你的排查助手现在"每天从零开始"</h2>
+<pre class="loop">【现状】假设排查助手每次对话都从零开始：
+
+  周一：排查"残差 RMS 偏高" → 定位到呼吸基线漂移 → 手动重校准
+  周二：又出现同类报警 → 助手再次从"先看图？先看呼吸？"开始问
+  → 这就是 Loss of procedure：同样的排查流程，每天教一遍
+
+【有记忆之后】
+  周一：把"呼吸基线漂移 → 查呼吸垫压力基线 → 重校准后复测"这条
+        成功路径存成 process memory
+  周二：同类报警 → 助手直接调出这条路径，只验证几个关键点
+  → Learning from Experience 生效
+
+【但注意第三类损失】
+  单次排查走到第 25 步时，助手可能忘了"最初用户说的是腹部区域残差高"
+  → 这是 Loss of progress，要靠 L06 的"保连续"解决，不是靠记忆</pre>
+<p>所以你的场景里三类损失都存在，但要分清：<strong>前两类靠记忆（跨会话），第三类靠上下文管理（会话内）</strong>。</p>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>三类损失</strong>：丢流程 / 丢知识 / 丢进度——前两个跨会话，第三个会话内衰减。<br>
+<strong>三项收益</strong>：个性化 / 从经验学习 / 有状态。<br>
+<strong>定位</strong>：上下文工程的解是"删"（节流），记忆的解是"存"（仓储）。<br>
+<strong>触发条件</strong>：长程、多会话、面向用户——三者占一个，就必须认真设计记忆。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 没有记忆的 agent 会有哪三类损失？哪一类其实不是"跨会话"问题？</p>
+  <details><summary>展开答案</summary><p>① Loss of procedure 丢流程——每次都要重新教任务；② Loss of knowledge 丢知识——事实/规则/偏好在会话间丢失；③ Loss of progress 丢进度——会话变长后忘记做过什么、早先目标和指令。第三类不是跨会话问题，而是单次会话内部的衰减，属于上下文管理（保连续）的范畴。</p></details>
+  <p>Q2. 记忆带来哪三项收益？</p>
+  <details><summary>展开答案</summary><p>Personalization 个性化（学会用户偏好）、Learning from Experience 从经验学习（会话里学到的技能之后能用）、Statefulness 有状态（新对话可以接着上次做）。</p></details>
+  <p>Q3. 上下文工程和记忆架构，解决的问题有什么本质不同？</p>
+  <details><summary>展开答案</summary><p>上下文工程解决"一次会话内怎么不跑偏、不撑爆"——手段是删（压缩、遮蔽、隔离），是节流。记忆架构解决"跨会话怎么把东西留下来、下次还能找到"——手段是存（文件/数据库/知识图谱），是仓储。两者互补：记忆卸载同时也是上下文腾挪的手段。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture07 · 段一 动机 · 为什么需要记忆</span><br>
+  <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture07-0047-memory-types.html">0055 · 四类记忆与参数/上下文之分</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture07 课件《Agent Memory Architectures》（Diyi Yang / Michael Ryan / John Yang）· 源文件夹 week4-10.14 · p5-13<br>
+Lesson 46 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

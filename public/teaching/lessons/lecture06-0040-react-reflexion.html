@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0040 — 推理模式一：ReAct 与 Reflexion</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture06 · Lesson 0040</span>
+  <h1>推理模式一：ReAct 与 Reflexion</h1>
+  <div class="meta">第 0040 课（Lecture06 第 3 课）· 来源：lecture06.pdf p31-42 · 来源文件夹：week3-10.12 · 本课成果：掌握 ReAct 与 Reflexion 的核心洞见、自我反思为何有害、CRITIC 如何用工具做验证，能为本项目设计基于客观反馈的反思机制</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+两个推理/行动模式，各有一个核心洞见：<br><br>
+<strong>ReAct（p33）</strong>——<strong>行动前先推理</strong>（reason before taking actions）<br>
+<strong>Reflexion（p37）</strong>——<strong>自我反思有用</strong>，但必须靠外部反馈<br><br>
+最关键的一条修正（p41）：<strong>让 LLM 评估自己的回答会导致性能下降</strong>——Reflexion 之所以有效是因为它用了<strong>外部环境反馈</strong>。而且这个发现<strong>早于推理模型出现</strong>，今天的自我反思一般已经内置在 LLM 的推理过程里，不再显式强制。
+</div>
+
+<h2>一、ReAct（p33-36）</h2>
+<blockquote>
+<strong>关键洞见：行动前先推理。</strong>
+</blockquote>
+<pre class="loop">ReAct 循环：
+  Thought  想（推理）
+  Act      做（调工具）
+  Obs      看（观察结果）
+  → 回到 Thought
+
+课件的一个有趣观察（p35）：
+  原始论文还做了 ReAct 的微调
+  → 说明"推理+行动"的模式可以被训练进模型
+
+重要性（p36 课件原话）：
+  · 行动前推理是有用的
+  · <strong>今天在行动前写思考仍然非常普遍</strong>
+</pre>
+<p>课件给了一张表（p36）对比"有推理"和"无推理"在各类任务上的表现——结论是插入推理普遍有增益。</p>
+
+<h2>二、Reflexion（p37-40）</h2>
+<blockquote>
+<strong>关键洞见：自我反思有用。</strong>
+</blockquote>
+<pre class="loop">算法结构（p38）：
+  尝试 → 得到结果 → 从评估/反馈中反思 → 把反思文本存起来
+  → 下次尝试时带上反思 → 表现改善
+
+课件的表述（p38）：
+  "Turn Evaluations/R[eflections]..."
+  → 关键是"评估"转成"反思文本"
+
+效果（p40）：
+  Reflexion 在多次试验中提升准确率
+</pre>
+<h2>三、自我反思的致命限制（p41）——本课最重要一页</h2>
+<blockquote>
+<strong>当要求 LLM 评估它自己的回答时，会导致性能下降。</strong><br>
+· Reflexion 通过使用<strong>外部环境反馈</strong>绕开了这个问题<br>
+· 这个发现<strong>早于推理模型</strong>——推理模型在推理过程中展现了令人印象深刻的自纠能力<br>
+· <strong>今天自我反思通常内置于 LLM 的推理中，而不是显式强制</strong>
+</blockquote>
+<pre class="loop">三层意思，逐层拆：
+
+① 让模型自评 → 变差
+   原因：模型倾向于认为自己的答案是对的
+   → 找不到自己的错，或者找到假错
+   → "自我评估"变成了"自我确认"
+
+② 所以 Reflexion 用的是外部反馈
+   不是"你觉得刚才回答得对吗"
+   而是"测试结果显示第 3 步失败"
+   → 客观信号，模型无法自我确认
+
+③ 现在不需要显式 Reflexion 了
+   推理模型（o 系列、R1）训练时就把自纠能力训进去了
+   → 你在 prompt 里写"反思一下"反而不如它内部推理的效果
+
+【结论】
+  显式 Reflexion 在"有外部反馈信号"时有用
+  在"只能自评"时有害
+</pre>
+<h2>四、CRITIC：给验证器加工具（p42）</h2>
+<blockquote>
+<strong>给验证器加外部工具是有用的！（做一个 agentic verifier）</strong>
+</blockquote>
+<pre class="loop">这个思路直接接着上一条：
+
+  问题：模型自评不可靠
+  解法：让"验证者"能调工具
+
+  例：
+    验证代码 → 真的跑测试
+    验证计算 → 真的算一遍
+    验证事实 → 真的去检索
+
+→ 这就是"agentic verifier"
+→ 验证者本身是一个 agent，而不是一次模型调用
+</pre>
+<h2>五、三种反思方式的对比</h2>
+<table>
+  <tr><th>方式</th><th>反馈来源</th><th>是否有效</th></tr>
+  <tr><td>模型自评（"你觉得对吗"）</td><td>模型自身</td><td><strong>通常有害</strong>——性能下降</td></tr>
+  <tr><td>Reflexion（外部反馈）</td><td>环境/测试/用户</td><td>有效</td></tr>
+  <tr><td>CRITIC（agentic verifier）</td><td>验证者调工具</td><td>更有效</td></tr>
+  <tr><td>推理模型内置自纠</td><td>训练来的内部机制</td><td>有效（且不需显式 prompt）</td></tr>
+</table>
+
+<h2>SGRT 工程桥：你的反思机制该怎么设计</h2>
+<pre class="loop">【你有天然的客观反馈 —— 这是巨大优势】
+
+可用的外部信号：
+  · 重投影 RMS（数值，客观）
+  · 角点匹配率（百分比）
+  · 标定后实测误差 vs 预期
+  · 历史案例的最终结论（事实验证）
+
+→ 这些都是"外部环境反馈"，Reflexion 能发挥作用
+
+【具体设计】
+
+① 标定失败后的反思
+  第一轮失败（RMS 2.8mm > 阈值）
+  → 反馈："边缘区域误差 4.2mm 显著高于中心 0.8mm"
+  → 反思："可能是镜头畸变模型不够，当前用的 3 参数"
+  → 第二轮改用 5 参数模型
+  ✔ 这是有效的 Reflexion（有客观反馈）
+
+② 诊断结论的反思
+  给出根因后，用历史案例验证
+  → 如果历史上有 3 个类似案例最终是另一个原因
+  → 反馈："相似案例中 3/3 最终是床板问题"
+  → 反思并修正结论
+  ✔ 有效
+
+【不要做的事】
+  ✘ 让模型"自己检查诊断对不对"
+    → 它会认为自己对的（p41 的发现）
+  ✘ 写 prompt "请反思你的答案是否准确"
+    → 无效甚至有害
+  ✔ 用客观数值、历史结论、规则检查作为反馈源
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>ReAct</strong>：行动前先推理；今天在行动前写思考仍非常普遍。<br>
+<strong>Reflexion</strong>：从评估中反思并存下反思文本，下次带上——但必须靠外部反馈。<br>
+<strong>关键限制</strong>：让 LLM 评估自己会导致性能下降。<br>
+<strong>CRITIC</strong>：给验证器加工具，做 agentic verifier。<br>
+<strong>现状</strong>：自纠能力已内置于推理模型，不再需要显式强制 Reflexion。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. ReAct 的核心洞见是什么？为什么今天还在用？</p>
+  <details><summary>展开答案</summary><p>核心洞见是"行动前先推理"——在采取动作之前插入 Thought 环节。今天还在用因为：推理能帮助泛化（不必为每种观察写规则）、帮助对齐（表达为什么这么做）、提供可观测性（能看出在哪一步想错），而且课件明确指出"今天在行动前写思考仍然非常普遍"，是 agent 设计的基本结构。</p></details>
+  <p>Q2. 为什么"让 LLM 评估自己的回答"会导致性能下降？Reflexion 怎么绕开？</p>
+  <details><summary>展开答案</summary><p>因为模型倾向于确认自己的答案——它找不到自己的错，或找到假错，于是"自我评估"退化成"自我确认"，把对的改成错的。Reflexion 绕开的方式是用外部环境反馈：不是问"你觉得刚才回答得对吗"，而是给客观信号（"测试结果显示第 3 步失败"），模型无法自我确认，只能面对事实。</p></details>
+  <p>Q3. 课件说"今天自我反思一般内置在推理里"——这对你写 prompt 意味着什么？</p>
+  <details><summary>展开答案</summary><p>意味着不要在 prompt 里显式要求"请反思你的答案"——推理模型（o 系列、R1）训练时已把自纠能力训进去了，显式要求反而不如它内部推理有效，还可能诱导模型做无效的自我确认。应该做的是提供外部反馈信号（数值、测试结果、历史结论），让模型的推理过程有真实依据去纠错。</p></details>
+  <p>Q4. 你的场景有哪些可用的"外部反馈"？该怎么设计反思机制？</p>
+  <details><summary>展开答案</summary><p>可用的外部反馈：重投影 RMS、角点匹配率、标定后实测误差、历史案例最终结论。设计方式：① 标定失败后给具体数值反馈（"边缘 4.2mm 高于中心 0.8mm"→ 反思可能是畸变模型参数不够 → 第二轮换 5 参数模型）；② 诊断结论用历史案例验证（"相似案例 3/3 最终是床板问题"→ 修正结论）。核心原则：反馈必须来自客观数据或事实，不能是"让模型自己检查对不对"。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture06 · 段三 推理/行动模式</span><br>
+  ← 上一课 <a href="lecture06-0039-workflow-patterns.html">0039 · 五种 workflow 模式</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture06-0041-codeact-planning.html">0041 · 推理模式二：CodeAct 与先规划再执行</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture06 课件《Agent Design Patterns and Scaffolds》· 源文件夹 week3-10.12 · p31-42；ReAct (arXiv:2210.03629)、Reflexion (arXiv:2303.11366)、CRITIC (arXiv:2310.01798)<br>
+Lesson 0040 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

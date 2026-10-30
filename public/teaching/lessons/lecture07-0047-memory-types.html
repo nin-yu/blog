@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0047 — 四类记忆与参数/上下文之分</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture07 · Lesson 0047</span>
+  <h1>四类记忆：工作、情景、语义、程序——以及参数记忆 vs 上下文记忆</h1>
+  <div class="meta">第 0047 课（Lecture07 第 2 课）· 来源：lecture07.pdf p14-22 · 来源文件夹：week4-10.14 · 本课成果：能把一个记忆需求准确归入四类之一，理解参数记忆与上下文记忆的分工，并知道哪几类根本没法进权重</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+四类记忆（p17-20，源自 CoALA 认知架构）：<br><br>
+<strong>Working 工作记忆</strong>——就是上下文窗口，当前正看着、正在推理的东西<br>
+<strong>Episodic 情景记忆</strong>——过去行为的序列（轨迹），通常是原始日志<br>
+<strong>Semantic 语义记忆</strong>——关于世界的事实、用户偏好、通用知识<br>
+<strong>Procedural 程序记忆</strong>——怎么完成任务的规则/技能（HOW）<br><br>
+横切一刀（p21）：<strong>参数记忆</strong>（进权重）vs <strong>上下文记忆</strong>（进 prompt）。<strong>情景记忆没有参数版本</strong>。
+</div>
+
+<h2>四类记忆逐一定义（p17-20）</h2>
+<table>
+  <tr><th>类型</th><th>课件定义</th><th>一句话记忆法</th></tr>
+  <tr><td><strong>Working</strong> 工作</td><td>通常是上下文窗口；agent 当前看到的、正在推理的内容；包含观察、目标、用户输入、内部推理</td><td><strong>"此刻眼前的东西"</strong></td></tr>
+  <tr><td><strong>Episodic</strong> 情景</td><td>agent 过去行为的序列（轨迹）；聊天机器人里就是所有历史对话；通常是发生过的原始日志</td><td><strong>"我做过什么"</strong></td></tr>
+  <tr><td><strong>Semantic</strong> 语义</td><td>存储关于世界的事实；用户细节、偏好、通用知识都属于它；这是人们想当然认为的"聊天机器人记忆"</td><td><strong>"我知道什么"</strong></td></tr>
+  <tr><td><strong>Procedural</strong> 程序</td><td>可作用于工作记忆、决定 agent 行为的规则集合；本质是 agent 的技能；关于<strong>如何</strong>完成任务的knowledge</td><td><strong>"我会怎么做"</strong></td></tr>
+</table>
+
+<h2>为什么工作记忆单独成一类</h2>
+<p>前三类是"存起来的"，工作记忆是"正在用的"。它的容量由模型上下文窗口决定——这直接把它和 L02/L06 的内容接上了：</p>
+<pre class="loop">Working Memory = 上下文窗口
+  → 容量有限（L02 讲过 O(n²) 的代价）
+  → 需要工程管理（L06 五模式：事件日志/卸载/压缩/遮蔽/隔离）
+  → 它的"内容"是四类记忆里唯一实时变化的</pre>
+<p>所以工作记忆不是"一种存储"，是<strong>一个展示窗口</strong>。另外三类都要想办法把内容<strong>搬进</strong>这个窗口才有用。</p>
+
+<h2>关键的一刀：参数记忆 vs 上下文记忆（p21）</h2>
+<pre class="loop">                参数记忆（Parametric）          上下文记忆（Context）
+                ─────────────────────           ─────────────────────
+载体            模型权重里                      模型上下文里
+怎么来          预训练 + 微调                   检索/组装后拼进 prompt
+─────────────────────────────────────────────────────────────────────
+Semantic        预训练知识                      ✔ 检索到的事实
+Procedural      指令跟随能力                    ✔ 检索到的技能
+Episodic        ✘ 不适用（N/A）                 ✔ 检索到的历史对话
+─────────────────────────────────────────────────────────────────────
+管理方式        （训练时决定）                  由 context manager 拉取
+</pre>
+<p><strong>最值得注意的是 Episodic 那格的 N/A</strong>。为什么情景记忆不能进权重？</p>
+<ul>
+  <li>情景记忆是<strong>具体事件</strong>（"上周二我在那台机器上跑过什么"），不是可泛化的规律。</li>
+  <li>把具体事件训进权重是<strong>过拟合</strong>：模型会开始复述训练里的具体案例，而不是学会能力。</li>
+  <li>而且事件在变，权重不能天天重训。</li>
+</ul>
+<p>这条判断很重要：<strong>凡是"具体发生过的事"，只能放上下文或外部存储；只有"可泛化的规律/技能"，才值得进权重。</strong></p>
+
+<h2>CoALA 的位置（p15-16）</h2>
+<p>课件引用 Sumers et al. 2024 的 CoALA（Cognitive Architectures for Language Agents）作为这套分类的来源。CoALA 做的事是：<strong>把认知科学里对人的记忆分类，映射到语言 agent 上</strong>。</p>
+<pre class="loop">认知科学                语言 Agent
+──────────────────────────────────────
+工作记忆        →      上下文窗口
+情景记忆        →      交互轨迹日志
+语义记忆        →      知识库/事实存储
+程序记忆        →      技能/提示/代码</pre>
+<p>这个映射的价值不是学术上的，而是<strong>给你一把尺子</strong>：接到一个记忆需求时，先问"这属于哪一类"，再决定存哪里、怎么取。</p>
+
+<h2>SGRT 工程桥：你的项目里四类记忆分别是什么</h2>
+<pre class="loop">【Working】当前这次排查的上下文
+  用户这句话 + 已读到的设备状态 + 当前推理
+  → 受模型窗口限制，用 L06 五模式管
+
+【Episodic】排查轨迹日志
+  "2026-10-30 14:23 查了呼吸曲线，呼气末抖动 120ms"
+  → 原始事件流。⚠️ 不能进权重！这是具体事件
+  → 存数据库/事件日志，按需检索
+
+【Semantic】设备与规程知识
+  "这台机器标定板 12mm 球，阈值 1.5mm，等中心 kV 锚定"
+  → 可进权重（预训练/微调都行）也可检索
+  → 但医疗场景更倾向检索：可审计、可更新、可追责
+
+【Procedural】排查技能
+  "先排除图像质量 → 再查呼吸 → 再查机械 → 最后查罕见原因"
+  → 可以写成 skill 文件（可更新），也可以微调进权重
+  → 医疗场景建议 skill 文件：改一行就生效，不用重训</pre>
+<p>这里有个医疗行业的<strong>强约束</strong>：法规要求"可追溯、可变更管理"。所以语义和程序记忆<strong>宁愿走检索/文件，也不走权重微调</strong>——因为权重里改了什么，你没法给别人看。</p>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>四类</strong>：工作（当前）+ 情景（做过）+ 语义（知道）+ 程序（会做）。<br>
+<strong>两分法</strong>：参数记忆（进权重）vs 上下文记忆（进 prompt）。<br>
+<strong>关键例外</strong>：情景记忆没有参数版本——具体事件不能进权重，只能检索。<br>
+<strong>选型尺子</strong>：先归类，再决定存哪里；医疗场景偏好"检索/文件"而非"微调进权重"。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 四类记忆分别是什么？各用一句话说清它存什么。</p>
+  <details><summary>展开答案</summary><p>Working 工作记忆——上下文窗口，当前正看到和推理的内容；Episodic 情景记忆——过去行为的序列/轨迹，通常是原始日志；Semantic 语义记忆——关于世界的事实、用户偏好、通用知识；Procedural 程序记忆——决定行为的规则集合，即"如何完成任务"的技能。</p></details>
+  <p>Q2. 为什么情景记忆没有"参数版本"（N/A）？</p>
+  <details><summary>展开答案</summary><p>因为情景记忆是具体发生的事件，不是可泛化的规律。把具体事件训进权重会导致过拟合——模型开始复述训练中的具体案例而不是学到能力；而且事件持续在变，权重不可能天天重训。所以情景记忆只能放上下文或外部存储，按需检索。</p></details>
+  <p>Q3. 在医疗设备场景下，为什么语义/程序记忆更倾向于"检索/文件"而不是"微调进权重"？</p>
+  <details><summary>展开答案</summary><p>因为可追溯与变更管理。检索用的知识库/技能文件，改了什么、谁改的、什么时候改的都能留痕、能回滚、能给监管看；权重微调改了什么无法直接展示，也难以做版本对比。所以医疗场景宁可牺牲一点性能，也要把知识放在可审计的载体上。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture07 · 段二 记忆类型</span><br>
+  ← 上一课 <a href="lecture07-0046-why-memory.html">0054 · 为什么需要记忆</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture07-0048-memory-what-when-how.html">0056 · What/When/How 与三种存储系统</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture07 课件《Agent Memory Architectures》（Diyi Yang / Michael Ryan / John Yang）· 源文件夹 week4-10.14 · p14-22<br>
+Lesson 47 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

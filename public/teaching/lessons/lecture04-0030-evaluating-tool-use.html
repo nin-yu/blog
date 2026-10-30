@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0030 — 评估工具使用：BFCL、ToolBench、τ-bench 与 Pass^k</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture04 · Lesson 0030</span>
+  <h1>评估工具使用：BFCL、ToolBench、τ-bench 与 Pass^k</h1>
+  <div class="meta">第 0030 课（Lecture04 第 6 课）· 来源：lecture04.pdf p57-66 · 来源文件夹：week3-10.5 · 本课成果：掌握三个基准各自评的层次、Pass^k 与 pass@k 的本质差别，能为本项目设计出可靠导向的评测集</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+三个评测基准，各评一个层次（p58-66）：<br><br>
+<strong>BFCL</strong>（Berkeley）——评<strong>单次调用</strong>是否写对（AST 离线 + 真执行）<br>
+<strong>ToolBench</strong>——评<strong>16k 真实 API 上的选对与多步</strong><br>
+<strong>τ-bench</strong>——评<strong>工具-代理-用户三者交互</strong>，用 <strong>Pass^k</strong> 衡量可靠性<br><br>
+其中 <strong>Pass^k 是最值得记住的指标</strong>（p64）：它衡量"重复 k 次都成功"的概率，而不只是"至少成功一次"。
+</div>
+
+<h2>一、BFCL（p58-60）</h2>
+<blockquote>
+BFCL：一个全面评估 LLM 调用函数（即工具调用）能力的框架
+</blockquote>
+<pre class="loop">三种评估方式（p59）：
+  · AST 离线评估 —— 把调用解析成语法树比对，不需要真执行
+  · 真实执行评估 —— 真的调用函数看结果
+  · 状态评估 —— 针对多步、多轮调用（检查环境状态对不对）
+
+数据集特点：
+  · 来自真实用例
+  · 为函数调用建立了不同分类体系
+  · 覆盖 Python、C++、Java、SQL 等语言
+  · 测试"相关"和"不相关"两种情况
+    ← "不相关"指：提供的所有函数都与用户查询无关
+      → 正确行为是"不调用"
+
+→ 最后这个设计很关键：
+  只测"能不能调对"会漏掉"根本不该调"的情况
+  一个总爱乱调工具的模型，在相关性测试上会失败
+</pre>
+<p>课件给了几个示例（p60）：多函数场景、参数填错、不需要调用等。</p>
+
+<h2>二、ToolBench / ToolLLM（p61-62）</h2>
+<blockquote>
+· 从 RapidAPI 爬取 6000+ 真实 API<br>
+· 整理出涉及这些 API 的真实人类指令
+</blockquote>
+<pre class="loop">规模：16k+ API（p61-62）
+
+评什么：
+  · 大规模下能不能选对 API（对应 0027 课的检索问题）
+  · 多步调用能不能串起来
+
+和 BFCL 的差异：
+  BFCL      → 受控的函数集，测单次调用的正确性
+  ToolBench → 真实 API 海量，测"在真实规模下能不能用"
+</pre>
+<h2>三、τ-bench：最接近真实场景（p63-66）</h2>
+<blockquote>
+<strong>τ-bench：Tool-Agent-User Interaction</strong>
+</blockquote>
+<pre class="loop">三个角色同时存在：
+  Tool  —— 工具（有状态、会失败）
+  Agent —— 被评测的模型
+  User  —— 模拟用户（会追问、会改需求、会不满）
+
+为什么这个设计重要：
+  真实场景里 agent 不是"对着一个静态问题调工具"
+  而是"和用户对话，在过程中调工具"
+  → 需要判断何时该问用户、何时该自己决定
+  
+课件的评估维度（p67 提到 τ-bench 相关内容）：
+  策略：规则说不该做的时候做了
+  交互：该问用户的时候自己假设了
+</pre>
+<h2>四、Pass^k：本课最重要的指标（p64）</h2>
+<blockquote>
+<strong>Pass^k 用来奖励可靠性与一致性</strong>
+</blockquote>
+<pre class="loop">两个不同的指标：
+
+  pass@k  = P(≥1 of k trials succeeds)  ← 只要成功一次
+  Pass^k  = P(all k trials succeed)     ← 必须全部成功
+
+举例：某个模型单次成功率 80%
+  pass@3  = 1 - 0.2³ = 99.2%     看起来极好
+  Pass^3  = 0.8³    = 51.2%      实际只有一半
+
+→ 差距巨大
+</pre>
+<p>为什么这个区别是本质的：</p>
+<pre class="loop">pass@k 适合：探索/采样场景
+  "只要找到一次正确答案就行"（如数学题多采样投票）
+  → 这是 Lecture02 讲的 repeat sampling
+
+Pass^k 适合：可靠性场景
+  "每次都必须成功"（如生产系统的自动化操作）
+  → 用户不会接受"三次里成功一次"
+
+课件把 Pass^k 放在 τ-bench 里，含义很清楚：
+  真实的工具使用场景要求"每次都靠谱"，不是"偶尔能行"
+</pre>
+<h2>五、三个基准的定位对比</h2>
+<table>
+  <tr><th>基准</th><th>评的重点</th><th>关键指标</th><th>适合回答</th></tr>
+  <tr><td><strong>BFCL</strong></td><td>单次调用正确性</td><td>AST 匹配率、执行成功率</td><td>"这个模型会不会写对的调用"</td></tr>
+  <tr><td><strong>ToolBench</strong></td><td>海量 API 下选对与多步</td><td>成功率、通过率</td><td>"在真实规模下能不能用"</td></tr>
+  <tr><td><strong>τ-bench</strong></td><td>工具-代理-用户交互</td><td><strong>Pass^k</strong></td><td>"用起来可不可靠"</td></tr>
+</table>
+
+<h2>SGRT 工程桥：你该用 Pass^k 还是 pass@k</h2>
+<pre class="loop">【你的排查助手：必须用 Pass^k】
+
+原因：临床场景不接受"三次成功一次"
+  假设 agent 自动给排查建议，成功率 80%
+    pass@3 = 99.2%  ← 看起来能用
+    Pass^3 = 51.2%  ← 实际上两次里有一次不可靠
+  → 对医生来说，51% 的可靠性完全不可用
+
+【你的评估该怎么设计】
+
+① 建 30 个历史案例的评测集
+② 每个案例跑 3 次（同一输入）
+③ 计算：
+   - 单次准确率（30×3 里对了多少）
+   - Pass^3（30 个案例里，3 次全对的有几个）
+
+【预期结果】
+  单次准确率可能 75%
+  Pass^3 可能只有 40%
+  → 这个差距就是"不可靠性"
+  → 差距越大，越说明系统的输出不稳定
+  → 而不稳定本身就是缺陷（不只是"准确率不够"）
+
+【降低 Pass^3 差距的手段】
+  · 降低温度（减少随机性）—— 见效最快
+  · 结构化输出（减少格式抖动）
+  · 关键判断拆成多次投票（一致才算通过）
+  · 规则兜底（确定性部分不用模型）
+
+【BFCL 那个"不相关"设计的启示】
+  你的评测集必须包含"不该给建议"的案例：
+    设备完全正常，问"有什么问题"
+    → 正确行为是"未发现异常，无需干预"
+    → 而不是编一个问题出来
+  这类案例最能暴露乱调用/乱输出的毛病
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>BFCL</strong>：AST 离线 + 真执行 + 状态评估；特别包含"所有函数都不相关"的测试。<br>
+<strong>ToolBench</strong>：16k 真实 API，测大规模下的选择与多步。<br>
+<strong>τ-bench</strong>：工具-代理-用户三方交互，最接近真实场景。<br>
+<strong>Pass^k vs pass@k</strong>：前者要求每次都成功，后者只要一次成功——生产场景必须看前者。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. BFCL 的三种评估方式是什么？为什么它要包含"所有函数都不相关"的测试？</p>
+  <details><summary>展开答案</summary><p>三种：① AST 离线评估（解析成语法树比对，不真执行）；② 真实执行评估（真调函数看结果）；③ 状态评估（针对多步多轮，检查环境状态）。包含"不相关"测试是因为只测"能不能调对"会漏掉"根本不该调"的情况——一个总爱乱调用工具的模型，在相关性测试上会失败。真实系统里"不该调却调了"同样有害。</p></details>
+  <p>Q2. Pass^k 和 pass@k 的公式差别是什么？为什么单次 80% 的模型两者差距巨大？</p>
+  <details><summary>展开答案</summary><p>pass@k = P(k 次中至少 1 次成功)，Pass^k = P(k 次全部成功)。单次 80%、k=3 时：pass@3 = 1-0.2³ = 99.2%，Pass^3 = 0.8³ = 51.2%——差距近一倍。原因是 pass@k 靠"多次尝试覆盖"，只要有一次成功就算过；Pass^k 要求每次都稳定，把不确定性完全暴露出来。</p></details>
+  <p>Q3. 为什么临床场景必须看 Pass^k 而不是 pass@k？</p>
+  <details><summary>展开答案</summary><p>因为临床不接受"三次里成功一次"。如果 agent 自动给排查建议、单次成功率 80%，pass@3 显示 99.2% 看起来能用，但 Pass^3 只有 51.2%——意味着两个案例里就有一个在某次运行中给出错误建议，医生无法信任。可靠性本身就是临床系统的必要指标，不只是"平均准确率够不够"。</p></details>
+  <p>Q4. τ-bench 为什么要引入"用户"这个角色？它评测的是什么？</p>
+  <details><summary>展开答案</summary><p>因为真实场景里 agent 不是对着静态问题调工具，而是和用户对话、在过程中调工具——需要判断何时该问用户澄清、何时该自己决定。τ-bench 用模拟用户（会追问、改需求、表达不满）来评测：策略（规则说不该做时是否做了）、交互（该问用户时是否自己假设了）、非确定性（Pass^k）。这比单纯"函数调用对不对"更接近生产现实。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture04 · 段四 评估工具</span><br>
+  ← 上一课 <a href="lecture04-0029-mcp-example.html">0029 · MCP 实战</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture04-0031-tool-failure-modes.html">0031 · 工具失败模式（收官）</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture04 课件《Tool Use》· 源文件夹 week3-10.5 · p57-66；BFCL (Patil et al. 2025)、ToolBench (Qin et al. 2023)、τ-bench (Yao et al. 2024)<br>
+Lesson 0030 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

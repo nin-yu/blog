@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0032 — 什么叫工程化一个 agent：三支柱与控制流谱系</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture05 · Lesson 0032</span>
+  <h1>什么叫工程化一个 agent：三支柱与控制流谱系</h1>
+  <div class="meta">第 0032 课（Lecture05 第 1 课）· 来源：lecture05.pdf p4-18 · 来源文件夹：week3-10.7 · 本课成果：掌握三支柱的构成与控制流谱系的五个位置，能为本项目的工作逐一定位</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+这一讲回答的问题：<strong>工程化一个 agent，到底工程化什么？</strong><br><br>
+三根支柱（p10-12）：<strong>Data（数据）+ System/Model（系统或模型）+ Evaluation+Metric（评估与指标）</strong><br>
+→ 三者合起来才是 AI 系统工程<br><br>
+以及一个贯穿全讲的坐标（p14-16）：<strong>控制流谱系</strong>——从"逻辑在程序里"到"控制流是模型的职责"。框架就是在这根谱系上选择位置的工具。
+</div>
+
+<h2>一、为什么需要框架（p4-5）</h2>
+<pre class="loop">课件的类比（p4）：
+  手写反向传播  vs  用 PyTorch 写反向传播
+
+前者：你完全掌控每一步，但要自己算梯度、处理数值稳定性
+后者：框架帮你处理细节，你专注于设计
+
+框架的作用（p5 原文）：
+  框架抽象掉了底层的系统细节
+  在后续课程里，你会学到这带来的好处和代价
+</pre>
+<p>这个类比的关键在后半句：<strong>抽象是有代价的</strong>。用 PyTorch 很方便，但出问题时你得知道自动求导在干什么。这个主题在本讲最后一课（挑战与限制）会展开。</p>
+
+<h2>二、三根支柱（p10-12）</h2>
+<table>
+  <tr><th>支柱</th><th>包含什么</th></tr>
+  <tr><td><strong>Data</strong></td><td>训练数据、rollouts、演示样例、人类反馈…</td></tr>
+  <tr><td><strong>System / Model</strong></td><td>语言模型、复合 AI 系统/工作流、agent 系统…</td></tr>
+  <tr><td><strong>Evaluation + Metric</strong></td><td>通过率、精确匹配、LLM Judge、成本/延迟…</td></tr>
+</table>
+<p>课件用三页动画把这三根柱子合成一个 AI System Engineering（p11-12）。这个可视化想传达的是：<strong>只做其中一项都不叫工程</strong>。</p>
+<pre class="loop">只有 System（会写代码搭 agent）
+  → 不知道做得好不好，改也不知道改对没有
+
+只有 Data（有数据）
+  → 不知道系统哪里有问题
+
+只有 Eval（会评测）
+  → 没有可评的对象
+
+→ 工程 = 三者形成闭环
+</pre>
+
+<h2>三、控制流谱系：全讲的坐标（p14-16）</h2>
+<p>这是本讲最重要的一张图，它把后面所有内容定位在同一根轴上：</p>
+<pre class="loop">        ◄── 逻辑与编排在「程序」里          控制流是「AI 模型」的职责 ──►
+
+  Model ──── Workflow / Compound AI System ──── Agent ──── Small part of a larger system
+
+  只用 API      代码定步骤                    模型定步骤      只是更大系统的一小块
+
+  对应框架：
+  OpenAI API    DSPy / LangGraph              Agent harness   ……
+  Anthropic API
+</pre>
+<p>课件还标了三个 Part（p16）：</p>
+<ul>
+  <li><strong>Part 1</strong>：Workflows and Programs（DSPy、LangGraph）</li>
+  <li><strong>Part 2</strong>：Agent Harnesses</li>
+  <li><strong>Part 3</strong>：Orchestration &amp; Telemetry</li>
+</ul>
+<p>以及两个横切的评价维度：<strong>Reliability（可靠性）</strong>和 <strong>Observability（可观测性）</strong>——越往右走，这两项越重要。</p>
+
+<h2>四、这些框架真的有人用吗（p17）</h2>
+<p>课件在这里插了个现场投票，没有给结论。但它的存在本身说明一件事：<strong>框架的采用率是有争议的</strong>。</p>
+<pre class="loop">这个问题的现实背景：
+  · 很多团队直接调 API，不用框架
+  · 框架能省事，但增加依赖和抽象层
+  · 抽象层出问题时，调试成本高
+
+本讲后面的"挑战与限制"（0037 课）会正面回答这个问题
+</pre>
+
+<h2>五、本讲的结构</h2>
+<pre class="loop">0032 什么叫工程化（本课）：三支柱 + 控制流谱系
+0033 DSPy：签名、模块、优化器
+0034 LangGraph：State / Node / Edge
+0035 Agent Harness 对比：Mini SWE-Agent / OpenHands / Pi / OpenClaw
+0036 编排与遥测：Temporal + MLflow/LangSmith/LangFuse
+0037 最佳实践与挑战：四条铁律
+</pre>
+
+<h2>SGRT 工程桥：你的项目在这根轴的哪一段</h2>
+<pre class="loop">用控制流谱系定位你的三种工作：
+
+【标定流程】
+  Code 定步骤：采集 → 角点 → 外参 → 评估 → 写配置
+  → 位置：Workflow / Compound AI System
+  → 用 DSPy 或 LangGraph 可能有用（步骤固定但需要 LLM 参与某几步）
+
+【排查助手】
+  模型定步骤：下一步查什么取决于上一步结果
+  → 位置：Agent
+  → 需要 agent harness 层面的设计（工具、上下文、循环）
+
+【未来可能的形态】
+  标定流程里的某几步交给 agent
+  → 位置：在 workflow 里嵌入 agent（small part 那一档）
+  → 这是最现实的演化路径
+
+【关键判断】
+  你不需要"选一个框架然后全部用它"
+  → 不同工作放在谱系的不同位置
+  → 用不同的工具，各自最合适
+
+【你的三根支柱现状】
+  Data   有历史日志、案例
+  System 有流程和工具
+  Eval   缺"诊断准确率"这类标注
+  → 补齐 Eval 是最优先的事
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>三支柱</strong>：Data + System/Model + Evaluation/Metric，缺一不叫工程。<br>
+<strong>控制流谱系</strong>：程序定步骤 ←→ 模型定步骤；框架是在这根轴上选位置的工具。<br>
+<strong>三个 Part</strong>：Workflow 框架 / Agent Harness / 编排与遥测。<br>
+<strong>两个横切维度</strong>：可靠性、可观测性——越往 agent 走越重要。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. AI 系统的三根支柱是什么？只做其中一项会有什么问题？</p>
+  <details><summary>展开答案</summary><p>① Data（训练数据、rollouts、演示、人类反馈）；② System/Model（LLM、复合 AI 系统/工作流、agent 系统）；③ Evaluation+Metric（通过率、精确匹配、LLM Judge、成本延迟）。只做 System 就不知道做得好不好、改也不知道改对没有；只有 Data 不知道系统哪里有问题；只会 Eval 没有可评的对象。三者必须形成闭环。</p></details>
+  <p>Q2. 控制流谱系的两端各是什么？举出谱系中间的一个位置。</p>
+  <details><summary>展开答案</summary><p>左端是"逻辑与编排都在程序里"（只用模型 API，步骤代码写死）；右端是"控制流是 AI 模型的职责"（完全由模型决定下一步）。中间位置包括 Workflow/Compound AI System（代码定步骤但含多次 LLM 调用）、Agent（模型定步骤）、以及 Small part of a larger system（模型只是更大系统里的一小块）。DSPy 和 LangGraph 大致落在 Workflow 这一档。</p></details>
+  <p>Q3. 为什么越往 agent 方向走，可靠性和可观测性越重要？</p>
+  <details><summary>展开答案</summary><p>因为控制权从代码转到模型后，路径不再可预测——同样的输入可能走不同的步骤、不同轮数、不同失败方式。代码定步骤时你能打断点、能复现；模型定步骤时只能在运行时观测。所以可靠性（错误累积、一致性、失败可预测性）和可观测性（trace、日志、状态监控）成为必需而非可选。</p></details>
+  <p>Q4. 用这张谱系给你的三种工作定位，各在哪一段？为什么不需要选一个框架全用它？</p>
+  <details><summary>展开答案</summary><p>标定流程（采集→角点→外参→评估→写配置，步骤固定）在 Workflow 档；排查助手（下一步取决于上一步结果）在 Agent 档；未来可能是"在 workflow 里嵌入 agent"这一档。不需要选一个框架全用，因为不同工作的控制流位置不同，各自需要不同工具——标定流程用 DSPy/LangGraph 这类工作流框架，排查助手需要 agent harness 层面的工具，硬套一个框架反而增加不必要的抽象。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture05 · 段一 什么叫工程化</span><br>
+  <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture05-0033-dspy.html">0033 · DSPy：签名、模块、优化器</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture05 课件《Frameworks & Orchestration》· 源文件夹 week3-10.7 · p4-18<br>
+Lesson 0032 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

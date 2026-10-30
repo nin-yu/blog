@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0041 — 推理模式二：CodeAct 与先规划再执行</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture06 · Lesson 0041</span>
+  <h1>推理模式二：CodeAct 与先规划再执行</h1>
+  <div class="meta">第 0041 课（Lecture06 第 4 课）· 来源：lecture06.pdf p43-54 · 来源文件夹：week3-10.12 · 本课成果：掌握 CodeAct 为何更准更省、规划为何能把 agent 变回 workflow、ReWOO 与 LLMCompiler 的并行差别，能判断本项目该用哪种</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+两个模式，各一个核心洞见：<br><br>
+<strong>CodeAct（p43）</strong>——<strong>代码是动作的正确形式</strong><br>
+　用代码代替 JSON 描述动作，更准更省<br>
+<strong>先规划再执行（p47）</strong>——<strong>规划把 agent 的动作执行变回 workflow</strong><br>
+　ReWOO（p48）／LLMCompiler（p50，加并行）<br><br>
+最反直觉的一条（p47）：<strong>规划的价值不是"想得更清楚"，而是让 agent 重新变成 workflow</strong>。
+</div>
+
+<h2>一、CodeAct：代码作为动作形式（p43-46）</h2>
+<blockquote>
+<strong>关键洞见：代码是动作的正确形式（code is the right form factor for actions）。</strong>
+</blockquote>
+<pre class="loop">对比（p44-45）：
+
+【JSON 动作】
+  指令："确定最合适的…"
+  输出：{"tool": "search", "args": {"q": "..."}}
+  → 一次只能表达一个动作
+  → 多个动作要多次往返
+
+【代码动作】
+  指令：同上
+  输出：result = search("...")
+        filtered = [r for r in result if r.score > 0.8]
+        plot(filtered)
+  → 一次表达多个步骤
+  → 可以组合、循环、条件判断
+</pre>
+<p>课件给的结论（p46）：<strong>CodeAct 更准确也更高效</strong>。</p>
+<pre class="loop">为什么更准：
+  · 代码天然是结构化的（没有"格式对不对"的问题）
+  · 可以表达复杂逻辑（循环、条件、组合）
+  · 中间结果可以被检查（打印出来看）
+
+为什么更省：
+  · 多个动作一次生成 → 减少往返轮数
+  · 每一轮往返都是一次完整的 Prefill+Decode
+  → 省的可不止是 token，还有延迟
+
+代价：
+  · 需要代码执行环境（沙箱）
+  · 安全风险更大（代码能做的事太多）
+  · 需要处理"代码写错了"的失败
+</pre>
+<h2>二、先规划再执行（p47-52）</h2>
+<blockquote>
+<strong>关键洞见：规划让 agent 的动作执行变回 workflow。</strong>
+</blockquote>
+<p>这句是整个 Lecture06 最精妙的一句，值得拆开：</p>
+<pre class="loop">为什么"规划"能让 agent 变回 workflow？
+
+【纯 ReAct】
+  每步都依赖上一步的观察
+  → 控制流在模型手里（每步都要重新决策）
+  → 是 agent
+
+【先规划再执行】
+  第一步：生成完整计划（Plan = 一串确定的动作）
+  第二步：按计划执行，不再重新决策
+  → 执行阶段的控制流是固定的
+  → 变成了 workflow！
+
+区别的本质：
+  规划把"决策"集中到一次
+  执行变成"按剧本走"
+  → 于是可复现、可并行、可优化
+</pre>
+<h3>2.1 ReWOO（p48-49）</h3>
+<blockquote>
+<strong>ReWOO: Reasoning WithOut Observation</strong>
+</blockquote>
+<pre class="loop">名字的含义：推理时不带观察
+  → 先一次性推理出整个计划（包括每步要用的工具和参数）
+  → 然后执行，执行期间不再让模型看观察结果
+
+课件结论（p49）：
+  规划后执行能带来更高准确率
+
+好处：
+  · 减少了模型调用次数（不用每步都调）
+  · 计划可以被检查（人能看到它打算干什么）
+
+风险：
+  · 如果计划中的假设错了（比如第一步拿不到数据）
+    → 后面全错，因为没有观察反馈来纠正
+</pre>
+<h3>2.2 LLMCompiler（p50-52）</h3>
+<blockquote>
+<strong>和 ReWOO 的差别：并行[执行]</strong>
+</blockquote>
+<pre class="loop">LLMCompiler 的关键改进：
+  从计划中识别出"哪些步骤互不依赖"
+  → 这些步骤并行执行
+
+例：计划是
+  1. 查设备状态
+  2. 查呼吸曲线
+  3. 查图像质量
+  4. 综合三步给结论
+  → 1/2/3 互不依赖 → 并行
+  → 4 依赖前面 → 等待
+
+收益：总耗时从 (t1+t2+t3) 降到 max(t1,t2,t3)
+</pre>
+<h2>三、Recap（p54）——这四句要记住</h2>
+<blockquote>
+· <strong>ReAct</strong>：行动前推理有用<br>
+· <strong>Reflexion</strong>：自我反思今天已并入推理过程<br>
+· <strong>CodeAct</strong>：代码是动作的好形式<br>
+· <strong>ReWOO/LLMCompiler</strong>：编译 workflow 今天主要通过并行工具调用实现。规划仍然重要。<br>
+· 有时 workflow 仍被用于"子 agent"编排
+</blockquote>
+<p>注意第四条的现实修正：<strong>"编译 workflow"这件事，今天主要是靠"并行工具调用"实现的</strong>，而不是靠专门的规划器。</p>
+
+<h2>四、两种模式的对比</h2>
+<table>
+  <tr><th></th><th>CodeAct</th><th>先规划再执行</th></tr>
+  <tr><td>核心洞见</td><td>代码是动作的正确形式</td><td>规划让 agent 变回 workflow</td></tr>
+  <tr><td>改变什么</td><td>动作的<strong>表达形式</strong></td><td>决策的<strong>时机</strong></td></tr>
+  <tr><td>收益</td><td>更准、更省（减少往返）</td><td>可复现、可并行、可审查</td></tr>
+  <tr><td>代价</td><td>需沙箱、安全风险</td><td>计划错了会全错（无观察纠正）</td></tr>
+  <tr><td>可以组合</td><td colspan="2">可以：先规划（计划里用代码表达复杂步骤），再执行</td></tr>
+</table>
+
+<h2>SGRT 工程桥：你该用哪一种</h2>
+<pre class="loop">【先规划再执行：强烈推荐用于排查】
+
+原因：排查流程有很强的结构
+  ① 查图像质量
+  ② 查呼吸信号
+  ③ 查机械状态
+  ④ 查历史案例
+  ⑤ 综合判断
+
+如果用纯 ReAct：
+  每步都要模型决策 → 5 次往返 → 慢、贵、不可复现
+
+如果先规划：
+  一次生成 5 步计划 → 可以并行查 1/2/3/4
+  → 总耗时降到 max(t1..t4) + 综合
+  → 而且计划可打印给人看（"我打算查这四项"）
+  → 关键：计划能被人审阅！这在医疗场景是巨大优势
+
+【但要处理"计划失败"】
+  如果第 1 步查不到图像数据
+  → 计划里假设的后续步骤可能不成立
+  → 需要"计划修复"：发现第 1 步失败 → 重新规划剩余部分
+  → 不要傻跑完整个计划
+
+【CodeAct：不建议直接用】
+  原因：
+    · 需要代码执行沙箱（你的环境是 Windows + Qt，不是 Linux 容器）
+    · 安全风险大（代码能做任何事）
+    · 你的工具都是结构化的查询（查日志/查配置），不需要复杂逻辑
+  → 用结构化 JSON 工具调用更简单可控
+
+【值得借鉴 CodeAct 的思想】
+  如果某个步骤需要"组合多个查询再过滤"
+  → 不要让模型分多轮查
+  → 在工具内部实现这个组合（一个工具做多件事）
+  → 相当于把"代码表达"下沉到工具层
+</pre>
+<h2>本课小结</h2>
+<blockquote>
+<strong>CodeAct</strong>：代码是动作的正确形式；更准更省（减少往返），代价是需沙箱和安全风险。<br>
+<strong>先规划再执行</strong>：规划让 agent 变回 workflow——决策集中一次，执行变固定。<br>
+<strong>ReWOO</strong>：推理时不看观察，一次出完整计划。<br>
+<strong>LLMCompiler</strong>：在计划中识别无依赖步骤并行执行。<br>
+<strong>现实修正</strong>：今天"编译 workflow"主要靠并行工具调用，规划仍重要。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. CodeAct 的核心洞见是什么？为什么用代码比用 JSON 更准更省？</p>
+  <details><summary>展开答案</summary><p>核心洞见是"代码是动作的正确形式"。更准是因为代码天然结构化（没有格式对错问题）、能表达复杂逻辑（循环、条件、组合）、中间结果可检查；更省是因为一次生成可包含多个动作，减少模型往返轮数——每轮往返都是一次完整 Prefill+Decode，省的不只是 token 还有延迟。</p></details>
+  <p>Q2. "规划让 agent 的动作执行变回 workflow"这句话怎么理解？</p>
+  <details><summary>展开答案</summary><p>纯 ReAct 每步都依赖上一步观察、每步都要模型重新决策，控制流在模型手里所以是 agent。先规划再执行把决策集中到一次（生成完整计划），执行阶段按计划走不再重新决策——控制流变成固定的，于是可复现、可并行、可审查，本质上是 workflow 的特性。所以规划的价值不只是"想得更清楚"，而是把不可控的 agent 执行变成可控的 workflow 执行。</p></details>
+  <p>Q3. ReWOO 的名字"Reasoning WithOut Observation"意味着什么风险？</p>
+  <details><summary>展开答案</summary><p>意味着执行期间不再让模型看观察结果——一次推理出完整计划（含每步工具和参数），然后按计划执行。风险是如果计划中的假设错了（如第一步拿不到数据、假设的参数不存在），后面全错且没有观察反馈来纠正。所以需要"计划修复"机制：发现某步失败就重新规划剩余部分，而不是傻跑完。</p></details>
+  <p>Q4. 你的排查场景为什么适合"先规划再执行"而不适合 CodeAct？</p>
+  <details><summary>展开答案</summary><p>适合先规划：排查流程结构很强（查图像、呼吸、机械、历史案例、综合），一次生成计划后可并行执行前四项，总耗时从累加降到取最大值；而且计划可打印给人审阅——在医疗场景这是巨大优势（能事前看到"打算查什么"）。不适合 CodeAct：需要代码执行沙箱（你的环境是 Windows+Qt 而非 Linux 容器）、安全风险大、且你的工具都是结构化查询不需要复杂逻辑，用 JSON 工具调用更简单可控。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture06 · 段三 推理/行动模式 · 进阶</span><br>
+  ← 上一课 <a href="lecture06-0040-react-reflexion.html">0040 · ReAct 与 Reflexion</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture06-0042-context-patterns.html">0042 · 上下文管理：两条原则与五种模式</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture06 课件《Agent Design Patterns and Scaffolds》· 源文件夹 week3-10.12 · p43-54；CodeAct (arXiv:2402.01030)、ReWOO (arXiv:2305.18323)、LLMCompiler (arXiv:2312.04511)<br>
+Lesson 0041 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

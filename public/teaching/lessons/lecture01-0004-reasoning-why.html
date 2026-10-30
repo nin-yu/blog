@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0004 — 推理为什么有用：ReAct、自洽性与反思</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture01 · Lesson 0004</span>
+  <h1>推理为什么有用：ReAct、自洽性与反思</h1>
+  <div class="meta">第 0004 课（Lecture01 第 4 课）· 来源：lecture01.pdf p33-43 · 来源文件夹：week1-9.23 · 本课成果：理解推理在 agent 里的定位（内部动作），掌握 ReAct 优于纯 Act 的原因、自洽性的聚合机制、Reflexion 与多 agent 辩论的作用</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件给推理的定义（p33）：<br><br>
+<strong>对人</strong>：演绎、类比、规划等心智过程<br>
+<strong>对 LLM</strong>：模仿这些心智过程的中间生成内容<br>
+<strong>对 agent</strong>：<strong>更新 agent 自身状态的内部动作</strong><br><br>
+最后一句是关键：<strong>推理不是"想一想"，它是 agent 的一种动作——只不过作用对象是它自己的状态</strong>。
+</div>
+
+<h2>一、推理是这个循环里缺的那一环（p34）</h2>
+<pre class="loop">没有推理：
+  观察 Obs ──────────────► 行动 Act
+  "看到柜子和桌子"  →  "右转"
+  
+  问题：Observation to Action mapping could be hard
+       直线映射，很多情况下根本映射不出来
+
+有推理：
+  观察 Obs → [推理] → 行动 Act
+  "看到盐用完了" → "这道菜应该是咸的，盐没了要去找酱油，
+                    酱油在右边柜子里" → "右转"
+</pre>
+<p>课件给了推理起作用的三条理由（p34）：</p>
+<pre class="loop">① Generalization 泛化
+   不需要为每种情况预先写规则，推理能把情况映射到已有知识
+
+② Alignment 对齐
+   推理过程能表达"为什么要这么做"，让行为与意图一致
+   （也让人能检查它是否理解对了）
+
+③（隐含）可逐步观测
+   推理写出来，你能看到它在哪一步想错了
+</pre>
+
+<h2>二、ReAct 优于纯 Act（p36-37）</h2>
+<p>课件给了个很典型的例子（p35-36）：问"除了 Apple Remote，还有什么设备能控制 Apple Remote 程序"。</p>
+<pre class="loop">【只推理不行动（CoT）】
+  Thought: 让我一步步想。Apple Remote 原本是为 Front Row 设计的…
+  Answer:  iPod
+  → 这个答案是错的（它靠记忆猜）
+
+【推理 + 行动（ReAct）】
+  Thought: 我应该查一下 Apple Remote 支持什么
+  Act:     search("Apple Remote programs")
+  Obs:     [搜索结果：支持 Front Row、iPod…]
+  Thought: 搜索结果说明…
+  Answer:  [基于真实结果的答案]
+  → 踩在观察上，不是靠记忆猜
+</pre>
+<p>课件的两个结论（p37）：</p>
+<blockquote>
+<strong>· ReAct 稳定优于纯 Act</strong><br>
+<strong>· 幻觉是 CoT 的严重问题，而 ReAct 能帮助缓解</strong>
+</blockquote>
+<p>第二条值得展开：<strong>CoT 的幻觉来自"纯靠内部记忆推导"</strong>；一旦引入观察，模型就有机会被真实数据纠正。</p>
+
+<h2>三、Self-Consistency：多次采样取多数（p38）</h2>
+<pre class="loop">做法（p38 原文）：
+  ① 用 CoT 提示语言模型
+  ② 生成多样化的多条推理路径
+  ③ 在最终答案集合中选择最一致的那个
+
+图示：
+  问题 ──┬──► 推理路径 1 ──► 答案 A
+        ├──► 推理路径 2 ──► 答案 A
+        ├──► 推理路径 3 ──► 答案 B
+        └──► 推理路径 4 ──► 答案 A
+                              ↓
+                          投票：A 胜（3/4）
+</pre>
+<p>它的前提假设：<strong>正确答案有多条到达路径，错误答案往往分散</strong>。所以"多次独立推理后答案集中"就是可信信号。</p>
+<pre class="loop">代价：要跑 N 次（N 倍成本、N 倍延迟）
+收益：显著提升准确率，尤其在数学/逻辑题上
+
+→ 这就是 Lecture02 讲的"推理期扩展"的雏形
+</pre>
+
+<h2>四、Reflexion：从失败中反思（p39-40）</h2>
+<blockquote>
+<strong>Reflexion 的 agent 对任务反馈信号做语言层面的反思，然后维护自己的反思文本，以此引导更好的决策。</strong>
+</blockquote>
+<pre class="loop">机制（p40）：
+  用自我反思，把冗长、失败的轨迹
+  蒸馏成相关的经验
+  → 这些经验在后续尝试中作为上下文使用
+</pre>
+<p>注意这里的表述和 Lecture06 的一致性：<strong>反思的价值在于"把失败轨迹压缩成可复用的经验"</strong>，而且它依赖"任务反馈信号"——不是纯自我评价。</p>
+
+<h2>五、多 agent 辩论（p41-43）</h2>
+<pre class="loop">多 agent 辩论（Du et al. 2023）：
+  多个 agent 各自给出答案和推理
+  → 互相看对方的推理
+  → 多轮辩论后收敛
+
+为什么有用：
+  不同 agent 的初始错误不同
+  → 互相批评能暴露各自的漏洞
+  → 类似 Self-Consistency，但多了"互相质询"这一步
+</pre>
+<p>课件还提到 <strong>Orchestrator 协调</strong>（p43，引 Magentic-One）：一个编排者协调多个 agent。这是 Lecture08 的内容，这里只是提了一句。</p>
+
+<h2>四种推理增强的对比</h2>
+<table>
+  <tr><th>方法</th><th>机制</th><th>代价</th><th>何时有用</th></tr>
+  <tr><td><strong>ReAct</strong></td><td>推理与行动交替，踩在观察上</td><td>多轮调用</td><td>需要外部信息、易幻觉的任务</td></tr>
+  <tr><td><strong>Self-Consistency</strong></td><td>多次采样投票</td><td>N 倍成本</td><td>有唯一正确答案、单次不稳</td></tr>
+  <tr><td><strong>Reflexion</strong></td><td>失败后反思并记住</td><td>多轮尝试</td><td>有客观反馈、可重试</td></tr>
+  <tr><td><strong>多 agent 辩论</strong></td><td>互相质询后收敛</td><td>N 倍成本 + 协调</td><td>判断类任务、单一视角易偏</td></tr>
+</table>
+
+<h2>SGRT 工程桥：你的排查助手该用哪一种</h2>
+<pre class="loop">【首选 ReAct】
+  排查的本质就是"不知道原因，必须边查边定方向"
+  → 纯推理会编原因（幻觉）
+  → ReAct 让每一步都踩在真实数据上
+
+【Self-Consistency 慎用】
+  每次排查跑 5 遍成本太高，且排查路径本来就不唯一
+  → 但可以用在"关键判断点"：比如"这次是不是呼吸问题"
+     让模型独立判断 3 次，答案不一致就提示"证据不足"
+
+【Reflexion 可用，前提是有客观反馈】
+  你的重投影 RMS、角点匹配率就是客观反馈
+  → 第一次标定失败 → 反思"边缘误差大，可能畸变模型不够"
+  → 第二次换 5 参数模型 → 成功
+
+【多 agent 辩论：医疗场景不适合自动收敛】
+  两个 agent 争"是床板还是呼吸"
+  → 不要让它们自己投票决定
+  → 把两边的证据一起上报给人
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>推理的定位</strong>：agent 的"内部动作"，作用是更新自身状态。<br>
+<strong>为什么有用</strong>：Obs→Act 直线映射太难，推理插入这一环提供泛化、对齐、可观测。<br>
+<strong>ReAct</strong>：优于纯 Act，且能缓解 CoT 的幻觉（因为踩在观察上）。<br>
+<strong>Self-Consistency</strong>：多次采样投票，N 倍成本换准确率。<br>
+<strong>Reflexion / 辩论</strong>：反思靠客观反馈；辩论靠互相质询。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 课件对"推理"在 agent 里的定义是什么？为什么说它是"内部动作"？</p>
+  <details><summary>展开答案</summary><p>对人来说是演绎、类比、规划等心智过程；对 LLM 是模仿这些过程的中间生成；对 agent 是更新 agent 自身状态的内部动作。说是内部动作，因为它和"调用工具"一样是 agent 采取的一步，只不过作用对象是 agent 自己的状态而不是外部环境——它不改变世界，只改变 agent 接下来怎么行动。</p></details>
+  <p>Q2. 为什么 Obs→Act 的直接映射不够用？推理补上了什么？</p>
+  <details><summary>展开答案</summary><p>因为从观察到行动的直线映射在很多情况下根本映射不出来——"看到柜子和桌子"无法直接得出"右转"。推理补上三样：① 泛化，不需要为每种情况预写规则；② 对齐，能表达为什么这么做、让人能检查是否理解对了；③ 可观测，推理写出来能看到在哪一步想错了。</p></details>
+  <p>Q3. ReAct 为什么能缓解 CoT 的幻觉？</p>
+  <details><summary>展开答案</summary><p>因为 CoT 的幻觉源于纯靠内部记忆推导——模型在没有外部依据的情况下顺着语言模式编造。ReAct 引入了 Observation 环节，让模型的下一步踩在真实检索结果上，一旦想错了就有机会被真实数据纠正。所以"推理 + 行动交替"比"只有推理"更可靠。</p></details>
+  <p>Q4. Self-Consistency 的前提假设是什么？在你的场景里该用在哪里、不该用在哪里？</p>
+  <details><summary>展开答案</summary><p>前提假设：正确答案有多条到达路径而错误答案往往分散，所以多次独立推理后答案集中就是可信信号。你的场景不适合整段排查用（成本 5 倍且排查路径本就不唯一），但适合用在关键判断点——比如"这次是不是呼吸问题"让模型独立判断 3 次，不一致就说明证据不足，应提示需要更多数据。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture01 · 段三 架构 · 推理</span><br>
+  ← 上一课 <a href="lecture01-0003-anatomy-of-agent.html">0003 · agent 的解剖</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture01-0005-memory-and-tools.html">0005 · 记忆三类与工具调用</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture01 课件《Intro to Agentic Systems》· 源文件夹 week1-9.23 · p33-43；ReAct (arXiv:2210.03629)、Self-Consistency (Wang et al. 2023)、Reflexion (arXiv:2303.11366)、Multi-agent Debate (Du et al. 2023)<br>
+Lesson 0004 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

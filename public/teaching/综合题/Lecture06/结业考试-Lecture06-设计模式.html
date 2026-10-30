@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>结业考试 · Lecture06（Agent Design Patterns）</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>结业考试 · Lecture06 · Agent 设计模式与脚手架</h1>
+<blockquote>
+<p>来源：CS329Z lecture06 课件《Agent Design Patterns and Scaffolds》（Diyi Yang / Michael Ryan / John Yang）· 源文件夹 week3-10.12</p>
+<p>覆盖：p8-86（workflow vs agent / 五种 workflow 模式 / 推理设计四法 / 五种上下文管理模式 / Pi 案例）</p>
+<p>作答方式：直接在下方「我的作答」区写，用你自己的话，答完对我说"评卷"。</p>
+</blockquote>
+<hr>
+<h2>题目</h2>
+<p>你所在的团队要做一个 <strong>「SGRT 标定漂移自动排查助手」</strong>：每天放射治疗开始前，系统自动检查上一夜的标定状态，如果发现漂移超阈值，就自动排查根因并给出报告（不自动修改任何参数，只出报告给人确认）。</p>
+<p>已知条件：</p>
+<ul>
+<li><strong>可用的查询工具</strong>：查标定日志、查外参文件、查呼吸曲线原始数据、查 kV 图像、查设备维护记录、查历史相似案例库。</li>
+<li><strong>已知的漂移原因分布</strong>（来自过去两年的统计）：</li>
+<li>45% 呼吸信号基线漂移</li>
+<li>25% 床板机械位置变化</li>
+<li>18% 相机支架热变形</li>
+<li>12% 其他罕见原因</li>
+<li><strong>合规要求</strong>：每一个排查步骤、每一次读取的数据、每一个判断，都必须可追溯、可复现。</li>
+<li><strong>安全边界</strong>：助手绝对不能修改任何会影响照射的参数。</li>
+</ul>
+<p>请回答下面 6 个问题。每题都要说清 <strong>"为什么"</strong>，只列名词不算通过。</p>
+<hr>
+<h3>问题 1 · 范式判定（对应第 45 课）</h3>
+<p>这个助手应该是 <strong>workflow</strong> 还是 <strong>agent</strong>？还是两者的组合？</p>
+<p>请给出判定，并说明：</p>
+<ul>
+<li>你的判定依据是什么（用"控制流在哪"这个判据来论证）；</li>
+<li>如果是组合，请明确指出 <strong>哪一部分用 workflow、哪一部分用 agent</strong>，以及分界线画在哪。</li>
+</ul>
+<hr>
+<h3>问题 2 · workflow 模式选型（对应第 46 课）</h3>
+<p>假设排查流程里有一个"<strong>初步分类</strong>"环节：根据漂移的特征，把这次异常分到上面 4 类原因之一，然后走对应的深入排查路径。</p>
+<ul>
+<li>这个环节最适合用五种 workflow 模式里的哪一种？为什么？</li>
+<li>在处理这个分类时，如果把 45% 的"呼吸基线漂移"用最轻量的路径处理、把 12% 的"罕见原因"用最详尽的路径处理，这属于什么设计思想？带来什么收益、什么风险？</li>
+</ul>
+<hr>
+<h3>问题 3 · 推理与行动（对应第 47、48 课）</h3>
+<p>排查助手要做的第一件事是查明"残差 RMS 从 0.9mm 涨到 2.4mm"的原因。</p>
+<ul>
+<li>请描述它会用的 <strong>ReAct 式循环</strong>：写出前 2-3 轮的 Thought / Action / Observation（用上面给的工具，动作要具体可行）。</li>
+<li>假设第 1 轮查完发现"图像质量正常"，助手得出"应该不是图像问题"这个结论。这个结论是否可信？为什么？（提示：想想 Reflexion 那一课讲的"自反思的局限"）</li>
+<li>要让反思真正有效，反馈必须满足什么条件？</li>
+</ul>
+<hr>
+<h3>问题 4 · 行动形式（对应第 49、50 课）</h3>
+<p>排查中有一个环节要处理 <strong>过去 7 天、每天 20 帧、共 140 帧的 kV 图像</strong>（每帧大约 2000×2000 灰度图），要统计"角点检测成功率"和"角点分布覆盖面积比"。</p>
+<ul>
+<li>用 <strong>JSON 行动</strong>和用 <strong>代码行动</strong>，分别会发生什么？请具体说明上下文规模上的差别。</li>
+<li>这个任务适合"先规划再执行"（ReWOO 式）还是"边想边走"（ReAct 式）？为什么？</li>
+</ul>
+<hr>
+<h3>问题 5 · 上下文管理（对应第 51、52 课）</h3>
+<p>这个助手一次排查可能走 15-20 步，每步都查数据。请设计它的上下文管理方案：</p>
+<ul>
+<li>五种上下文管理模式（事件日志 / 记忆卸载 / 压缩 / 观察遮蔽 / 隔离）里，哪几种你会用？分别用在哪一环？</li>
+<li><strong>哪一种对你这套系统是"合规硬要求"而不是"效率手段"</strong>？为什么？</li>
+<li>请回答：如果为了省 token 把某一步的原始数据删掉了，会不会违反合规要求？正确的做法是什么？</li>
+</ul>
+<hr>
+<h3>问题 6 · 案例借鉴（对应第 53 课）</h3>
+<p>Pi 的四个设计选择是：工具极简（只给 read/bash/edit/write）、ReAct 循环、树形上下文、无权限弹窗（auto-mode）。</p>
+<p>请逐条判断：<strong>哪些可以借鉴到你的排查助手，哪些绝对不能？</strong> 对每一条给出理由。</p>
+<p>特别说明：你现在的判断如果只是"医疗设备要安全所以要加权限"，请说得更具体——<strong>权限该加在哪一层、为什么加在那一层、加了之后对 agent 的能力有什么损失</strong>。</p>
+<hr>
+<h2>我的作答</h2>
+<h3>问题 1</h3>
+<p>（在这里作答）</p>
+<h3>问题 2</h3>
+<p>（在这里作答）</p>
+<h3>问题 3</h3>
+<p>（在这里作答）</p>
+<h3>问题 4</h3>
+<p>（在这里作答）</p>
+<h3>问题 5</h3>
+<p>（在这里作答）</p>
+<h3>问题 6</h3>
+<p>（在这里作答）</p>
+<hr>
+<h2>评判关注点（评卷用）</h2>
+<blockquote>
+<p>这一节是给我评卷用的，作答时可以不看。</p>
+</blockquote>
+<h3>问题 1</h3>
+<ul>
+<li>✅ <strong>必须</strong>用"控制流在哪"作判据，而不是"复杂不复杂"。</li>
+<li>✅ 正确答案是<strong>组合</strong>：初步筛选/阈值判定/报告生成 → workflow（程序化；可复现、合规）；根因排查 → agent（不知道是哪个原因，必须边查边定方向）。</li>
+<li>✅ 分界线应该在<strong>"是否修改任何东西"</strong>和<strong>"是否需要探索"</strong>两处：安全动作一律 workflow，探索一律 agent。</li>
+<li>⚠️ 只说"用 agent 因为比较智能" = 没抓住判据。</li>
+<li>⚠️ 说"全用 workflow"要看他怎么处理 4 类原因 + 罕见原因——如果他能设计出完整决策树（含"其他"兜底），可以接受，但要指出维护成本高、新增原因要改代码。</li>
+</ul>
+<h3>问题 2</h3>
+<ul>
+<li>✅ 正确答案：<strong>Routing</strong>。因为 4 类原因是<strong>可以事先枚举的离散类别</strong>，且类别间处理路径差异大。这正是 routing 的适用条件。</li>
+<li>✅ 第二问考的是 <strong>routing 的核心价值 = 成本优化</strong>（大多数走轻路径、少数走重路径），以及<strong>风险 = 分类器错了后面全错</strong>。</li>
+<li>✅ 加分项：指出"分类器本身要有评估集"、"要允许'不确定'这一档兜底"、"45%/12% 是可测的先验分布，可用于设计权重"。</li>
+<li>⚠️ 说"用 orchestrator-workers" = 混淆了 routing 和动态拆解，要扣。</li>
+<li>⚠️ 只说"能省钱"不说"分类错误的风险" = 半懂。</li>
+</ul>
+<h3>问题 3</h3>
+<ul>
+<li>✅ ReAct 循环要<strong>具体</strong>：比如</li>
+<li>Thought: 先看图像质量还是先看呼吸？→ 先看最可能且最便宜的那个</li>
+<li>Action: 查最近 7 天 kV 图像质量指标</li>
+<li>Obs: 角点识别率 98%，图像质量正常</li>
+<li>Thought: 排除图像来源，转向呼吸信号</li>
+<li>Action: 查呼吸曲线呼气末识别时刻</li>
+<li>Obs: 抖动 120ms（正常 <50ms）</li>
+<li>✅ 第二问关键：<strong>"图像质量正常"是观察，"应该不是图像问题"是推断</strong>——后者可能错（比如图像质量指标好但角点分布偏）。而且这句推断如果由<strong>同一个模型</strong>做出，就是自我评价，不可靠。</li>
+<li>✅ 第三问：反馈必须来自<strong>外部环境的客观信号</strong>（算出来的 RMS、代码断言、测试结果），不能是"模型觉得自己对"。</li>
+<li>⚠️ 只描述循环不说"为什么反思有效" = 漏了 Reflexion 的核心。</li>
+<li>⚠️ 认为"模型自己判断就行" = 直接踩了 p41 的坑。</li>
+</ul>
+<h3>问题 4</h3>
+<ul>
+<li>✅ JSON 方案的致命问题要说清：<strong>140 帧 × 每帧的角点坐标（假设 48 个点 × 2 坐标）</strong>，如果每帧结果都进上下文，第一帧就可能几千 token，140 帧直接爆窗口。即使是摘要统计，140 次往返也是 140 次模型调用。</li>
+<li>✅ 代码方案：一次生成一段循环代码，<strong>中间结果留在执行环境的变量里</strong>，只把最终统计（2-3 个数）带回上下文。差异是<strong>几个数量级</strong>。</li>
+<li>✅ 第二问：适合<strong>先规划</strong>。因为检查项固定（成功率、覆盖面积比）、无依赖分支、可并行——计划能事先排好。</li>
+<li>⚠️ 只说"代码更方便"不说上下文规模 = 没答到点上。</li>
+<li>⚠️ 说"适合边想边走"且理由是"不知道结果" = 没理解这个任务是<strong>统计型</strong>不是<strong>探索型</strong>。</li>
+</ul>
+<h3>问题 5</h3>
+<ul>
+<li>✅ <strong>事件日志（Persistent Event Log）是合规硬要求</strong>——这是本题最重要的判别点。医疗设备要求可追溯、可复现，"谁在什么时候查了什么、得出什么判断"必须原样留档。</li>
+<li>✅ 其余四种是效率手段：卸载（把"已排除的假设"结构化存起来）、压缩（对排查过程摘要）、遮蔽（旧原始数据只留结论）、隔离（大范围日志检索交给子 agent）。</li>
+<li>✅ 第三问关键：<strong>不能直接删</strong>。正确做法是"<strong>事实与呈现分离</strong>"——事件日志里原样保留，只对"给模型看的上下文"做裁剪/摘要/遮蔽。因为日志是账本，上下文是视图。</li>
+<li>⚠️ 说"为了省 token 可以删原始数据" = 严重问题，合规风险。</li>
+<li>⚠️ 认为五种都要用 = 没有区分"必需"和"手段"。</li>
+</ul>
+<h3>问题 6</h3>
+<p>逐条判断：</p>
+<p>| Pi 的做法 | 正确判断 | 关键理由 |</p>
+<p>|---|---|---|</p>
+<p>| 工具极简（只给 bash） | ❌ 不能照搬 | 医疗软件要求每个动作有明确语义、可审计、可复现。bash 的能力边界无限，无法为每个动作定义语义和日志。应该<strong>少量专用工具 + 严格参数校验</strong>。加分：指出"工具少"这个<strong>思路</strong>可以借鉴（避免工具膨胀），但形式不能照搬。 |</p>
+<p>| ReAct 循环 | ✅ 可以借鉴 | 排查是探索型任务，先想再查再修正正是需要的形态。 |</p>
+<p>| 树形上下文 | ✅ 可以借鉴（有条件） | 试错不污染主线，这对排查很有价值。但要注意：<strong>分叉记录本身也要进事件日志</strong>（否则不可追溯）。 |</p>
+<p>| 无权限弹窗 / auto-mode | ❌ 绝对不能 | 必须加硬闸门。<strong>关键要求他答出"加在哪一层"</strong>：不是加在 agent 的 prompt 里（模型可以被说服），而是加在<strong>工具执行层/系统调用层</strong>——任何写操作在真正执行前被拦截，与模型说了什么无关。 |</p>
+<ul>
+<li>✅ 加分项：提到"只读工具不需要权限闸门，写工具必须"——这是正确的分层。</li>
+<li>✅ 加分项：指出损失是"自动化程度下降，需要人确认"，但这是<strong>必须付的代价</strong>。</li>
+<li>⚠️ 只说"要加权限"不说加在哪层 = 半懂。</li>
+<li>⚠️ 认为"prompt 里写'不要修改参数'"就够了 = 严重错误（这是 Lecture01 就讲过的边界问题）。</li>
+</ul>
+<hr>
+<h2>通过标准</h2>
+<ul>
+<li><strong>6 题中至少 5 题说到点上</strong>（✅ 项覆盖 ≥ 70%），且 <strong>问题 1 和问题 5 必须正确</strong>——这两题分别对应"范式判定"和"合规底线"，是整个 Lecture06 的承重结构。</li>
+<li>出现以下任一情况，视为未通过、需重答：</li>
+<li>问题 1 判据用错（按"复杂程度"而非"控制流位置"判断）</li>
+<li>问题 5 认为"可以为省 token 删日志"</li>
+<li>问题 6 认为"prompt 里写禁止就够了"</li>
+</ul>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0020 — 上下文检索：给每个块补上它丢掉的背景</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture03 · Lesson 0020</span>
+  <h1>上下文检索：给每个块补上它丢掉的背景</h1>
+  <div class="meta">第 0020 课（Lecture03 第 3 课）· 来源：lecture03.pdf p26-38 · 来源文件夹：week2-9.30 · 本课成果：掌握 Contextual Retrieval、Late Chunking、RAPTOR 三种方案的机制与成本取舍，以及为什么必须配混合检索</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+上下文检索解决一个具体问题（p26）：<strong>块本身丢了它所属的上下文</strong>。<br><br>
+三种方案，成本递增：<br>
+<strong>① Contextual Retrieval</strong>——给每块补一段 LLM 生成的上下文（Anthropic，p27-29）<br>
+<strong>② Late Chunking</strong>——先用长上下文编码器编码整篇，再按块池化（p30，<strong>无 LLM 调用、不加 token</strong>）<br>
+<strong>③ RAPTOR</strong>——自底向上建树，聚类后让 LLM 写摘要（p32-33）<br><br>
+还有混合检索的关键补充（p27）：<strong>embedding 抓语义，BM25 抓精确术语，两者合并</strong>。
+</div>
+
+<h2>一、Contextual Retrieval 的机制（p26-29）</h2>
+<pre class="loop">问题（p26）：
+  查询："ACME 2023 Q2 的收入增长是多少？"
+  原始块："公司收入比上季度增长了 3%"
+  → 块里没有 "ACME"、没有 "2023 Q2"
+  → 检索器匹配不上（语义对，字面对不上）
+
+Anthropic 的做法（p28）：
+  把整篇文档 + 待处理的块一起给 LLM，让它写一段上下文前缀：
+
+    {{WHOLE_DOCUMENT}}
+    Here is the chunk we want to situate within the whole document:
+    {{CHUNK_CONTENT}}
+    → 请给出简洁的上下文说明这块在文档中的位置和作用
+
+  生成："来自 ACME 公司 2023 年 Q2 的 SEC 文件；2023 Q1 收入 3.14 亿。"
+  → 把它拼到块前面再编码
+
+效果（p29）：上下文 embedding 显著降低了检索失败率
+</pre>
+<h2>二、同时用混合检索（p27）</h2>
+<blockquote>
+<strong>混合检索：embedding 抓语义，TF-IDF/BM25 抓精确术语，结果合并</strong>
+</blockquote>
+<pre class="loop">为什么两者都要：
+  embedding 强在：语义相近（"收入增长" ↔ "revenue increased"）
+  embedding 弱在：精确字面（错误码 E-1024、型号 TX-204）
+
+  BM25 强在：精确字面
+  BM25 弱在：同义改写
+
+→ 两者失败的地方不同，所以合并有效
+</pre>
+<h2>三、Late Chunking：不调 LLM 的方案（p30）</h2>
+<pre class="loop">思路（Günther et al. 2024）：
+  ① 用长上下文编码器编码整篇文档 → 得到每个 token 的向量
+  ② 再按 chunk 的边界，在每块范围内做 mean-pooling
+
+对比 Contextual Retrieval（p30 原文）：
+  ✔ 无 LLM 调用
+  ✔ 不增加每块的 token 数
+  ✔ 上下文"携带在向量里"（因为编码时看过全文）
+
+怎么做到的：
+  因为编码器在编码某块时，已经通过注意力机制"看过"整篇文档
+  → 所以向量里天然含有文档级上下文
+  → 不需要额外拼文字
+</pre>
+<p>这是一个很优雅的思路：<strong>上下文不用文字承载，用向量承载</strong>。</p>
+
+<h2>四、RAPTOR：为"答案分散在全文"的问题设计（p32-33）</h2>
+<pre class="loop">问题（p32 原文）：
+  对于"答案分散在整个文档里"的问题，单个 chunk 的表示无能为力
+
+做法：
+  底向上建树：
+    ① 编码所有 chunk
+    ② 把它们聚类
+    ③ 让 LLM 给每个簇写摘要
+    ④ 编码这些摘要
+    ⑤ 重复（摘要再聚类再摘要）→ 形成一棵树
+
+检索时跨层匹配（p33）：
+  细节问题 → 匹配叶子（原始 chunk）
+  主题问题 → 匹配上层节点（摘要）
+  
+课件举的例子：
+  Q1 "故事的中心主题是什么？" → 匹配上层
+  Q2 "她怎么得到幸福结局的？" → 匹配叶子
+</pre>
+<h2>五、四种方案对比</h2>
+<table>
+  <tr><th>方案</th><th>成本</th><th>解决什么</th><th>何时用</th></tr>
+  <tr><td>原始分块</td><td>最低</td><td>—</td><td>块本身语义完整</td></tr>
+  <tr><td><strong>Late Chunking</strong></td><td>低（无 LLM）</td><td>块缺文档上下文</td><td>文档长且连贯，有长上下文编码器</td></tr>
+  <tr><td><strong>Contextual Retrieval</strong></td><td>中（每块一次 LLM）</td><td>同上，效果更明确</td><td>块数不多、值得花成本</td></tr>
+  <tr><td><strong>RAPTOR</strong></td><td>高（多层聚类+摘要）</td><td>答案分散在全篇</td><td>需要同时支持细节和主题查询</td></tr>
+</table>
+
+<h2>SGRT 工程桥：你的文档适合哪种</h2>
+<pre class="loop">【标定规范】→ Late Chunking 或 Contextual Retrieval
+  问题：按章节切出来后，"阈值 1.5mm"那块不知道是哪个参数
+  方案：
+    · 如果有长上下文编码器 → Late Chunking（省钱）
+    · 否则 → Contextual Retrieval，给每块补
+      "本文档为 Trio-Track 标定规范 v2.3，本节属第 4.2 条『残差阈值』"
+
+【排查案例库】→ 原始分块就够
+  因为每个案例天然自包含（现象/过程/根因/处理）
+  → 不需要额外上下文
+
+【设备手册（长篇）】→ RAPTOR
+  因为查询有两类：
+    · "XX 错误码什么意思" → 细节，匹配叶子
+    · "标定流程一共几步" → 主题，匹配上层摘要
+  → 单层块无法同时支持这两类
+
+【成本对比（估算）】
+  假设 500 页手册 = 2000 个 chunk
+  · Contextual Retrieval：2000 次 LLM 调用（一次性，可接受）
+  · RAPTOR：2000 次摘要 + 多层聚类（贵几倍）
+  · Late Chunking：0 次 LLM，只需要编码
+  → 先用 Late Chunking 试，不够再上 Contextual
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>问题</strong>：块丢了所属文档的上下文，语义对但字面对不上。<br>
+<strong>Contextual Retrieval</strong>：LLM 为每块生成上下文前缀（Anthropic）。<br>
+<strong>Late Chunking</strong>：先编码全文再按块池化——无 LLM 调用，上下文在向量里。<br>
+<strong>RAPTOR</strong>：自底向上建摘要树，细节查叶、主题查上层。<br>
+<strong>必配</strong>：混合检索（embedding + BM25），因为两者失败方式不同。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. Contextual Retrieval 解决什么问题？举一个具体的失败例子。</p>
+  <details><summary>展开答案</summary><p>解决"块本身丢了它所属的上下文"的问题——块语义对但字面对不上。例：查询"ACME 2023 Q2 的收入增长是多少"，而块内容是"公司收入比上季度增长了 3%"——块里既没有 ACME 也没有 2023 Q2，检索器匹配不上。做法是把整篇文档和该块一起给 LLM，生成上下文前缀拼到块前再编码。</p></details>
+  <p>Q2. Late Chunking 相比 Contextual Retrieval 的优势是什么？为什么它能做到？</p>
+  <details><summary>展开答案</summary><p>优势是无 LLM 调用、不增加每块 token 数——上下文"携带在向量里"而不是拼在文字里。能做到是因为先用长上下文编码器编码整篇文档，编码某块时注意力机制已经"看过"全文，所以该块的 token 向量天然含有文档级上下文；再按块边界做 mean-pooling 就得到带上下文的块向量。</p></details>
+  <p>Q3. RAPTOR 适合什么类型的问题？为什么单层块索引做不到？</p>
+  <details><summary>展开答案</summary><p>适合"答案分散在整个文档里"的问题。单层块索引做不到，因为细节问题（"XX 错误码什么意思"）和主题问题（"整个流程几步"）需要不同粒度的表示：细节需要原始块的精确内容，主题需要跨块的综合理解。单层块要么太细抓不到主题，要么太粗丢细节。RAPTOR 建摘要树后，细节查叶子、主题查上层节点。</p></details>
+  <p>Q4. 为什么 embedding 和 BM25 必须同时用？各举一个对方搞不定的例子。</p>
+  <details><summary>展开答案</summary><p>因为两者失败方式不同。embedding 强在语义相近（"收入增长"↔"revenue increased"），但弱在精确字面——查错误码 E-1024 或型号 TX-204 时可能匹配到语义相似但编号不同的内容。BM25 强在精确字面匹配，但弱在同义改写——用户说"标定不准则"检索不到文档里写的"配准精度不达标"。所以混合检索同时跑两者再融合排名。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture03 · 段二 索引 · 上下文增强</span><br>
+  ← 上一课 <a href="lecture03-0019-chunking-indexing.html">0019 · 分块与索引</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture03-0021-bm25-dpr.html">0021 · 检索器：BM25 与 DPR</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件《RAG + Agents》· 源文件夹 week2-9.30 · p26-38；Contextual Retrieval (Anthropic 2025)、Late Chunking (Günther et al. 2024)、RAPTOR (Sarthi et al. 2025)<br>
+Lesson 0020 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

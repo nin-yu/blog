@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0075 — 为什么数据是优化 agent 的主要杠杆</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture11 · Lesson 0075</span>
+  <h1>为什么数据是优化 agent 的主要杠杆</h1>
+  <div class="meta">第 0075 课（Lecture11 第 1 课）· 来源：lecture11.pdf p3-11 · 来源文件夹：week6-10.28 · 本课成果：理解「优化系统中」与「优化模型本身」的分界、互联网文本与环境数据的根本缺口，以及为什么现在就该开始记录真实轨迹</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+这一讲的 tl;dr（p3）：<br>
+<strong>过去两年 LM 在 agent 任务上进步巨大，几乎完全归功于大规模「agentic 数据」的涌现。</strong><br><br>
+这一讲要回答：什么数据算 agentic、它是怎么被造出来的、以及怎么把数据清洗干净。<br><br>
+而它的定位（p5）：<br>
+<strong>上一讲是「优化 LM 周围的系统」（权重冻结）。<br>
+这一讲是「优化 LM 本身」——数据是主要杠杆。</strong>
+</div>
+
+<h2>一、为什么数据是主要杠杆（p5-10）</h2>
+<pre class="loop">p5 的对照：
+  上一讲：Weights stay frozen, tune components surrounding model
+  今天：  Make the LM itself a better agent, data is the main lever!
+
+→ 这是"改系统"和"改模型"的分界
+→ 而改模型的主要手段是数据（不是算法）
+</pre>
+<h3>1.1 数据是最关键的差异化因素（p6-7）</h3>
+<pre class="loop">p6：可以说，数据是最关键的差异化因素
+p7：今天的前沿格局很清楚——前沿 LM 公司为数据付出极高代价
+</pre>
+<h3>1.2 训练阶段里 agent 数据落在哪（p8）</h3>
+<pre class="loop">回忆 Lecture02 的训练三阶段：
+  预训练（海量网页）
+  中训练（领域倾斜）
+  后训练（指令/偏好/可验证）
+
+agent 数据落在【后训练】
+  → 但也影响中训练（如果加入 agent 轨迹）
+</pre>
+<h3>1.3 一个根本性的缺口（p9）——本课最重要的一页</h3>
+<blockquote>
+<strong>网页爬取显示大量文本。但 agent 需要环境才能真正交互。</strong>
+</blockquote>
+<pre class="loop">p9 的两栏对照非常关键：
+
+  【互联网上有什么】
+    Q: parse_date() 里的 TypeError。我调用函数时传了一个字符串，
+       它应该是合法数据类型？
+    A: 你在传字符串。先用 strptime() 包一层就能工作。
+    → 只有"问题 + 答案"的文本
+
+  【环境里可能发生什么】
+    $ grep -rn parse_date src/
+    utils.py:42: def parse_date(s):
+    $ pytest tests/
+    FAILED: TypeError
+    $ edit src/utils.py
+    $ pytest tests/
+    1 passed
+    → 有命令、有输出、有验证
+
+【缺口】
+  互联网只有"人写的文本"
+  agent 需要"动作 + 观察 + 验证"
+  → 这类数据在互联网上几乎不存在
+  → 必须人为造出来
+</pre>
+<h3>1.4 同样的基座，后训练数据决定差别（p10）</h3>
+<blockquote>
+大量证据表明：给定同样的基座模型，<strong>后训练数据造成巨大差别</strong>。
+</blockquote>
+<pre class="loop">课件引 OT-Agent 论文（Raoof 2026）的发现：
+  给定同样预算的 SFT 轨迹（横轴），
+  选出最有效的子集，就能在多个基准上取得更好表现
+
+含义：
+  · 不是"数据越多越好"
+  · 是"选对数据比堆数据更重要"
+  → 数据质量/选择是核心问题
+</pre>
+<h2>二、本讲的三个部分（p3）</h2>
+<pre class="loop">课时分配（p3）：
+  Motivation                        10 min
+  Kinds of Agent Data               10 min
+  Where Agent Data Come From        45 min   ← 主体
+  What your data accidentally teaches 15 min  ← 最反直觉的部分
+
+对应本讲的七课：
+  0075 为什么数据是主要杠杆（本课）
+  0076 agent 数据的两种形态：轨迹与环境
+  0077 来源一：人类示范
+  0078 来源二：从网页与世界挖掘
+  0079 来源三：合成轨迹与合成环境
+  0080 来源四：模拟用户与环境
+  0081 数据意外教会了什么：奖励黑客与过拟合（收官）
+</pre>
+<h2>三、为什么这一讲被放在最后</h2>
+<pre class="loop">课程顺序的逻辑：
+
+  L01 什么是 agent
+  L02-04 基础（LLM / RAG / 工具）
+  L05-06 工程化与设计模式（改系统）
+  L07-09 记忆 / 多智能体 / 优化（改系统）
+  L10 评测（怎么知道改得好不好）
+  L11 数据（改模型本身）← 最后一讲
+
+→ 顺序是：先会搭、会评，再谈训练
+→ 因为"没有评测就无法判断数据好不好"
+→ 这是整门课的编排逻辑
+</pre>
+<h2>SGRT 工程桥：你没有 agent 数据，但你有「环境」</h2>
+<pre class="loop">【先认清你的处境】
+
+你不可能做后训练：
+  · 没有万亿 token
+  · 没有 GPU 集群
+  · 没有数据标注团队
+
+【但你有一个别人没有的东西：真实环境】
+
+  p9 的对照说得很清楚：
+    互联网只有文本
+    agent 需要环境
+  
+  你有：
+    · 真实的设备（能查状态、能取图像）
+    · 真实的日志（历史故障记录）
+    · 真实的验证（RMS 数值、角点率、事后确认）
+  
+  → 这些正是 agent 数据最缺的那部分
+
+【你能做的最有价值的事】
+
+  把「环境」记录下来：
+    · 每次排查，把 现象 → 查询动作 → 查询结果 → 结论 → 事后验证
+      完整存下来
+    → 这就是一条 trajectory
+    → 积累 100 条，就是一份真实领域的 agent 数据
+
+  用途（不需要训练也能用）：
+    ① 当 few-shot 示例（最好的示例来自真实轨迹）
+    ② 当评测集（有真实结论就有 verifier）
+    ③ 将来如果要微调，这是种子数据
+
+【关键判断】
+  现在就该开始记录，而不是等"要训练了"再收集
+  → 因为历史轨迹无法事后重建
+  → 这是不可逆的机会成本
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>定位</strong>：上一讲优化系统（权重冻结），这一讲优化模型本身——数据是主要杠杆。<br>
+<strong>根本缺口</strong>：互联网只有文本，agent 需要「动作+观察+验证」的环境数据。<br>
+<strong>关键结论</strong>：同样基座，后训练数据造成巨大差别；选对数据比堆数据更重要。<br>
+<strong>编排逻辑</strong>：先会搭、会评，再谈训练——没有评测无法判断数据好坏。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 为什么说「数据是优化 LM 本身的主要杠杆」？它和上一讲有什么区别？</p>
+  <details><summary>展开答案</summary><p>上一讲优化的是 LM 周围的系统——权重冻结，调的是组件（prompt、工具、上下文、编排）。这一讲优化的是 LM 本身，让它成为更好的 agent，而改模型的主要手段就是数据（不是算法）。课件明确说「data is the main lever for it」。区别在于改的对象：一个改外围组件，一个改模型能力。</p></details>
+  <p>Q2. p9 的两栏对照说明了什么根本缺口？</p>
+  <details><summary>展开答案</summary><p>左栏是互联网上的内容：只有「问题 + 答案」的文本（问 TypeError，答用 strptime 包一层）。右栏是环境里发生的事：grep 查文件、pytest 跑测试、edit 改代码、再 pytest 通过——有命令、有输出、有验证。缺口是：互联网只有人写的文本，而 agent 需要「动作 + 观察 + 验证」的环境数据，这类数据在互联网上几乎不存在，必须人为造出来。</p></details>
+  <p>Q3. OT-Agent 的发现说明了什么？为什么这个结论重要？</p>
+  <details><summary>展开答案</summary><p>发现是：给定同样预算的 SFT 轨迹，选出最有效的子集就能在多个基准上取得更好表现。说明「不是数据越多越好，而是选对数据比堆数据更重要」。这个结论重要因为：① 数据预算有限时，选择策略比规模更关键；② 大量低质量轨迹会稀释有效信号；③ 这意味着数据质量评估（而不是无脑收集）是核心工程问题。</p></details>
+  <p>Q4. 你没有 agent 训练数据，但你有什么？现在该做什么？</p>
+  <details><summary>展开答案</summary><p>你有真实环境：真实设备（能查状态取图像）、真实日志（历史故障）、真实验证（RMS、角点率、事后确认）——这正是 agent 数据最缺的部分（p9 说互联网只有文本，agent 需要环境）。现在该做的是把环境记录下来：每次排查把现象→查询动作→查询结果→结论→事后验证完整存下来，这就是一条 trajectory。用途包括 few-shot 示例、评测集、以及将来微调的种子数据。关键是不能等——历史轨迹无法事后重建。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture11 · 段一 动机</span><br>
+  <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture11-0076-kinds-of-agent-data.html">0076 · agent 数据的两种形态</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture11 课件《What Data Do Agents Need?》· 源文件夹 week6-10.28 · p3-11<br>
+Lesson 0075 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -3,146 +3,670 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>教学空间 · 课程大纲（CS329Z Lecture 1 重建版）</title>
+<title>CS329Z 教学空间 · 全 11 讲 · 81 课</title>
 <link rel="stylesheet" href="assets/lesson.css">
 </head>
 <body>
 <div class="wrap">
+
 <header class="course">
-  <span class="badge">教学空间 · 课程大纲</span>
-  <h1>从零学会"设计智能体系统"（对齐 Stanford CS329Z Lecture 1–5）</h1>
-  <div class="meta">Lecture01–05 · 44 课 + 每讲 1 道综合结业考试题（+ Lecture01 专项 6 题）· 中文 · 概念先行，判定课殿后 · 每课配自测（折叠式答案，先答后看）· 文件名前缀标来源：lecture01-* … lecture05-*（对应源文件夹见各课页脚）</div>
+  <span class="badge">Stanford CS329Z · Engineering AI Agents · 全 11 讲</span>
+  <h1>CS329Z 教学空间</h1>
+  <div class="meta">全 11 讲 · <strong>81 课</strong> · 321 道折叠自测 · 每课带 SGRT 工程桥 · 一手来源：<code>lecture/</code> 下 11 份课件</div>
 </header>
 
-<h2>Week1 · 学习路线（5 段，Lecture01）</h2>
+<div class="takeaway">
+<strong>这是什么</strong>：把 Stanford CS329Z（Engineering AI Agents）全部 11 讲课件逐页读完，重写成 81 节中文课程。每节包括：结论先行、机制拆解、数值/代码、失败模式、<strong>SGRT 工程桥</strong>（映射到你正在做的放疗表面追踪项目）、以及先答再展开的折叠自测。<br><br>
+<strong>怎么用</strong>：按讲顺序读。每节的自测<strong>必须先自己答再展开</strong>——这是检索练习，不是阅读（理由见 <a href="lessons/lecture01-0001-course-why.html">L01 第 0001 课</a>的 RCT 数据）。每讲最后一节是收官总结，附结业考试题。
+</div>
+
+<h2>全课程路线</h2>
 <table>
-  <tr><th>段</th><th>主题</th><th>课</th></tr>
-  <tr><td>一 · 打地基</td><td>为什么"系统"才是主角：模型vs系统、改系统&gt;换模型、LLM 三个缺口</td><td>0001-0003</td></tr>
-  <tr><td>二 · 智能体本体</td><td>历史脉络 → 五大组件+loop（心脏课）→ 推理四招 → 记忆三类</td><td>0004-0007</td></tr>
-  <tr><td>三 · 复合系统</td><td>RAG 三步、工具调用四步 + MCP</td><td>0008-0009</td></tr>
-  <tr><td>四 · 挑战与上线</td><td>可靠性/评估、长程上下文、安全红线</td><td>0010-0011</td></tr>
-  <tr><td>五 · 合体毕业</td><td>Workflow vs Agent 判定（零件合体）+ 总复习 + 综合题</td><td>0012-0013</td></tr>
+  <tr><th>讲次</th><th>主题</th><th>课件原名</th><th>课数</th><th>自测</th></tr>  <tr>
+    <td><a href="#L01"><strong>L01</strong></a></td>
+    <td>什么是 agentic 系统</td>
+    <td><em>Intro to Agentic Systems</em></td>
+    <td>8</td>
+    <td>32</td>
+  </tr>  <tr>
+    <td><a href="#L02"><strong>L02</strong></a></td>
+    <td>为构建者准备的语言模型</td>
+    <td><em>LLMs for Builders</em></td>
+    <td>9</td>
+    <td>36</td>
+  </tr>  <tr>
+    <td><a href="#L03"><strong>L03</strong></a></td>
+    <td>检索增强与 agent</td>
+    <td><em>RAG + Agents</em></td>
+    <td>7</td>
+    <td>28</td>
+  </tr>  <tr>
+    <td><a href="#L04"><strong>L04</strong></a></td>
+    <td>工具使用</td>
+    <td><em>Tool Use</em></td>
+    <td>7</td>
+    <td>28</td>
+  </tr>  <tr>
+    <td><a href="#L05"><strong>L05</strong></a></td>
+    <td>框架与编排</td>
+    <td><em>Frameworks & Orchestration</em></td>
+    <td>6</td>
+    <td>24</td>
+  </tr>  <tr>
+    <td><a href="#L06"><strong>L06</strong></a></td>
+    <td>设计模式与脚手架</td>
+    <td><em>Agent Design Patterns and Scaffolds</em></td>
+    <td>8</td>
+    <td>32</td>
+  </tr>  <tr>
+    <td><a href="#L07"><strong>L07</strong></a></td>
+    <td>记忆架构</td>
+    <td><em>Agent Memory Architectures</em></td>
+    <td>9</td>
+    <td>33</td>
+  </tr>  <tr>
+    <td><a href="#L08"><strong>L08</strong></a></td>
+    <td>多智能体系统</td>
+    <td><em>Multi-Agent Systems</em></td>
+    <td>6</td>
+    <td>24</td>
+  </tr>  <tr>
+    <td><a href="#L09"><strong>L09</strong></a></td>
+    <td>优化</td>
+    <td><em>Optimization</em></td>
+    <td>8</td>
+    <td>32</td>
+  </tr>  <tr>
+    <td><a href="#L10"><strong>L10</strong></a></td>
+    <td>评测（嘉宾讲座）</td>
+    <td><em>Evaluating Agents: Terminal-Bench and Harbor</em></td>
+    <td>6</td>
+    <td>24</td>
+  </tr>  <tr>
+    <td><a href="#L11"><strong>L11</strong></a></td>
+    <td>agent 需要什么数据</td>
+    <td><em>What Data Do Agents Need?</em></td>
+    <td>7</td>
+    <td>28</td>
+  </tr></table>
+
+<h2>学习路径建议</h2>
+<pre class="loop">第一次学（按顺序）
+  L01 → L02 → L03 → L04 → L05 → L06 → L07 → L08 → L09 → L10 → L11
+  每一讲读完，答完全部折叠自测，再进下一讲
+
+只关心"怎么搭"
+  L01 → L05 → L06 → L07 → L08
+  → 认识组件、学会工程化、掌握设计模式与记忆、了解多智能体
+
+只关心"怎么知道自己做得好"
+  L10 → L04（评估部分）→ L09（优化）
+  → 评测工程 → 工具使用评估 → 优化策略
+
+只关心"数据/训练"
+  L02 → L09 → L11
+  → 模型原理 → 优化 → 数据方案
+</pre>
+
+<h2>贯穿全课的四个主线</h2>
+<table>
+  <tr><th>主线</th><th>在哪里展开</th><th>一句话</th></tr>
+  <tr><td><strong>控制流谱系</strong></td><td>L01 → L05 → L06</td><td>程序定步骤（workflow）vs 模型定步骤（agent），真实系统是两者组合</td></tr>
+  <tr><td><strong>上下文成本</strong></td><td>L02 → L06</td><td>O(n²) 是物理约束；五种上下文管理模式按成本递增用</td></tr>
+  <tr><td><strong>可靠性</strong></td><td>L01 → L04 → L10</td><td>错误累积（0.95²⁰≈36%）；Pass^k 而非 pass@k；领域 eval 而非通用榜单</td></tr>
+  <tr><td><strong>数据与验证</strong></td><td>L09 → L10 → L11</td><td>环境在上游（可重复产出）；奖励要客观（Code Tests 优于 LLM 判官）；防奖励黑客</td></tr>
 </table>
 
-<h2>Week2 · 学习路线（5 段，Lecture02）</h2>
+<h2 id="L01">Lecture01 · 什么是 agentic 系统</h2>
+<div class="meta">Intro to Agentic Systems · 来源文件夹 <code>week1-9.23</code> · 8 课 · 32 道自测<br>双视角定位、四段历史、五组件解剖、推理/记忆/工具、复合系统、五大挑战</div>
 <table>
-  <tr><th>段</th><th>主题</th><th>课</th></tr>
-  <tr><td>一 · 拆开模型</td><td>Transformer/注意力（上下文的 O(n²)）→ 线性注意力（压成 O(n) 的代价）</td><td>0014-0015</td></tr>
-  <tr><td>二 · 模型怎么造出来</td><td>训练三阶段：预训练 / 中训练 / 后训练（RLHF 坑、RLVR、Agent 训练）</td><td>0016</td></tr>
-  <tr><td>三 · 模型怎么跑起来</td><td>Prefill/Decode + KV Cache → 推理期扩展（CoT/重复采样/自洽）</td><td>0017-0018</td></tr>
-  <tr><td>四 · 接口与上下文</td><td>结构化 I/O（约束解码/DSPy）→ 上下文工程（context rot / 长程三招）</td><td>0019-0021</td></tr>
-  <tr><td>五 · Week2 毕业</td><td>构建高效 agent：workflow 五模式 + 何时上 agent</td><td>0022</td></tr>
+  <tr><th>课号</th><th>标题</th><th>段</th><th>页</th><th>自测</th></tr>  <tr>
+    <td><a href="lessons/lecture01-0001-course-why.html"><strong>0001</strong></a></td>
+    <td><a href="lessons/lecture01-0001-course-why.html">这门课为什么存在：建模视角 + 系统视角</a></td>
+    <td>段一 课程定位</td>
+    <td>5-16</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture01-0002-history-of-agents.html"><strong>0002</strong></a></td>
+    <td><a href="lessons/lecture01-0002-history-of-agents.html">agent 的历史：从拉丁词源到 LLM 时代</a></td>
+    <td>段二 历史</td>
+    <td>18-27</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture01-0003-anatomy-of-agent.html"><strong>0003</strong></a></td>
+    <td><a href="lessons/lecture01-0003-anatomy-of-agent.html">agent 的解剖：LLM 内核 + 推理 + 记忆 + 工具 + 环境</a></td>
+    <td>段三 架构 · 解剖</td>
+    <td>28-32,44-53</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture01-0004-reasoning-why.html"><strong>0004</strong></a></td>
+    <td><a href="lessons/lecture01-0004-reasoning-why.html">推理为什么有用：ReAct、自洽性与反思</a></td>
+    <td>段三 架构 · 推理</td>
+    <td>33-43</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture01-0005-memory-and-tools.html"><strong>0005</strong></a></td>
+    <td><a href="lessons/lecture01-0005-memory-and-tools.html">记忆三类与工具调用：Toolformer、Gorilla</a></td>
+    <td>段三 架构 · 记忆与工具</td>
+    <td>44-53</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture01-0006-compound-ai-systems.html"><strong>0006</strong></a></td>
+    <td><a href="lessons/lecture01-0006-compound-ai-systems.html">复合 AI 系统：workflow 与 agent 的分界，RAG、工具、MCP</a></td>
+    <td>段四 复合系统</td>
+    <td>54-59</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture01-0007-reliability-eval.html"><strong>0007</strong></a></td>
+    <td><a href="lessons/lecture01-0007-reliability-eval.html">agent 的五大挑战：可靠性、训练、长程、安全、评估</a></td>
+    <td>段五 挑战</td>
+    <td>60-69</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture01-0008-lecture01-summary.html"><strong>0008</strong></a></td>
+    <td><a href="lessons/lecture01-0008-lecture01-summary.html">Lecture01 总结：拿到一个任务，先判断它属于哪一层</a></td>
+    <td>段六 总结 · Lecture01 收官</td>
+    <td>70-71,</td>
+    <td>4</td>
+  </tr></table>
+<h2 id="L02">Lecture02 · 为构建者准备的语言模型</h2>
+<div class="meta">LLMs for Builders · 来源文件夹 <code>week2-9.28</code> · 9 课 · 36 道自测<br>概率与采样、Transformer、线性注意力、训练三阶段、Prefill/Decode、推理期扩展、结构化 IO、上下文工程</div>
+<table>
+  <tr><th>课号</th><th>标题</th><th>段</th><th>页</th><th>自测</th></tr>  <tr>
+    <td><a href="lessons/lecture02-0009-what-is-lm.html"><strong>0009</strong></a></td>
+    <td><a href="lessons/lecture02-0009-what-is-lm.html">语言模型是什么：概率、生成与采样</a></td>
+    <td>段一 什么是语言模型</td>
+    <td>6-23</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture02-0010-transformer-attention.html"><strong>0010</strong></a></td>
+    <td><a href="lessons/lecture02-0010-transformer-attention.html">Transformer 与注意力：为什么是 O(n²)，为什么能并行</a></td>
+    <td>段二 架构 · Transformer</td>
+    <td>24-62</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture02-0011-linear-attention.html"><strong>0011</strong></a></td>
+    <td><a href="lessons/lecture02-0011-linear-attention.html">线性注意力：把 O(n²) 压成 O(n) 的代价</a></td>
+    <td>段二 架构 · 线性注意力</td>
+    <td>63-91</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture02-0012-training-stages.html"><strong>0012</strong></a></td>
+    <td><a href="lessons/lecture02-0012-training-stages.html">训练三阶段：预训练、中训练、后训练</a></td>
+    <td>段三 训练</td>
+    <td>92-118</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture02-0013-prefill-decode.html"><strong>0013</strong></a></td>
+    <td><a href="lessons/lecture02-0013-prefill-decode.html">推理的两个阶段：Prefill 与 Decode，以及 KV Cache</a></td>
+    <td>段四 推理</td>
+    <td>119-137</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture02-0014-inference-time-scaling.html"><strong>0014</strong></a></td>
+    <td><a href="lessons/lecture02-0014-inference-time-scaling.html">推理期扩展：用推理算力换准确率</a></td>
+    <td>段四 推理 · 推理期扩展</td>
+    <td>138-148</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture02-0015-structured-io.html"><strong>0015</strong></a></td>
+    <td><a href="lessons/lecture02-0015-structured-io.html">结构化 I/O：约束解码、DSPy 签名与分类器</a></td>
+    <td>段五 LLM for Agents · 结构化 I/O</td>
+    <td>149-159</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture02-0016-context-engineering.html"><strong>0016</strong></a></td>
+    <td><a href="lessons/lecture02-0016-context-engineering.html">上下文工程：五个组成部分与避免膨胀</a></td>
+    <td>段五 LLM for Agents · 上下文工程</td>
+    <td>160-171</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture02-0017-lecture02-summary.html"><strong>0017</strong></a></td>
+    <td><a href="lessons/lecture02-0017-lecture02-summary.html">Lecture02 总结：架构、训练、推理如何共同决定 agent 的能力</a></td>
+    <td>段六 总结 · Lecture02 收官</td>
+    <td>174-176</td>
+    <td>4</td>
+  </tr></table>
+<h2 id="L03">Lecture03 · 检索增强与 agent</h2>
+<div class="meta">RAG + Agents · 来源文件夹 <code>week2-9.30</code> · 7 课 · 28 道自测<br>为什么 RAG、分块索引、上下文检索、BM25/DPR、ColBERT、Agentic RAG、失败模式</div>
+<table>
+  <tr><th>课号</th><th>标题</th><th>段</th><th>页</th><th>自测</th></tr>  <tr>
+    <td><a href="lessons/lecture03-0018-why-rag.html"><strong>0018</strong></a></td>
+    <td><a href="lessons/lecture03-0018-why-rag.html">为什么需要检索：从猜答案到查证据</a></td>
+    <td>段一 为什么 RAG</td>
+    <td>9-21</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture03-0019-chunking-indexing.html"><strong>0019</strong></a></td>
+    <td><a href="lessons/lecture03-0019-chunking-indexing.html">分块与索引：检索的基本单位</a></td>
+    <td>段二 索引</td>
+    <td>22-38</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture03-0020-contextual-retrieval.html"><strong>0020</strong></a></td>
+    <td><a href="lessons/lecture03-0020-contextual-retrieval.html">上下文检索：给每个块补上它丢掉的背景</a></td>
+    <td>段二 索引 · 上下文增强</td>
+    <td>26-38</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture03-0021-bm25-dpr.html"><strong>0021</strong></a></td>
+    <td><a href="lessons/lecture03-0021-bm25-dpr.html">检索器：BM25 与 DPR，以及怎么评估</a></td>
+    <td>段三 检索器</td>
+    <td>39-48</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture03-0022-colbert.html"><strong>0022</strong></a></td>
+    <td><a href="lessons/lecture03-0022-colbert.html">ColBERT 与混合检索：按 token 打分，按排名融合</a></td>
+    <td>段三 检索器 · 进阶</td>
+    <td>49-54</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture03-0023-agentic-rag.html"><strong>0023</strong></a></td>
+    <td><a href="lessons/lecture03-0023-agentic-rag.html">Agentic RAG：把检索变成 agent 的一个动作</a></td>
+    <td>段四 Agentic RAG</td>
+    <td>55-61</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture03-0024-rag-failure-modes.html"><strong>0024</strong></a></td>
+    <td><a href="lessons/lecture03-0024-rag-failure-modes.html">RAG 失败模式全景：三层诊断法</a></td>
+    <td>段五 失败模式 · Lecture03 收官</td>
+    <td>62-64</td>
+    <td>4</td>
+  </tr></table>
+<h2 id="L04">Lecture04 · 工具使用</h2>
+<div class="meta">Tool Use · 来源文件夹 <code>week3-10.5</code> · 7 课 · 28 道自测<br>为什么工具、Toolformer/Toolken、ToolLLM/Gorilla、REST/FC/MCP、评估、失败模式</div>
+<table>
+  <tr><th>课号</th><th>标题</th><th>段</th><th>页</th><th>自测</th></tr>  <tr>
+    <td><a href="lessons/lecture04-0025-why-tools.html"><strong>0025</strong></a></td>
+    <td><a href="lessons/lecture04-0025-why-tools.html">RAG 的两个上限与 LLM 的四类做不到</a></td>
+    <td>段一 RAG 收尾 + 为什么工具</td>
+    <td>4-21</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture04-0026-learning-to-call.html"><strong>0026</strong></a></td>
+    <td><a href="lessons/lecture04-0026-learning-to-call.html">学习调用工具：Toolformer 与 ToolkenGPT</a></td>
+    <td>段二 学习调用工具</td>
+    <td>22-35</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture04-0027-scaling-apis.html"><strong>0027</strong></a></td>
+    <td><a href="lessons/lecture04-0027-scaling-apis.html">规模化用工具：ToolLLM 与 Gorilla</a></td>
+    <td>段二 学习调用工具 · 规模化</td>
+    <td>36-45</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture04-0028-standard-interfaces.html"><strong>0028</strong></a></td>
+    <td><a href="lessons/lecture04-0028-standard-interfaces.html">标准接口三代：REST、Function Calling、MCP</a></td>
+    <td>段三 标准接口</td>
+    <td>46-56</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture04-0029-mcp-example.html"><strong>0029</strong></a></td>
+    <td><a href="lessons/lecture04-0029-mcp-example.html">MCP 实战：从 OpenAPI 自动生成工具</a></td>
+    <td>段三 标准接口 · MCP 实战</td>
+    <td>55-56</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture04-0030-evaluating-tool-use.html"><strong>0030</strong></a></td>
+    <td><a href="lessons/lecture04-0030-evaluating-tool-use.html">评估工具使用：BFCL、ToolBench、τ-bench 与 Pass^k</a></td>
+    <td>段四 评估工具</td>
+    <td>57-66</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture04-0031-tool-failure-modes.html"><strong>0031</strong></a></td>
+    <td><a href="lessons/lecture04-0031-tool-failure-modes.html">工具失败模式全景：单次、多步、对话三层</a></td>
+    <td>段五 失败模式 · Lecture04 收官</td>
+    <td>67-68</td>
+    <td>4</td>
+  </tr></table>
+<h2 id="L05">Lecture05 · 框架与编排</h2>
+<div class="meta">Frameworks & Orchestration · 来源文件夹 <code>week3-10.7</code> · 6 课 · 24 道自测<br>三支柱与控制流谱系、DSPy、LangGraph、四种 harness、Temporal 与可观测性、四条铁律</div>
+<table>
+  <tr><th>课号</th><th>标题</th><th>段</th><th>页</th><th>自测</th></tr>  <tr>
+    <td><a href="lessons/lecture05-0032-what-is-engineering.html"><strong>0032</strong></a></td>
+    <td><a href="lessons/lecture05-0032-what-is-engineering.html">什么叫工程化一个 agent：三支柱与控制流谱系</a></td>
+    <td>段一 什么叫工程化</td>
+    <td>4-18</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture05-0033-dspy.html"><strong>0033</strong></a></td>
+    <td><a href="lessons/lecture05-0033-dspy.html">DSPy：签名、模块、优化器</a></td>
+    <td>段二 Workflow 框架 · DSPy</td>
+    <td>19-51</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture05-0034-langgraph.html"><strong>0034</strong></a></td>
+    <td><a href="lessons/lecture05-0034-langgraph.html">LangGraph：State、Node、Edge</a></td>
+    <td>段二 Workflow 框架 · LangGraph</td>
+    <td>52-77</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture05-0035-agent-harnesses.html"><strong>0035</strong></a></td>
+    <td><a href="lessons/lecture05-0035-agent-harnesses.html">Agent Harness 四种设计对比：Mini SWE-Agent、OpenHands、Pi、OpenClaw</a></td>
+    <td>段三 Agent Harness</td>
+    <td>78-89</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture05-0036-orchestration-telemetry.html"><strong>0036</strong></a></td>
+    <td><a href="lessons/lecture05-0036-orchestration-telemetry.html">编排与遥测：Temporal 持久执行与可观测性</a></td>
+    <td>段四 编排与遥测</td>
+    <td>90-122</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture05-0037-best-practices.html"><strong>0037</strong></a></td>
+    <td><a href="lessons/lecture05-0037-best-practices.html">四条工程铁律：简单、可观测、跑评估、懂底层</a></td>
+    <td>段五 最佳实践 · Lecture05 收官</td>
+    <td>123-132</td>
+    <td>4</td>
+  </tr></table>
+<h2 id="L06">Lecture06 · 设计模式与脚手架</h2>
+<div class="meta">Agent Design Patterns and Scaffolds · 来源文件夹 <code>week3-10.12</code> · 8 课 · 32 道自测<br>workflow/agent 分界、五种 workflow 模式、ReAct/Reflexion、CodeAct/规划、上下文五模式、Pi 案例</div>
+<table>
+  <tr><th>课号</th><th>标题</th><th>段</th><th>页</th><th>自测</th></tr>  <tr>
+    <td><a href="lessons/lecture06-0038-workflows-vs-agents.html"><strong>0038</strong></a></td>
+    <td><a href="lessons/lecture06-0038-workflows-vs-agents.html">回顾：workflow 与 agent 的分界</a></td>
+    <td>段一 回顾</td>
+    <td>8-12</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture06-0039-workflow-patterns.html"><strong>0039</strong></a></td>
+    <td><a href="lessons/lecture06-0039-workflow-patterns.html">五种 workflow 设计模式</a></td>
+    <td>段二 Workflow 设计模式</td>
+    <td>13-30</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture06-0040-react-reflexion.html"><strong>0040</strong></a></td>
+    <td><a href="lessons/lecture06-0040-react-reflexion.html">推理模式一：ReAct 与 Reflexion</a></td>
+    <td>段三 推理/行动模式</td>
+    <td>31-42</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture06-0041-codeact-planning.html"><strong>0041</strong></a></td>
+    <td><a href="lessons/lecture06-0041-codeact-planning.html">推理模式二：CodeAct 与先规划再执行</a></td>
+    <td>段三 推理/行动模式 · 进阶</td>
+    <td>43-54</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture06-0042-context-patterns.html"><strong>0042</strong></a></td>
+    <td><a href="lessons/lecture06-0042-context-patterns.html">上下文管理：两条原则与五种模式</a></td>
+    <td>段四 上下文管理</td>
+    <td>55-71</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture06-0043-context-isolation.html"><strong>0043</strong></a></td>
+    <td><a href="lessons/lecture06-0043-context-isolation.html">上下文隔离与渐进披露</a></td>
+    <td>段四 上下文管理 · 隔离</td>
+    <td>69-75</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture06-0044-case-pi.html"><strong>0044</strong></a></td>
+    <td><a href="lessons/lecture06-0044-case-pi.html">案例：Pi 极简 harness 的收益与代价</a></td>
+    <td>段五 案例 · Pi</td>
+    <td>76-83</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture06-0045-lecture06-summary.html"><strong>0045</strong></a></td>
+    <td><a href="lessons/lecture06-0045-lecture06-summary.html">Lecture06 总结：三个维度、三组判断</a></td>
+    <td>段六 总结 · Lecture06 收官</td>
+    <td>84-86</td>
+    <td>4</td>
+  </tr></table>
+<h2 id="L07">Lecture07 · 记忆架构</h2>
+<div class="meta">Agent Memory Architectures · 来源文件夹 <code>week4-10.14</code> · 9 课 · 33 道自测<br>为什么记忆、三类记忆、What-When-How、四种模式、评估、挑战</div>
+<table>
+  <tr><th>课号</th><th>标题</th><th>段</th><th>页</th><th>自测</th></tr>  <tr>
+    <td><a href="lessons/lecture07-0046-why-memory.html"><strong>0046</strong></a></td>
+    <td><a href="lessons/lecture07-0046-why-memory.html">为什么 agent 需要记忆：三类损失与三项收益</a></td>
+    <td>段一 动机 · 为什么需要记忆</td>
+    <td>5-13</td>
+    <td>3</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture07-0047-memory-types.html"><strong>0047</strong></a></td>
+    <td><a href="lessons/lecture07-0047-memory-types.html">四类记忆：工作、情景、语义、程序——以及参数记忆 vs 上下文记忆</a></td>
+    <td>段二 记忆类型</td>
+    <td>14-22</td>
+    <td>3</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture07-0048-memory-what-when-how.html"><strong>0048</strong></a></td>
+    <td><a href="lessons/lecture07-0048-memory-what-when-how.html">设计记忆前必须先回答的三个问题，以及三种存储载体</a></td>
+    <td>段三 架构 · 三问与载体</td>
+    <td>23-28</td>
+    <td>3</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture07-0049-pattern-learning-procedures.html"><strong>0049</strong></a></td>
+    <td><a href="lessons/lecture07-0049-pattern-learning-procedures.html">模式一：从经验中学流程——Voyager、AWM 与 Skill Files</a></td>
+    <td>段四 架构模式 1/4</td>
+    <td>29-41</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture07-0050-pattern-tiered-memory.html"><strong>0050</strong></a></td>
+    <td><a href="lessons/lecture07-0050-pattern-tiered-memory.html">模式二：分层记忆——MemGPT 与 MemoryOS 把内存/硬盘之分搬到 agent 上</a></td>
+    <td>段四 架构模式 2/4</td>
+    <td>42-49</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture07-0051-pattern-reflective-memory.html"><strong>0051</strong></a></td>
+    <td><a href="lessons/lecture07-0051-pattern-reflective-memory.html">模式三：反思式巩固——存进去之前，先想一遍</a></td>
+    <td>段四 架构模式 3/4</td>
+    <td>50-56</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture07-0052-pattern-memory-maintenance.html"><strong>0052</strong></a></td>
+    <td><a href="lessons/lecture07-0052-pattern-memory-maintenance.html">模式四：记忆维护——睡眠期计算、A-Mem 与 Mem0 的四动作</a></td>
+    <td>段四 架构模式 4/4（收官）</td>
+    <td>57-66</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture07-0053-evaluating-memory.html"><strong>0053</strong></a></td>
+    <td><a href="lessons/lecture07-0053-evaluating-memory.html">如何评估记忆：四条标准与四个基准的演进史</a></td>
+    <td>段五 评估</td>
+    <td>67-94</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture07-0054-memory-challenges.html"><strong>0054</strong></a></td>
+    <td><a href="lessons/lecture07-0054-memory-challenges.html">记忆的三个开放问题：记什么、信不信、用得对不对</a></td>
+    <td>段六 挑战与开放问题 · Lecture07 收官</td>
+    <td>95-103</td>
+    <td>4</td>
+  </tr></table>
+<h2 id="L08">Lecture08 · 多智能体系统</h2>
+<div class="meta">Multi-Agent Systems · 来源文件夹 <code>week5-10.19</code> · 6 课 · 24 道自测<br>单 vs 多 agent 判据、编排模式、通信、协调、失败模式、蜂群案例</div>
+<table>
+  <tr><th>课号</th><th>标题</th><th>段</th><th>页</th><th>自测</th></tr>  <tr>
+    <td><a href="lessons/lecture08-0055-sas-vs-mas.html"><strong>0055</strong></a></td>
+    <td><a href="lessons/lecture08-0055-sas-vs-mas.html">单 agent 还是多 agent：收益、代价与判据</a></td>
+    <td>段一 单 vs 多 agent</td>
+    <td>7-15</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture08-0056-orchestration-patterns.html"><strong>0056</strong></a></td>
+    <td><a href="lessons/lecture08-0056-orchestration-patterns.html">四种编排模式：独立、集中、去中心、混合</a></td>
+    <td>段二 编排模式</td>
+    <td>16-29</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture08-0057-communication.html"><strong>0057</strong></a></td>
+    <td><a href="lessons/lecture08-0057-communication.html">通信：对话、handoff 与消息板</a></td>
+    <td>段三 通信</td>
+    <td>30-49</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture08-0058-coordination.html"><strong>0058</strong></a></td>
+    <td><a href="lessons/lecture08-0058-coordination.html">协调：三项基础设施 + 三种协调模式</a></td>
+    <td>段四 协调</td>
+    <td>50-68</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture08-0059-failure-modes.html"><strong>0059</strong></a></td>
+    <td><a href="lessons/lecture08-0059-failure-modes.html">多 agent 为什么会失败：三类失败模式</a></td>
+    <td>段五 失败模式</td>
+    <td>69-82</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture08-0060-case-engineering-swarm.html"><strong>0060</strong></a></td>
+    <td><a href="lessons/lecture08-0060-case-engineering-swarm.html">案例：工程化蜂群——用 C 编译器项目学到的六条</a></td>
+    <td>段六 案例研究 · Lecture08 收官</td>
+    <td>83-92</td>
+    <td>4</td>
+  </tr></table>
+<h2 id="L09">Lecture09 · 优化</h2>
+<div class="meta">Optimization · 来源文件夹 <code>week5-10.21</code> · 8 课 · 32 道自测<br>优化条件、few-shot、反思式、SFT、RL/GRPO、on-policy 蒸馏、agent 作优化器、选型</div>
+<table>
+  <tr><th>课号</th><th>标题</th><th>段</th><th>页</th><th>自测</th></tr>  <tr>
+    <td><a href="lessons/lecture09-0061-conditions-for-optimization.html"><strong>0061</strong></a></td>
+    <td><a href="lessons/lecture09-0061-conditions-for-optimization.html">什么时候该优化：三支柱与五个判断条件</a></td>
+    <td>段一 条件</td>
+    <td>7-11</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture09-0062-fewshot-optimization.html"><strong>0062</strong></a></td>
+    <td><a href="lessons/lecture09-0062-fewshot-optimization.html">Few-shot 优化：示例顺序、推理自举与 DSPy 采样</a></td>
+    <td>段二 Context 优化 · few-shot</td>
+    <td>12-22</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture09-0063-reflective-optimization.html"><strong>0063</strong></a></td>
+    <td><a href="lessons/lecture09-0063-reflective-optimization.html">反思式优化：OPRO、MIPROv2、TextGrad、GEPA</a></td>
+    <td>段二 Context 优化 · 反思</td>
+    <td>23-69</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture09-0064-sft-for-agents.html"><strong>0064</strong></a></td>
+    <td><a href="lessons/lecture09-0064-sft-for-agents.html">权重优化一：SFT——用教师的成功轨迹训学生</a></td>
+    <td>段三 权重优化 · SFT</td>
+    <td>70-79</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture09-0065-rl-grpo.html"><strong>0065</strong></a></td>
+    <td><a href="lessons/lecture09-0065-rl-grpo.html">权重优化二：RL 与 GRPO——用验证器当奖励</a></td>
+    <td>段三 权重优化 · RL</td>
+    <td>80-95</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture09-0066-on-policy-distillation.html"><strong>0066</strong></a></td>
+    <td><a href="lessons/lecture09-0066-on-policy-distillation.html">权重优化三：On-Policy 蒸馏——在你自己走错的地方纠正你</a></td>
+    <td>段三 权重优化 · 蒸馏（收官）</td>
+    <td>96-104</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture09-0067-agents-as-optimizers.html"><strong>0067</strong></a></td>
+    <td><a href="lessons/lecture09-0067-agents-as-optimizers.html">让 agent 自己优化：DGM、Meta-Harness 与 Auto-Research</a></td>
+    <td>段四 agent 作为优化器</td>
+    <td>105-116</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture09-0068-which-strategy.html"><strong>0068</strong></a></td>
+    <td><a href="lessons/lecture09-0068-which-strategy.html">选哪种策略：context 还是权重（Lecture09 收官）</a></td>
+    <td>段五 选型 · Lecture09 收官</td>
+    <td>117-125</td>
+    <td>4</td>
+  </tr></table>
+<h2 id="L10">Lecture10 · 评测（嘉宾讲座）</h2>
+<div class="meta">Evaluating Agents: Terminal-Bench and Harbor · 来源文件夹 <code>week6-10.26</code> · 6 课 · 24 道自测<br>演绎到归纳、数据形态、评测词汇、写任务、写验证器、评测基础设施</div>
+<table>
+  <tr><th>课号</th><th>标题</th><th>段</th><th>页</th><th>自测</th></tr>  <tr>
+    <td><a href="lessons/lecture10-0069-deductive-to-inductive.html"><strong>0069</strong></a></td>
+    <td><a href="lessons/lecture10-0069-deductive-to-inductive.html">从演绎到归纳：为什么 agent 必须靠评估</a></td>
+    <td>段一 范式转变</td>
+    <td>3-31</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture10-0070-agent-data.html"><strong>0070</strong></a></td>
+    <td><a href="lessons/lecture10-0070-agent-data.html">agent 的数据长什么样：bash 与统一动作空间</a></td>
+    <td>段一 范式转变 · 数据与工具</td>
+    <td>29-40</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture10-0071-eval-vocabulary.html"><strong>0071</strong></a></td>
+    <td><a href="lessons/lecture10-0071-eval-vocabulary.html">评测的基本词汇：Task、Trial、Verifier、Trajectory</a></td>
+    <td>段二 评测词汇</td>
+    <td>41-43</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture10-0072-writing-tasks.html"><strong>0072</strong></a></td>
+    <td><a href="lessons/lecture10-0072-writing-tasks.html">怎么写任务：指令与环境</a></td>
+    <td>段三 写任务</td>
+    <td>44-48</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture10-0073-writing-verifiers.html"><strong>0073</strong></a></td>
+    <td><a href="lessons/lecture10-0073-writing-verifiers.html">怎么写验证器：混淆矩阵、环境隔离与参考解</a></td>
+    <td>段三 写验证器</td>
+    <td>49-54</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture10-0074-eval-infra.html"><strong>0074</strong></a></td>
+    <td><a href="lessons/lecture10-0074-eval-infra.html">评测基础设施与持续基准</a></td>
+    <td>段四 基础设施 · Lecture10 收官</td>
+    <td>55-64</td>
+    <td>4</td>
+  </tr></table>
+<h2 id="L11">Lecture11 · agent 需要什么数据</h2>
+<div class="meta">What Data Do Agents Need? · 来源文件夹 <code>week6-10.28</code> · 7 课 · 28 道自测<br>数据杠杆、轨迹与环境、四种来源（示范/挖掘/合成/模拟）、意外教学</div>
+<table>
+  <tr><th>课号</th><th>标题</th><th>段</th><th>页</th><th>自测</th></tr>  <tr>
+    <td><a href="lessons/lecture11-0075-why-data-matters.html"><strong>0075</strong></a></td>
+    <td><a href="lessons/lecture11-0075-why-data-matters.html">为什么数据是优化 agent 的主要杠杆</a></td>
+    <td>段一 动机</td>
+    <td>3-11</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture11-0076-kinds-of-agent-data.html"><strong>0076</strong></a></td>
+    <td><a href="lessons/lecture11-0076-kinds-of-agent-data.html">agent 数据的两种形态：轨迹与环境</a></td>
+    <td>段二 数据类型</td>
+    <td>12-18</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture11-0077-human-demonstrations.html"><strong>0077</strong></a></td>
+    <td><a href="lessons/lecture11-0077-human-demonstrations.html">来源一：人类示范</a></td>
+    <td>段三 数据来源 · 人类示范</td>
+    <td>19-28</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture11-0078-mining-web.html"><strong>0078</strong></a></td>
+    <td><a href="lessons/lecture11-0078-mining-web.html">来源二：从网页与世界挖掘</a></td>
+    <td>段三 数据来源 · 挖掘</td>
+    <td>29-37</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture11-0079-synthesized.html"><strong>0079</strong></a></td>
+    <td><a href="lessons/lecture11-0079-synthesized.html">来源三：合成轨迹与合成环境</a></td>
+    <td>段三 数据来源 · 合成</td>
+    <td>38-51</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture11-0080-simulated-users.html"><strong>0080</strong></a></td>
+    <td><a href="lessons/lecture11-0080-simulated-users.html">来源四：模拟用户与环境</a></td>
+    <td>段三 数据来源 · 模拟</td>
+    <td>52-57</td>
+    <td>4</td>
+  </tr>  <tr>
+    <td><a href="lessons/lecture11-0081-accidental-learnings.html"><strong>0081</strong></a></td>
+    <td><a href="lessons/lecture11-0081-accidental-learnings.html">数据意外教会了什么：奖励黑客与过拟合（全课程收官）</a></td>
+    <td>段四 意外教学 · Lecture11 收官 · 全课程完结</td>
+    <td>58-75</td>
+    <td>4</td>
+  </tr></table>
+<h2>其他资源</h2>
+<table>
+  <tr><th>文件</th><th>内容</th></tr>
+  <tr><td><a href="综合题/README.md">综合题/</a></td><td>每讲结业考试题（11 份，Markdown 作答制）</td></tr>
+  <tr><td><a href="reference/glossary.md">reference/glossary.md</a></td><td>术语表</td></tr>
+  <tr><td><a href="RESOURCES.md">RESOURCES.md</a></td><td>一手来源清单（论文/文章/课件）</td></tr>
+  <tr><td><a href="learning-records/">learning-records/</a></td><td>学习记录与重建日志</td></tr>
 </table>
 
-<h2>Week3 · 学习路线（5 段，Lecture03：RAG + Agents）</h2>
-<table>
-  <tr><th>段</th><th>主题</th><th>课</th></tr>
-  <tr><td>一 · 为什么 RAG</td><td>为什么要检索、retriever-reader、RAG 两部件</td><td>0023</td></tr>
-  <tr><td>二 · 索引</td><td>分块与向量检索（HNSW）→ 上下文检索（Late Chunking/RAPTOR）</td><td>0024-0025</td></tr>
-  <tr><td>三 · 检索</td><td>BM25 vs DPR → ColBERT 晚期交互 → 混合检索/RRF/指标</td><td>0026-0028</td></tr>
-  <tr><td>四 · Agentic RAG</td><td>检索放进循环：Self-RAG / CRAG / Search-R1</td><td>0029</td></tr>
-  <tr><td>五 · 收官</td><td>RAG 失败模式全景（检索侧/阅读侧/循环侧）+ 验收清单</td><td>0030</td></tr>
-</table>
+<h2>统计</h2>
+<pre class="loop">课件     11 份（lecture01-11.pdf，共 1,000+ 页）
+课程     81 课（编号 0001-0081，连续无缺号）
+自测     321 道（折叠式，先答再展开）
+工程桥   81 处（每课一节，映射到 SGRT 表面追踪项目）
+覆盖     L01、L02、L03、L04、L05、L06、L07、L08、L09、L10、L11
+</pre>
 
-<h2>Week4 · 学习路线（5 段，Lecture04：Tool Use）</h2>
-<table>
-  <tr><th>段</th><th>主题</th><th>课</th></tr>
-  <tr><td>一 · RAG 收尾 + 为什么工具</td><td>RAG 两个上限（塞不满/引用幻觉）→ LLM 三类做不到</td><td>0031</td></tr>
-  <tr><td>二 · 学习调用工具</td><td>工具定义 + Toolformer → Gorilla/ToolLLM/ToolkenGPT 规模化</td><td>0032-0033</td></tr>
-  <tr><td>三 · 标准接口</td><td>REST/函数调用/MCP 三代 → MCP 深入（架构/tools）→ MCP 实战</td><td>0034-0036</td></tr>
-  <tr><td>四 · 评估与失败</td><td>BFCL/ToolBench/τ-bench + Pass^k → 工具失败三层清单</td><td>0037-0038</td></tr>
-</table>
+<p class="foot">一手来源：Stanford CS329Z: Engineering AI Agents 全部 11 讲课件 · 讲师：Diyi Yang、Michael Ryan、John Yang<br>
+本教学空间由课件逐页重写而成，每课标注原课件页码区间，可回溯核对。</p>
 
-<h2>Lecture05 · 学习路线（5 段，Frameworks &amp; Orchestration，源文件夹 week3-10.7）</h2>
-<table>
-  <tr><th>段</th><th>主题</th><th>课</th></tr>
-  <tr><td>一 · 什么叫"工程化"Agent</td><td>三支柱 Data/System/Eval + 框架谱系</td><td>0039</td></tr>
-  <tr><td>二 · Workflow 框架</td><td>DSPy（签名/模块/优化器）→ LangGraph（State/Node/Edge）</td><td>0040-0041</td></tr>
-  <tr><td>三 · Agent Harness</td><td>Mini SWE-Agent / OpenHands / Pi / OpenClaw 取舍</td><td>0042</td></tr>
-  <tr><td>四 · 编排与遥测</td><td>Temporal 持久执行 + MLflow/LangSmith/LangFuse</td><td>0043</td></tr>
-  <tr><td>五 · 收官</td><td>四条工程铁律 + Build→Run→Eval→Improve 循环</td><td>0044</td></tr>
-</table>
-
-<h2>课时清单（按顺序）</h2>
-<ol>
-  <li><a href="lessons/lecture01-0001-model-vs-system.html">L01-0001 · 模型与系统：结果来自"整机"不是"零件"</a></li>
-  <li><a href="lessons/lecture01-0002-system-beats-scale.html">L01-0002 · 改系统 &gt; 换更大模型：迭代到底值多少钱</a></li>
-  <li><a href="lessons/lecture01-0003-llm-brain-not-worker.html">L01-0003 · LLM 是大脑，不是执行者（三座桥）</a></li>
-  <li><a href="lessons/lecture01-0004-history-of-agents.html">L01-0004 · 智能体从哪来（历史脉络）</a></li>
-  <li><a href="lessons/lecture01-0005-agent-loop-and-components.html">L01-0005 · 架构核心：五大组件 + agent loop ★心脏课</a></li>
-  <li><a href="lessons/lecture01-0006-reasoning-methods.html">L01-0006 · 推理方法：CoT/ReAct/Self-Consistency/Reflexion</a></li>
-  <li><a href="lessons/lecture01-0007-agent-memory.html">L01-0007 · 记忆三类：情景/语义/程序</a></li>
-  <li><a href="lessons/lecture01-0008-rag.html">L01-0008 · RAG：先查"你们的资料"再作答</a></li>
-  <li><a href="lessons/lecture01-0009-tools-and-mcp.html">L01-0009 · 工具调用四步 + Toolformer/Gorilla + MCP</a></li>
-  <li><a href="lessons/lecture01-0010-reliability-and-evaluation.html">L01-0010 · 可靠性与评估：能力高≠可靠</a></li>
-  <li><a href="lessons/lecture01-0011-longhorizon-and-safety.html">L01-0011 · 长程上下文 + 安全红线（任务成功≠安全）</a></li>
-  <li><a href="lessons/lecture01-0012-workflow-or-agent.html">L01-0012 · 毕业课：拿到任务，判 Workflow 还是 Agent ★判定</a></li>
-  <li><a href="lessons/lecture01-0013-course-map-and-graduation.html">L01-0013 · 总复习 + 综合题领取</a></li>
-  <li><a href="lessons/lecture02-0014-transformer-attention.html">L02-0014 · Transformer 与注意力：上下文为什么是 O(n²)</a></li>
-  <li><a href="lessons/lecture02-0015-linear-attention.html">L02-0015 · 线性注意力：把 O(n²) 压成 O(n) 的代价</a></li>
-  <li><a href="lessons/lecture02-0016-training-three-stages.html">L02-0016 · 训练三阶段：预训练 / 中训练 / 后训练</a></li>
-  <li><a href="lessons/lecture02-0017-inference-kvcache.html">L02-0017 · 推理与 KV Cache：Prefill vs Decode</a></li>
-  <li><a href="lessons/lecture02-0018-inference-time-scaling.html">L02-0018 · 推理期扩展：CoT / 重复采样 / 自洽</a></li>
-  <li><a href="lessons/lecture02-0019-structured-io.html">L02-0019 · 结构化输出：约束解码与 DSPy 签名</a></li>
-  <li><a href="lessons/lecture02-0020-context-engineering.html">L02-0020 · 上下文工程（上）：context rot 与上下文解剖</a></li>
-  <li><a href="lessons/lecture02-0021-longhorizon-context.html">L02-0021 · 上下文工程（下）：长程任务三招</a></li>
-  <li><a href="lessons/lecture02-0022-building-effective-agents.html">L02-0022 · 构建高效 agent：五种模式 ★Week2 毕业</a></li>
-  <li><a href="lessons/lecture03-0023-why-rag-pipeline.html">L03-0023 · 为什么需要检索：RAG 的管线与两个部件</a></li>
-  <li><a href="lessons/lecture03-0024-indexing-chunking.html">L03-0024 · 索引与分块：检索的基本单位怎么切</a></li>
-  <li><a href="lessons/lecture03-0025-contextual-retrieval.html">L03-0025 · 上下文检索：给每个 chunk 补背景</a></li>
-  <li><a href="lessons/lecture03-0026-retrieval-bm25-dpr.html">L03-0026 · 检索器：BM25 与 DPR</a></li>
-  <li><a href="lessons/lecture03-0027-colbert-late-interaction.html">L03-0027 · ColBERT：晚期交互，按 token 打分</a></li>
-  <li><a href="lessons/lecture03-0028-hybrid-and-metrics.html">L03-0028 · 混合检索、RRF 与检索指标</a></li>
-  <li><a href="lessons/lecture03-0029-agentic-rag.html">L03-0029 · Agentic RAG：把检索放进循环</a></li>
-  <li><a href="lessons/lecture03-0030-rag-failure-modes.html">L03-0030 · RAG 失败模式全景（Week3 收官）</a></li>
-  <li><a href="lessons/lecture04-0031-rag-wrapup-why-tools.html">L04-0031 · RAG 收尾与"为什么要工具"</a></li>
-  <li><a href="lessons/lecture04-0032-what-are-tools.html">L04-0032 · 什么是工具 + Toolformer</a></li>
-  <li><a href="lessons/lecture04-0033-gorilla-llm-toolllm.html">L04-0033 · 规模化用工具：Gorilla / ToolLLM / ToolkenGPT</a></li>
-  <li><a href="lessons/lecture04-0034-standard-interfaces.html">L04-0034 · 标准接口三代：REST / 函数调用 / MCP</a></li>
-  <li><a href="lessons/lecture04-0035-mcp-deep-dive.html">L04-0035 · MCP 深入：架构、tools/list 与 tools/call</a></li>
-  <li><a href="lessons/lecture04-0036-mcp-example.html">L04-0036 · MCP 实战：把 REST 包装成 MCP 工具</a></li>
-  <li><a href="lessons/lecture04-0037-evaluating-tool-use.html">L04-0037 · 评估工具使用：BFCL / ToolBench / τ-bench</a></li>
-  <li><a href="lessons/lecture04-0038-tool-failure-modes.html">L04-0038 · 工具调用的失败模式（Lecture04 收官）</a></li>
-  <li><a href="lessons/lecture05-0039-engineer-agents.html">L05-0039 · 什么叫"工程化"Agent：三支柱与框架谱系</a></li>
-  <li><a href="lessons/lecture05-0040-dspy.html">L05-0040 · DSPy：签名 / 模块 / 优化器</a></li>
-  <li><a href="lessons/lecture05-0041-langgraph.html">L05-0041 · LangGraph：State / Node / Edge</a></li>
-  <li><a href="lessons/lecture05-0042-agent-harnesses.html">L05-0042 · 开源 Agent Harness 对比</a></li>
-  <li><a href="lessons/lecture05-0043-orchestration-telemetry.html">L05-0043 · 编排与可观测性（Temporal / LangSmith / LangFuse）</a></li>
-  <li><a href="lessons/lecture05-0044-best-practices.html">L05-0044 · 工程最佳实践与挑战（Lecture05 收官）</a></li>
-</ol>
-
-<h2>综合结业考试题（每讲一道，Markdown 作答制）</h2>
-<ul>
-  <li><a href="综合题/README.html">综合题 / 结业考试 总览与作答说明</a></li>
-  <li><a href="综合题/Lecture01/结业考试-Lecture01-系统全设计.html">Lecture01 · 智能体系统全设计</a> ★★★</li>
-  <li><a href="综合题/Lecture02/结业考试-Lecture02-上下文与选型.html">Lecture02 · 上下文成本与模型选型</a> ★★★</li>
-  <li><a href="综合题/Lecture03/结业考试-Lecture03-RAG全链路.html">Lecture03 · RAG 全链路设计与验收</a> ★★★</li>
-  <li><a href="综合题/Lecture04/结业考试-Lecture04-工具与MCP.html">Lecture04 · 工具层与 MCP 落地</a> ★★★</li>
-  <li><a href="综合题/Lecture05/结业考试-Lecture05-工程化.html">Lecture05 · 把助手从"能跑"工程化为"可维护"</a> ★★★</li>
-</ul>
-
-<h2>Lecture01 专项综合题（早期 6 题，可任选先答）</h2>
-<ul>
-  <li><a href="综合题/README.html">见 README 第二节</a>（故障排查全设计 / 四场景选范式 / loop 走一遍 / 配准质检 / 可靠性与安全 / 反套路辩护）</li>
-</ul>
-
-<h2>随课支持文件</h2>
-<ul>
-  <li><a href="reference/glossary.html">术语表（纯文本参考卡）</a></li>
-  <li><a href="RESOURCES.html">权威一手资料清单</a></li>
-  <li><a href="MISSION.html">你的学习使命</a></li>
-  <li><a href="learning-records/0001-week1-baseline.html">学习记录 0001（起点：覆盖≠领会）</a></li>
-  <li><a href="learning-records/0004-week2-lecture02.html">学习记录 0004（Week2 新增 + 文件名加 lecture 前缀 + PDF 图可读性结论）</a></li>
-  <li><a href="learning-records/0005-week3-lecture03.html">学习记录 0005（Week3 新增：RAG + Agents）</a></li>
-  <li><a href="learning-records/0006-lecture04-tool-use.html">学习记录 0006（Lecture04 新增：Tool Use + MCP）</a></li>
-  <li><a href="learning-records/0007-lecture05-frameworks.html">学习记录 0007（Lecture05 新增：Frameworks &amp; Orchestration）</a></li>
-  <li><a href="learning-records/0008-per-lecture-final-exams.html">学习记录 0008（每讲新增综合结业考试题）</a></li>
-  <li><a href="learning-records/0009-exams-reorganized-by-lecture.html">学习记录 0009（综合题按讲重组为子文件夹）</a></li>
-</ul>
-
-<blockquote>用法：每课先读正文 → 做自测（先答再展开答案）→ 读到本讲最后一课有<strong>综合结业考试题</strong>入口 → 用你自己的话作答，我来评判是否真理解——那是"毕业"的唯一证据。五讲各有 1 道结业考试题（Lecture01 另有 6 道专项题），见上方列表。</blockquote>
-
-<p class="foot">教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/ · 旧版存档：lessons-glm53-old/、lessons-v4-old/（只读参考）</p>
 </div>
 </body>
 </html>

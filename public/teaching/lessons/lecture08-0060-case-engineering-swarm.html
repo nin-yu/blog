@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0060 — 案例：工程化蜂群——用 C 编译器项目学到的六条</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture08 · Lesson 0060</span>
+  <h1>案例：工程化蜂群——用 C 编译器项目学到的六条</h1>
+  <div class="meta">第 0060 课（Lecture08 第 6 课Lecture08 收官）· 来源：lecture08.pdf p83-92 · 来源文件夹：week5-10.19 · 本课成果：通过 Anthropic 造 C 编译器的真实案例，理解蜂群式多 agent 的编排/协调落地方式，掌握六条 lessons learned（收官）</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+这个案例是整讲的收束：一个真实的、大规模的多 agent 工程（Anthropic 用 agent 群造 C 编译器）。<br><br>
+它的结构恰好用上了前面四课的每一个概念：<br>
+<strong>编排</strong>——无限循环的去中心化蜂群（第 64 课 Swarm）<br>
+<strong>团队</strong>——多个互补的专家 agent（第 63 课 Specialization）<br>
+<strong>协调</strong>——Git 同步的任务文件夹 + worktree 隔离（第 66 课）<br><br>
+最后六条经验（p89）是这一讲最实用的部分。
+</div>
+
+<h2>编排：无限循环的去中心化蜂群（p84-85）</h2>
+<pre class="loop">不是"跑一次就结束"，而是持续循环：
+
+  ┌──────────────────────────────────────────┐
+  │  while (未完成):                          │
+  │    1. 从任务池取一个任务                   │
+  │    2. 派一个 agent 去做                    │
+  │    3. 结果写回                             │
+  │    4. 若失败 → 任务回到池子                │
+  └──────────────────────────────────────────┘
+
+关键：没有中心编排者逐个分配，agent 自己去取任务
+     → 这就是第 64 课讲的 Decentralized / Swarm</pre>
+<p>这个设计的好处：<strong>无限并行</strong>——想加吞吐就多加 agent，不需要改编排逻辑。代价：<strong>难以预测总时长和总成本</strong>，且容易陷入无效循环（第 67 课讲的失败模式）。</p>
+
+<h2>团队：多个互补的专家（p86）</h2>
+<pre class="loop">不是一个通用 agent 反复试，而是多个专精 agent：
+
+  前端解析专家    —— 处理 C 的词法/语法
+  代码生成专家    —— 负责输出汇编
+  测试修复专家    —— 拿失败用例去定位
+  优化专家        —— 在功能通过后提升性能
+  ...
+
+对应第 63 课的 Specialization 收益：
+  · 每个 agent 的指令、模型、工具都能针对自己的职责定制
+  · 每个 agent 的上下文只装自己需要的（Focused context）
+
+⚠️ 但要防第 67 课的"从众"：
+   如果所有专家都看到同样的上下文，会趋同</pre>
+
+<h2>协调：Git 同步的任务文件夹（p87）</h2>
+<pre class="loop">任务不是记在某个 agent 的记忆里，而是写在一个 Git 仓库的文件夹里：
+
+  tasks/
+    ├── 001-parse-integer-literal.md     (status: done)
+    ├── 002-handle-char-escaping.md      (status: in-progress, owner: agent-7)
+    ├── 003-optimize-loop-codegen.md     (status: blocked, reason: 依赖 002)
+    └── 004-support-struct-arrays.md     (status: todo)
+
+· agent 领取任务 = 认领这个文件（改 owner 字段）
+· agent 完成 = 更新 status 并提交
+· 冲突由 Git 本身的机制检测</pre>
+
+<p>这正是第 66 课的 <strong>Task Ledger</strong>，只是载体用了 Git。好处：</p>
+<ul>
+  <li><strong>显式</strong>——不在任何 agent 的上下文里，上下文爆了也不丢</li>
+  <li><strong>可观测</strong>——人可以直接看 tasks/ 目录知道进度</li>
+  <li><strong>可恢复</strong>——agent 崩了，任务状态还在</li>
+  <li><strong>有历史</strong>——Git 记录谁在什么时候改了什么</li>
+</ul>
+
+<h2>协调：Worktree 隔离（p88）</h2>
+<pre class="loop">问题：多个 agent 同时改同一个代码库 → 互相覆盖
+
+解法（对应第 66 课）：
+  · 每个 agent 在自己的 git worktree 里工作（独立目录 + 独立分支）
+  · 完成后合并回主干
+  · 冲突在合并时暴露并解决
+
+效果：
+  · 执行期完全不干扰
+  · 但合并时会有整合工作量（课件的 tradeoff 说得很准）</pre>
+
+<h2>六条 Lessons Learned（p89）——本讲精华</h2>
+<pre class="loop">① Strong tests guide autonomous work
+   可靠的正确性/回归测试，帮 agent 认识"有没有进展"、捕获破坏
+   → 测试是给 agent 的"外部反馈"（呼应 L06 Reflexion）
+
+② Design for parallelism
+   把可分离的失败/子任务暴露出来
+   → 如果不能切分，多 agent 就没意义
+
+③ Make coordination explicit
+   认领任务、在独立 clone 里工作、通过 Git 整合贡献
+   → 协调必须显式，不能靠"大家心里有数"
+
+④ Preserve knowledge across sessions
+   维护共享文档、进度记录、失败方案的记录
+   → 失败也是知识（避免重复踩坑）
+
+⑤ Make feedback efficient
+   简洁的错误摘要、可搜索的日志、快速测试子集、定期进度更新
+   → agent 的反馈循环越快，整体吞吐越高
+
+⑥ Assign complementary goals
+   给 agent 各自不同的职责
+   → 直接对策是防第 67 课的"从众"</pre>
+
+<h2>六条经验与前五课的对应</h2>
+<table>
+  <tr><th>经验</th><th>对应的前面课程</th></tr>
+  <tr><td>① Strong tests</td><td>L06 第 48 课 Reflexion——外部客观反馈才有效</td></tr>
+  <tr><td>② Design for parallelism</td><td>L06 第 46 课 Parallelization 模式</td></tr>
+  <tr><td>③ Coordination explicit</td><td>本讲第 66 课 Task Ledger + Worktree</td></tr>
+  <tr><td>④ Preserve knowledge</td><td>L07 记忆架构——跨会话保存</td></tr>
+  <tr><td>⑤ Efficient feedback</td><td>L07 第 61 课——评估要可验证</td></tr>
+  <tr><td>⑥ Complementary goals</td><td>本讲第 67 课——防从众</td></tr>
+</table>
+<p>这张表本身说明：<strong>多 agent 不是新东西，是把前面所有单 agent 的工程原则，放大到多主体协作</strong>。</p>
+
+<h2>SGRT 工程桥：这套东西你能拿什么</h2>
+<pre class="loop">【可以直接借鉴】
+✔ 任务账本用 Git（或任何版本化的文件）
+  你的排查任务、SOP 变更、配置修改，都可以这样管
+  → 天然满足医疗设备的变更审计要求
+  ✔ 用 Git 还能回答"三个月前这条 SOP 是什么样"
+
+✔ Worktree 隔离用在"多方案并行评估"
+  想比较 3 种配准参数组合 → 各开一个隔离环境跑，最后比结果
+  不要在同一份配置上轮流改（会互相污染）
+
+✔ ⑥ Assign complementary goals
+  如果要多个 agent 分析同一批数据，给它们不同的视角
+  例：A 只看几何一致性，B 只看时间稳定性
+  → 强制多样性，避免从众
+
+【不能借鉴】
+✘ 无限循环的蜂群
+  医疗场景不接受"不知道什么时候结束、不知道会试多少种方法"
+  必须有明确终止条件和可预估的边界
+
+✘ 完全自主的任务认领
+  谁做了什么、什么时候做的、为什么这么做 —— 必须可追溯
+  自主认领会让"责任归属"变模糊</pre>
+
+<h2>Lecture08 全讲总结</h2>
+<pre class="loop">一、单 vs 多（p7-15）：四收益 / 五代价 / 判据（先建单 agent 基线）
+二、编排模式（p16-29）：Independent / Centralized / Swarm / Hybrid
+                      成本：单 agent < 编排式 < 蜂群
+三、通信（p30-49）：通信 vs 协调；主线程 / handoff·工具 / 消息板 / A2A
+四、协调（p50-68）：账本 / 共享记忆 / 工作区隔离 + 角色分工/资源划分/协商
+五、失败（p69-82）：一般性 / 协调 / 行为（从众、目标不兼容）
+六、案例（p83-92）：工程化蜂群 + 六条经验
+</pre>
+<p>贯穿全讲的主线：<strong>多 agent 的每一个收益都要用协调成本去买，而协调成本往往被低估</strong>。这就是为什么课件反复强调"先建单 agent 基线"。</p>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>编排</strong>：无限循环的去中心化蜂群——无限并行，但难预测。<br>
+<strong>团队</strong>：互补的专家 agent——用足 Specialization，但要防从众。<br>
+<strong>协调</strong>：Git 同步的任务文件夹（显式账本）+ worktree 隔离。<br>
+<strong>六条经验</strong>：强测试 / 为并行而设计 / 协调显式化 / 跨会话保存知识 / 反馈高效 / 目标互补。<br>
+<strong>共同点</strong>：全是把单 agent 的工程原则放大到多主体。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 这个案例的编排方式属于第 64 课的哪种模式？为什么这么设计？</p>
+  <details><summary>展开答案</summary><p>属于 Decentralized（Swarm）——无限循环，agent 自己去任务池取任务，没有中心编排者逐个分配。设计理由是获得无限并行：想加吞吐就多加 agent，不用改编排逻辑。代价是难以预测总时长和总成本，且容易陷入无效循环。</p></details>
+  <p>Q2. 为什么任务要用 Git 仓库的文件夹来管，而不是放在 agent 的记忆里？</p>
+  <details><summary>展开答案</summary><p>因为放在 Git 文件夹里是显式的：不在任何 agent 的上下文里所以上下文爆了也不丢；人可以直接看目录知道进度；agent 崩溃后任务状态还在能恢复；Git 天然记录谁在什么时候改了什么，还能检测冲突。这就是第 66 课说的 Task Ledger，只是载体用了 Git。</p></details>
+  <p>Q3. 六条 lessons learned 分别是？哪一条直接对治第 67 课的"从众"？</p>
+  <details><summary>展开答案</summary><p>① 强测试引导自主工作；② 为并行而设计；③ 让协调显式化（认领任务/独立 clone/Git 整合）；④ 跨会话保存知识（共享文档、进度、失败记录）；⑤ 让反馈高效（简洁错误摘要、可搜日志、快测子集、进度更新）；⑥ 分配互补的目标。第六条直接对治从众——给 agent 各自不同的职责，强制多样性。</p></details>
+  <p>Q4. 这套蜂群方案，你的场景能借鉴什么、不能借鉴什么？</p>
+  <details><summary>展开答案</summary><p>可借鉴：① 用 Git/版本化文件做任务账本（天然满足变更审计）；② worktree 隔离用于多方案并行评估（避免配置互相污染）；③ 分配互补目标强制多样性。不能借鉴：① 无限循环的蜂群——医疗场景不接受不知道何时结束、不知会试多少方法，必须有明确终止条件和可预估边界；② 完全自主的任务认领——谁做了什么必须可追溯，自主认领会让责任归属模糊。</p></details>
+</div>
+
+<h2>综合结业考试题</h2>
+<div class="takeaway">
+<strong>Lecture08 结业考试</strong>（把本讲当一个整体来考）：给一个需要协作的工程场景，要求你判断该用单 agent 还是多 agent、选哪种编排与通信方式、设计协调基础设施、并预先列出你会防哪些失败模式。<br>
+<strong>→ 领取结业考试题</strong>：<a href="../综合题/Lecture08/结业考试-Lecture08-多智能体.html">结业考试-Lecture08-多智能体.md</a>（Markdown 作答制，作答区就在题目下方；答完对我说"评卷"）。
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture08 · 段六 案例研究 · Lecture08 收官</span><br>
+  ← 上一课 <a href="lecture08-0059-failure-modes.html">0067 · 失败模式</a> · <a href="../index.html">课程大纲</a> · 回顾 <a href="lecture08-0055-sas-vs-mas.html">0063 · 单 vs 多 agent</a><br>Lecture08 完结 → 回到 <a href="../index.html">课程大纲</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture08 课件《Multi-Agent Systems》· 源文件夹 week5-10.19 · p83-92；参考 Anthropic《Building a C compiler with a team of parallel Claudes》<br>
+Lesson 68 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

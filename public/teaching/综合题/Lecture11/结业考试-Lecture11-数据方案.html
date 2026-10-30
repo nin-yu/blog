@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>结业考试 · Lecture11（What Data Do Agents Need?）</title>
+<link rel="stylesheet" href="../../assets/lesson.css">
+<style>
+  .wrap { max-width: 900px; }
+  .md-body h1 { font-size: 32px; border-bottom: 2px solid var(--line); padding-bottom: 8px; }
+  .md-body h2 { font-size: 24px; margin-top: 36px; }
+  .md-body h3 { font-size: 20px; }
+  .md-body blockquote { border-left: 5px solid var(--accent); background: #eef4ff; }
+  .md-body code { background: var(--code-bg); padding: 2px 5px; border-radius: 5px; }
+  .md-body pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .md-back { display:inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="md-back" href="../index.html">← 返回课程大纲</a>
+  <div class="md-body">
+<h1>结业考试 · agent 数据方案</h1>
+<blockquote>
+<p><strong>作答方式</strong>：直接在每题下方的「作答」区写你的答案，然后把整个文件发给我（或对我说「评卷」）。</p>
+<p><strong>评分</strong>：按题目分值给出得分与逐条点评，重点看「结论是否成立 + 理由是否有依据 + 有没有落到你的具体场景」。</p>
+<p><strong>提示</strong>：答案都在这讲的课程里。卡住时回到对应的课，不要猜。</p>
+</blockquote>
+<p><strong>来源</strong>：CS329Z Lecture11 课件《What Data Do Agents Need?》· 对应课程 lesson11-0075-0081</p>
+<hr>
+<h2>场景</h2>
+<p>你要为排查助手规划未来 3 个月的数据方案。资源：30 个历史案例、200 条未标注日志、一台可注入故障的测试设备、4 名工程师（每周共 12 小时）、无 GPU 集群。</p>
+<h2>题目</h2>
+<p><strong>Q1（为什么数据是杠杆，20 分）</strong></p>
+<p>（a）「优化系统」和「优化模型本身」的区别是什么？数据在哪一边？</p>
+<p>（b）课件 p9 的两栏对照（互联网文本 vs 环境交互）说明了什么根本缺口？你的团队有什么可以填补这个缺口？</p>
+<p>（c）「选对数据比堆数据更重要」的依据是什么？对你的含义是什么？</p>
+<p><strong>Q2（数据形态，25 分）</strong></p>
+<p>（a）Trajectory 和 Environment 各用来做什么训练？核心差别是什么？</p>
+<p>（b）轨迹里的哪些部分是「学习的」、哪些只是「上下文」？为什么 Obs 不能学？</p>
+<p>（c）四种奖励类型各是什么？「可靠但窄」和「通用但模糊」分别指什么？你的场景天然适合哪一类？</p>
+<p>（d）为什么说「环境在上游」？一个环境能产出几种训练信号？</p>
+<p><strong>Q3（四来源方案，35 分）</strong></p>
+<p>对四种来源（人类示范、挖掘、合成、模拟），分别回答：</p>
+<p>（a）在你的场景里具体挖/造什么？</p>
+<p>（b）产出规模估计（3 个月能做多少）？</p>
+<p>（c）质量风险是什么？怎么控制？</p>
+<p>（d）优先级排序，并说明为什么这个顺序。</p>
+<p>补充必答：</p>
+<p>（e）为什么你不需要 LLM 模拟用户？</p>
+<p>（f）为什么你绝对不能用 LLM 模拟环境？</p>
+<p>（g）你能「合成」什么（SWE-smith 式的做法）？具体怎么注入、怎么保证有 ground truth？</p>
+<p><strong>Q4（意外教学，20 分）</strong></p>
+<p>（a）奖励黑客有哪几种形态？最反直觉的是哪一种？为什么会出现？</p>
+<p>（b）「过拟合 harness」是怎么发生的？怎么检测你的 agent 有没有过拟合 harness？</p>
+<p>（c）你的物理验证器（RMS、角点率）不容易被伪造，但仍有两种策略层作弊方式，分别是什么？怎么防？</p>
+<p>（d）「最好的模型不是最好的老师」——如果你的 few-shot 示例来自大模型输出，有什么风险？更好的选择是什么？</p>
+<h2>综合设计题（必答）</h2>
+<p>把 Q1-Q4 的答案整合成一份 <strong>3 个月数据方案</strong>，必须包含：</p>
+<ul>
+<li>第 1 个月：做什么（含具体可交付物）</li>
+<li>第 2 个月：做什么</li>
+<li>第 3 个月：做什么</li>
+<li>数据量与成本的粗略估算</li>
+<li>风险清单与应对</li>
+<li>3 个月结束时，你希望拿到的三个具体数字是什么</li>
+</ul>
+<hr>
+<h2>作答区</h2>
+<blockquote>
+<p>在这里写你的答案（每题一段，标明题号）。写完对我说「评卷」。</p>
+</blockquote>
+  </div>
+</div>
+</body>
+</html>

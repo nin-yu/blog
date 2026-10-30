@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0055 — 单 agent 还是多 agent：收益、代价与判据</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture08 · Lesson 0055</span>
+  <h1>单 agent 还是多 agent：收益、代价与判据</h1>
+  <div class="meta">第 0055 课（Lecture08 第 1 课）· 来源：lecture08.pdf p7-15 · 来源文件夹：week5-10.19 · 本课成果：记住多 agent 的四项收益和五项代价，能用课件给的判据判断什么时候该上多 agent，并知道"先建单 agent 基线"这个建议</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件给的建议是一句话（p14）：<br><br>
+<strong>「先建一个强的单 agent 基线。为了某个明确目的才加 agent，并测量它带来的收益是否超过协调成本。」</strong><br><br>
+这句不是客套——课件紧接着就用论文证明：<strong>有时候单 agent 表现更好</strong>（p13，Kim et al. 2026）。
+</div>
+
+<h2>什么是多智能体系统（p10）</h2>
+<blockquote>
+<strong>多智能体系统（MAS）是一组多个 agent，共同朝向解决一个共享任务。</strong><br>
+设计 MAS 时必须考虑三件事：<strong>Orchestration（编排）、Communication（通信）、Coordination（协调：工作区/任务/共享上下文与记忆）</strong>
+</blockquote>
+<p>这三件事就是本讲后面三段的主线。注意第三项的括号内容——<strong>协调不只是"谁做什么"，还包括工作区、共享上下文和记忆</strong>，这是工程上最容易漏的。</p>
+
+<h2>四项收益（p11）</h2>
+<table>
+  <tr><th>收益</th><th>课件说法</th><th>什么情况下真能兑现</th></tr>
+  <tr><td><strong>Parallel execution</strong> 并行执行</td><td>可分离的子任务并发处理</td><td>子任务之间真的没有依赖</td></tr>
+  <tr><td><strong>Specialization</strong> 专精</td><td>为特定职责定制指令、模型、工具</td><td>不同子任务需要不同的工具集/模型规模</td></tr>
+  <tr><td><strong>Focused context</strong> 聚焦上下文</td><td>给每个 agent 只给与它任务相关的信息</td><td>任务天然可按信息边界切分</td></tr>
+  <tr><td><strong>Broader exploration</strong> 更广探索</td><td>调查不同来源、假设、解法</td><td>需要多路并行试探（如多假设排查）</td></tr>
+</table>
+<p>课件总结一句：<strong>「多 agent 提供了更多分配工作、信息、责任的方式。」</strong></p>
+
+<h2>五项代价（p12）——这部分更重要</h2>
+<pre class="loop">① Coordination overhead 协调开销
+   委派、消息传递、结果整合都要花时间和 token
+
+② Information loss 信息丢失
+   交接的时候可能漏掉另一个 agent 需要的上下文
+
+③ Conflicting actions 行为冲突
+   agent 之间可能重复工作、违背承诺、覆盖对方的改动
+
+④ Error propagation 错误传播
+   一个 agent 的错误会误导其他人
+
+⑤ Engineering complexity 工程复杂度
+   更多角色、prompt、接口、交互要维护和调试</pre>
+<p>课件一句总结：<strong>「当收益超过协调成本时，协作才有帮助。」</strong></p>
+<p>注意第 ⑤ 项最容易被低估：<strong>多 agent 不是"多写几个 prompt"，是接口数量和交互数量呈平方增长</strong>。N 个 agent 之间最多有 N(N-1)/2 条通信链路。</p>
+
+<h2>反直觉的证据（p13）</h2>
+<blockquote>
+<strong>Towards a Science of Scaling Agent Systems</strong>（Kim et al. 2026）——<strong>有时候单 agent 系统表现更好</strong>。
+</blockquote>
+<p>这条放在"收益"之后，就是刻意的平衡。论文用实验给出了系统性的结论（下一课展开架构选型时还会引用）。</p>
+
+<h2>判据（p14）——这一节的考点</h2>
+<table>
+  <tr><th>优先用单 agent，当…</th><th>可以试多 agent，当…</th></tr>
+  <tr><td>步骤之间<strong>高度相互依赖</strong></td><td>子任务能在<strong>很少同步</strong>的情况下推进</td></tr>
+  <tr><td>工作与共享状态<strong>紧密耦合</strong>（大量重叠）</td><td>信息可以<strong>切分成聚焦的上下文</strong></td></tr>
+  <tr><td>单个 agent 已经满足质量、成本、延迟目标</td><td>agent 能<strong>各自拥有一份贡献</strong>并整合</td></tr>
+  <tr><td></td><td><strong>并行、专精或独立评审</strong>能解决<strong>已测量到的</strong>瓶颈</td></tr>
+</table>
+<p>最后一行有两个关键词：「<strong>已测量到的</strong>」和「<strong>瓶颈</strong>」。意思是：<strong>不要因为"多 agent 听起来先进"就上，要有可测量的理由。</strong></p>
+
+<h2>系统复杂度谱系（p8-9）</h2>
+<pre class="loop">Model  →  Workflow / Compound AI System  →  Agent  →  Multi Agent System
+  简单 ────────────────────────────────────────────────► 复杂
+
+Lecture06 讲过前三个档位；本讲把最右边那一档加进来。
+越往右：灵活度↑、可复现性↓、成本↑、调试难度↑</pre>
+
+<h2>SGRT 工程桥：你的场景该不该上多 agent</h2>
+<pre class="loop">【候选场景】标定 + 配准 + 门控 三个分析任务
+
+判断：该不该拆成三个 agent？
+
+✔ 支持拆分的理由：
+  · 三者工具集不同（标定要点云/图像，门控要呼吸信号）
+  · 三者可以并行跑，彼此不依赖
+  · 上下文可以天然切分（各看各的数据）
+
+✘ 反对拆分的理由：
+  · 实际排查中，标定问题会表现为配准误差——
+    两者的诊断结论互相依赖，属于"紧密耦合的共享状态"
+  · 现在的单 agent 已经能做到（质量目标满足）
+  · 拆开后"标定说没问题、配准说残差高"这种矛盾谁来仲裁？
+
+【结论】先不拆。保持单 agent，因为：
+  · 步骤高度依赖（违反第一条"优先单 agent"）
+  · 没有测量到具体瓶颈（违反"要有已测量的瓶颈"）
+
+【什么情况下再考虑】
+  如果单 agent 的上下文因为同时装三路数据而爆掉，
+  且测量证明这是瓶颈 → 那时用"聚焦上下文"这个收益去拆
+  → 拆法应该是 agent-as-tool（子 agent 只回结论），不是 handoff
+</pre>
+<p>这个判断过程本身就是第 0055 课要教的东西：<strong>不是"能不能拆"，是"拆了收益是否超过成本，而且这个收益是不是你测量出来的"</strong>。</p>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>定义</strong>：多个 agent 共同解决共享任务；设计要看编排、通信、协调三件事。<br>
+<strong>四项收益</strong>：并行 / 专精 / 聚焦上下文 / 更广探索。<br>
+<strong>五项代价</strong>：协调开销 / 信息丢失 / 行为冲突 / 错误传播 / 工程复杂度。<br>
+<strong>判据</strong>：高度依赖、紧耦合、单 agent 已达标 → 用单 agent。<br>
+<strong>铁律</strong>：先建强单 agent 基线；加 agent 必须有<strong>已测量到的瓶颈</strong>，并测量收益是否超过成本。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 多 agent 的四项收益和五项代价分别是什么？</p>
+  <details><summary>展开答案</summary><p>收益：① Parallel execution 并行执行（可分离子任务并发）；② Specialization 专精（为职责定制指令/模型/工具）；③ Focused context 聚焦上下文（每个 agent 只拿相关信息）；④ Broader exploration 更广探索（多来源/假设/解法）。代价：① Coordination overhead 协调开销（委派/消息/整合耗时间和 token）；② Information loss 信息丢失（交接漏上下文）；③ Conflicting actions 行为冲突（重复工作/违背承诺/覆盖改动）；④ Error propagation 错误传播；⑤ Engineering complexity 工程复杂度（角色/prompt/接口/交互增多）。</p></details>
+  <p>Q2. 课件给的"优先用单 agent"的三条判据是什么？</p>
+  <details><summary>展开答案</summary><p>① 步骤之间高度相互依赖；② 工作与共享状态紧密耦合（大量重叠）；③ 单个 agent 已经满足质量、成本和延迟目标。反之可以试多 agent 的条件是：子任务可在很少同步下推进、信息可切成聚焦上下文、agent 能各自拥有贡献并整合、并行/专精/独立评审能解决已测量到的瓶颈。</p></details>
+  <p>Q3. 为什么"多 agent 的工程复杂度"容易低估？用数量级说明。</p>
+  <details><summary>展开答案</summary><p>因为它不是"多写几个 prompt"，而是接口和交互数量随 agent 数量平方增长——N 个 agent 之间最多有 N(N-1)/2 条通信链路。3 个 agent 是 3 条链路，6 个 agent 就是 15 条。每条链路都要定义消息格式、错误处理、超时和调试手段，维护成本迅速失控。</p></details>
+  <p>Q4. "当并行、专精或独立评审能解决已测量到的瓶颈"——为什么要强调"已测量到"？</p>
+  <details><summary>展开答案</summary><p>因为多 agent 的代价是可预见的（协调开销、信息丢失、错误传播、工程复杂度），而收益是假设性的。不说"已测量到的瓶颈"，就变成凭感觉上复杂性——可能付了协调成本却没有任何改善。正确做法是先量化单 agent 的瓶颈（质量不达标？延迟超标？上下文爆了？），再判断多 agent 的哪项收益能直接缓解它。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture08 · 段一 单 vs 多 agent</span><br>
+  <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture08-0056-orchestration-patterns.html">0064 · 四种编排模式</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture08 课件《Multi-Agent Systems》（Diyi Yang / Michael Ryan / John Yang）· 源文件夹 week5-10.19 · p7-15；参考 Towards a Science of Scaling Agent Systems (arXiv:2512.08296)<br>
+Lesson 63 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

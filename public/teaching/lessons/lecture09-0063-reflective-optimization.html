@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0063 — 反思式优化：OPRO、MIPROv2、TextGrad、GEPA</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture09 · Lesson 0063</span>
+  <h1>反思式优化：OPRO、MIPROv2、TextGrad、GEPA</h1>
+  <div class="meta">第 0063 课（Lecture09 第 3 课）· 来源：lecture09.pdf p23-69 · 来源文件夹：week5-10.21 · 本课成果：掌握四种让模型反思并改写 prompt 的方法，理解 MIPROv2 的三步流程与 GEPA 的帕累托进化思想</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+Context Optimization 的第二条线：<strong>Reflective Optimization——让模型反思哪里不好，然后改写 prompt</strong>。<br><br>
+四种方法，复杂度递增：<br>
+<strong>OPRO</strong>（p24-25）——把 prompt 当变量，让 LLM 看历史表现后写新指令<br>
+<strong>MIPROv2</strong>（p26-63）——三步：自举演示 → 反思提指令 → 搜索指令×演示的组合<br>
+<strong>TextGrad</strong>（p64）——把反馈当文字梯度反向传播<br>
+<strong>GEPA</strong>（p65-68）——遗传 + 帕累托前沿，进化出更好的 prompt
+</div>
+
+<h2>一、OPRO：把 LLM 当优化器（p24-25）</h2>
+<blockquote>
+<strong>「让 LLM 看到过去的指令及其表现，然后让 LLM 写一条新指令。」</strong>
+</blockquote>
+<pre class="loop">OPRO 的循环：
+
+  第 1 轮：给一条初始指令 → 在训练集上跑 → 得分 0.62
+  第 2 轮：把「指令 + 得分」列表给 LLM
+           "这条得 0.62，那条得 0.71，你写一条更好的"
+           → LLM 生成新指令 → 跑 → 得分 0.75
+  第 3 轮：继续……
+
+  关键：优化器本身也是 LLM（不是梯度下降）</pre>
+<p>论文标题就叫《Large Language Models as Optimizers》——<strong>LLM 既是被优化的对象，也是优化器</strong>。</p>
+
+<h2>二、MIPROv2：三步流程（p26-63）</h2>
+<p>课件用大量篇幅（p27-63）走了一遍完整例子。三步是（p26）：</p>
+<pre class="loop">① Bootstrap Demonstrations
+   跑训练样例多次，收集成功的轨迹当 few-shot 示例
+   （如果是 CoT 程序，连推理过程一起收）
+
+② Propose Instructions based on Reflection
+   基于反思提出候选指令
+
+③ Search the Combination of Instructions and Demonstrations
+   搜索「指令 × 演示」的组合</pre>
+
+<h3>步骤②的细节：四种接地（grounding）</h3>
+<p>课件 p35-47 详细展示了 MIPROv2 怎么给"提示生成器"喂料：</p>
+<pre class="loop">1. Program-Aware Grounding（程序感知，p36-38）
+   把程序代码本身给优化器看
+   → 让它知道这是个什么样的函数、输入输出是什么
+
+2. Data-Aware Grounding（数据感知，p39-40）
+   把训练数据的摘要/统计给优化器看
+   → 让它知道数据的分布和特征
+
+3. Successful Bootstrapped Program Traces（成功轨迹，p42-43）
+   把跑通的实际轨迹给它看
+   → 让它知道"什么样是成功的"
+
+4. Prompting Tips（提示技巧，p44）
+   给优化器一些写指令的建议
+   例："别怕发挥创意"、"指令里应该包含……"
+
+→ 四者汇总（p45）：Program Summary | Tips | Successful Traces | Data Summary
+→ 输出：Instructions（p46-47）</pre>
+
+<h3>步骤③：搜索组合（p48-62）</h3>
+<pre class="loop">候选池：
+  Instruction 1, Instruction 2, Instruction 3, ...
+  Demo Set 1,    Demo Set 2,    Demo Set 3,    ...
+
+搜索策略（p54-58）：
+  · 从训练数据采样 minibatch
+  · 每几轮迭代做一次完整评估
+  · 基于 minibatch 结果更新信念（哪个组合更好）
+  · 重复 num_batches 次</pre>
+<p>这是一个典型的<strong>贝叶斯式搜索</strong>：小批量快速试，定期全量校验。</p>
+
+<h2>三、TextGrad：文字梯度（p64）</h2>
+<blockquote>
+<strong>「让 LLM 反思输出哪里可以改进，然后把这一反馈沿着系统中的各个 prompt 反向传播。」</strong>
+</blockquote>
+<pre class="loop">类比自动微分：
+
+【数值梯度】loss 对参数的偏导 → 用来更新参数
+【文字梯度】LLM 对输出的批评 → 用来更新 prompt
+
+前向：input → [prompt A] → 中间结果 → [prompt B] → 最终输出
+反向：最终输出被批评 → "B 应该更明确 X"
+                   → 传递给 A："你应该产出 Y 格式，这样 B 才好用"</pre>
+<p>它的价值在于：<strong>多环节 pipeline 里，能定位是哪一环的 prompt 需要改</strong>，而不是笼统地"整个 prompt 不好"。</p>
+
+<h2>四、GEPA：遗传 + 帕累托（p65-68）</h2>
+<p>GEPA = Genetic Pareto Prompt Evolution。</p>
+<pre class="loop">核心思想（p65）：
+  · 进化：维护一个 prompt 种群，择优繁殖
+  · 帕累托：不只追单一指标最优，而是追帕累托前沿
+    （即在多个指标上都不被支配的解集）
+
+流程：
+  1. 对每个 prompt 跑一批任务，记录表现
+  2. 从帕累托前沿挑父代
+  3. 反思"这个 prompt 在哪些案例上失败了，为什么"
+  4. 基于反思生成子代 prompt
+  5. 重复</pre>
+<p>课件给了两个实证：</p>
+<ul>
+  <li>p66：PAPILLON 案例（Siyan et al. 2025）——GEPA 相比 baseline 有提升</li>
+  <li>p68：<strong>「反思式 prompt 进化（GEPA）在各任务上超过基线」</strong></li>
+</ul>
+<p>还有一条重要结论（p119，后面还会讲）：<strong>「prompt 优化比 RL 的样本效率高得多。」</strong></p>
+
+<h2>五、两种反思优化的总结（p69）</h2>
+<blockquote>
+<strong>Fewshot Optimization Takeaway</strong>：自举推理/输出 + 搜索有用的 few-shot 示例，是强有力的模式。<br><br>
+<strong>Reflective Optimization Takeaway</strong>：跑任务 → 反思该改什么 → 把反思放进 prompt，是强有力的模式。<strong>基于帕累托前沿的改进来进化 prompt 也有帮助。</strong>
+</blockquote>
+<p>注意两者都提到了"搜索"——<strong>反思负责提出候选，搜索负责筛选</strong>。这是一个稳定的两段式结构。</p>
+
+<h2>SGRT 工程桥：怎么给你的排查 prompt 做反思优化</h2>
+<pre class="loop">【可用资产】
+  · 30 个历史案例（现象 → 真实根因）
+  · 客观 metric：根因判断是否与历史结论一致
+
+【流程】
+① Bootstrap（对应 L70）
+   让模型对这 30 个案例各生成"推理 + 判断"
+   用历史结论筛：一致 → 保留推理链
+
+② 反思（本课）
+   把失败案例挑出来，让模型反思：
+   "这 5 个你判断错了，看看它们的共同点——
+     都是残差集中在边缘，你之前都归因于呼吸，
+     但真实原因是镜头畸变"
+   → 生成新的 prompt 指令
+
+③ 搜索
+   新指令 × 不同 few-shot 组合 → 在 30 个 case 上测
+   取准确率最高的
+
+④ 帕累托（进阶）
+   不只追准确率，同时看：
+     · 判断准确率
+     · 单次排查的 token 成本
+     · 平均轮数
+   → 找一个"准确率够用 + 成本可接受"的点，而不是单指标最优
+
+【关键提醒】
+  30 个 case 太少，容易过拟合
+  → 至少留 10 个做 holdout，别全用来优化</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>OPRO</strong>：LLM 看历史表现后写新指令——LLM 既是优化对象也当优化器。<br>
+<strong>MIPROv2</strong>：自举演示 + 反思提指令 + 搜索组合；反思时喂四类接地信息。<br>
+<strong>TextGrad</strong>：把批评当文字梯度反向传播，能定位是哪一环的 prompt 该改。<br>
+<strong>GEPA</strong>：遗传进化 + 帕累托前沿，效果超基线且样本效率远高于 RL。<br>
+<strong>共同结构</strong>：反思提候选 + 搜索做筛选。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. OPRO 的核心思路是什么？它和梯度下降有什么本质不同？</p>
+  <details><summary>展开答案</summary><p>OPRO 让 LLM 看到过去的指令及其表现得分，然后让 LLM 写一条新指令。和梯度下降的本质不同：梯度下降用数值梯度按数学方向更新参数；OPRO 用 LLM 作为优化器，靠语言理解和反思生成新候选，没有显式的梯度计算。</p></details>
+  <p>Q2. MIPROv2 的三步是什么？第二步接地喂了哪四类信息？</p>
+  <details><summary>展开答案</summary><p>三步：① Bootstrap Demonstrations（跑训练样例收集成功轨迹当 few-shot）；② Propose Instructions based on Reflection（基于反思提出候选指令）；③ Search the Combination of Instructions and Demonstrations（搜索组合）。四类接地信息：Program-Aware（程序代码）、Data-Aware（数据摘要统计）、Successful Bootstrapped Traces（成功轨迹）、Prompting Tips（写指令的技巧建议）。</p></details>
+  <p>Q3. TextGrad 相比整体改 prompt 有什么优势？</p>
+  <details><summary>展开答案</summary><p>能定位到具体哪一环的 prompt 需要改。在多环节 pipeline 里，最终输出被批评后，TextGrad 把反馈沿着链条反向传播——先判断环节 B 的 prompt 应该更明确 X，再往前推导环节 A 应该产出 Y 格式这样 B 才好用。整体改 prompt 只能笼统地试，不知道瓶颈在哪一环节。</p></details>
+  <p>Q4. GEPA 为什么用帕累托前沿而不是单指标最优？</p>
+  <details><summary>展开答案</summary><p>因为实际系统要同时满足多个指标（准确率、成本、延迟）。只追单一指标最优可能得到准确率最高但成本翻倍、延迟不可接受的方案。帕累托前沿保留在多个指标上都不被支配的解集，让你在权衡空间里选合适的点，且从前沿挑父代能保持多样性、避免早熟收敛。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture09 · 段二 Context 优化 · 反思</span><br>
+  ← 上一课 <a href="lecture09-0062-fewshot-optimization.html">0070 · Few-shot 优化</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture09-0064-sft-for-agents.html">0072 · 权重优化：SFT</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture09 课件《Optimization》· 源文件夹 week5-10.21 · p23-69；参考 OPRO (arXiv:2309.03409)、MIPRO (EMNLP 2024)、TextGrad (arXiv:2406.07496)、GEPA (arXiv:2507.19457)<br>
+Lesson 71 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

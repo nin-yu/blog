@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0057 — 通信：对话、handoff 与消息板</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture08 · Lesson 0057</span>
+  <h1>通信：对话、handoff 与消息板</h1>
+  <div class="meta">第 0057 课（Lecture08 第 3 课）· 来源：lecture08.pdf p30-49 · 来源文件夹：week5-10.19 · 本课成果：区分通信与协调（两个常被混淆的概念），掌握 handoff 与 agent-as-tool 的关键差别，认识 AutoGen/MetaGPT/A2A 三条通信路线</div>
+</header>
+
+<h2>先给结论</h2>
+<div class="takeaway">
+先分清两个概念（p31）：<br>
+<strong>Communication 通信</strong> = agent 之间<strong>怎么交换信息</strong>（谁收到什么、通过什么通道、什么格式）<br>
+<strong>Coordination 协调</strong> = agent 之间<strong>怎么管理互相依赖的工作</strong>（谁负责什么、谁必须先做）<br><br>
+三种通信通道（p49）：<br>
+<strong>主对话线程</strong>（AutoGen）／<strong>handoff 与工具调用</strong>（OpenAI Agents SDK）／<strong>消息板</strong>（MetaGPT、Swarm、MoltBook）<br>
+标准化方向：<strong>Agent2Agent（A2A）协议</strong>
+</div>
+
+<h2>通信 vs 协调（p31）——这是本课第一个考点</h2>
+<table>
+  <tr><th></th><th>Communication 通信</th><th>Coordination 协调</th></tr>
+  <tr><td>问的是</td><td>信息怎么交换</td><td>互相依赖的工作怎么管理</td></tr>
+  <tr><td>具体问题</td><td>谁收到哪条信息？通过什么通道？消息格式、协议、共享产物是什么？</td><td>谁拥有哪个任务？什么必须先做？怎么分配依赖和解决冲突？</td></tr>
+  <tr><td>出错的典型表现</td><td>信息没传到 / 传错格式 / 传给了不需要的人</td><td>两个人做同一件事 / 顺序错了 / 冲突没人裁</td></tr>
+</table>
+<p>为什么必须分清：<strong>它们解决不同的问题，修一个不能修另一个</strong>。通信做得好但协调没做，会出现"信息都传到了，但没人负责"；协调做得好但通信没做，会出现"分工清楚但拿不到需要的数据"。</p>
+
+<h2>一、主对话线程（AutoGen，p32-35）</h2>
+<p>AutoGen 的核心抽象：<strong>多 agent 通信 = 对话（conversations）</strong>。</p>
+<pre class="loop">所有 agent 在同一个对话线程里说话：
+
+  [用户]    请分析这个 bug
+  [Planner] 需要先看日志
+  [Coder]   我去读日志... 拿到错误堆栈
+  [Critic]  这个堆栈看起来像空指针
+  [Planner] 那就按空指针修
+  [Coder]   已修，测试通过
+
+· 每个 agent 都能看到前面所有人说的话（共享上下文）
+· 谁下一个说话由编排规则决定</pre>
+<p>课件的几种对话模式（p34）：</p>
+<ul>
+  <li><strong>Sequential</strong> 顺序——agent 依次交接给下一个团队</li>
+  <li><strong>Nested</strong> 嵌套——子 agent 直接跟管理者通信</li>
+  <li><strong>Group Chat</strong> 群聊——组内共享上下文</li>
+  <li><strong>Hierarchical Chat</strong> 层级——所有子 agent 向编排者汇报</li>
+</ul>
+<p>AutoGen 现有实现：<code>RoundRobinGroupChat</code>、<code>SelectorGroupChat</code>、<code>Swarm</code>…</p>
+<p><strong>共享上下文的好处与代价</strong>：好处是没人缺信息；代价是上下文迅速膨胀——每个 agent 都要看所有人的话。</p>
+
+<h2>二、handoff vs agent-as-tool（p36-39）——本课最重要的一节</h2>
+<p>这两个概念很容易混，课件专门用 4 页对比。差别在于<strong>控制权归谁</strong>：</p>
+<table>
+  <tr><th></th><th>Handoff 交接</th><th>Agent-as-Tool 把 agent 当工具</th></tr>
+  <tr><td><strong>控制权</strong></td><td><strong>转移</strong>——接收方变成活跃的，继续交互</td><td><strong>保留</strong>——调用方保持控制</td></tr>
+  <tr><td>上下文</td><td>相关对话历史和任务细节<strong>跟着过去</strong></td><td>只发<strong>有界请求 + 选定上下文</strong></td></tr>
+  <tr><td>返回</td><td>接收方直接继续（可能直接面对用户）</td><td>返回一个答案或产物，<strong>调用方继续</strong></td></tr>
+  <tr><td>最适合</td><td>专家应该<strong>直接与用户交互</strong>并负责后续步骤</td><td>一个 agent 应该<strong>整合专家贡献</strong>并交付最终答复</td></tr>
+</table>
+<pre class="loop">【Handoff】
+  用户 ──► 前台 agent ──"这个要专家处理"──► 专家 agent
+                                              │
+                                              ▼
+                                          直接对用户说话
+  → 控制权交出去了，前台不再参与
+
+【Agent-as-Tool】
+  用户 ──► 主 agent ──"帮我算一下"──► 专家 agent
+              ▲                          │
+              └────────返回结果──────────┘
+  → 主 agent 用这个结果继续组织最终答复，控制权一直在它手里</pre>
+<p><strong>工程含义</strong>：</p>
+<ul>
+  <li>Handoff 像是"转接电话"——转过去之后你就不管了。</li>
+  <li>Agent-as-tool 像是"打电话问同事"——问完继续自己的事。</li>
+  <li>要保证<strong>最终回答的一致性</strong>，用 agent-as-tool；要让<strong>专家长期负责某个用户</strong>，用 handoff。</li>
+</ul>
+
+<h2>三、消息板（p40-44）</h2>
+<p>MetaGPT 的做法：agent 通过<strong>发布/订阅</strong>的方式在共享消息板上协作，而不是两两对话。</p>
+<pre class="loop">        ┌─────────────────────────┐
+        │      消息板（共享）       │
+        │  · 需求文档              │
+        │  · 设计稿                │
+        │  · 任务分配              │
+        └───┬──────┬──────┬───────┘
+            │      │      │
+        产品经理  架构师  工程师
+        （各自发布产物，订阅自己需要的）</pre>
+<p>课件还举了两个现象（p43-44）：HuggingFace 事故（METR 记录）和 MoltBook（"Social Memory"）。这两个例子说明：<strong>当 agent 在共享空间里互相发布信息时，会出现涌现行为</strong>——有好的，也有失控的。</p>
+
+<h2>四、A2A 协议（p45-48）</h2>
+<pre class="loop">Agent2Agent (A2A) Protocol —— Google
+
+定位：和 MCP 类似的"协议"，但 MCP 管 agent 与工具，A2A 管 agent 与 agent
+内容：
+  · Agent Cards —— 描述 agent 的能力（相当于名片）
+  · agent 发现（discovery）
+  · 消息传递
+  · 产物（artifact）共享</pre>
+<p>课件的类比很清楚（p46）：<strong>A2A 是像 MCP 那样的协议，用来做 agent 之间的通信</strong>。</p>
+<pre class="loop">MCP  :  agent ←→ 工具/数据源      （L04 讲过）
+A2A  :  agent ←→ agent            （本讲）
+两者解决不同层的标准化问题，不冲突</pre>
+
+<h2>通信通道总结（p49）</h2>
+<table>
+  <tr><th>通道</th><th>代表实现</th><th>特点</th></tr>
+  <tr><td>主对话线程</td><td>AutoGen</td><td>共享上下文，简单直观，但上下文膨胀</td></tr>
+  <tr><td>handoff / 工具调用</td><td>OpenAI Agents SDK</td><td>明确控制权归属，可精确控制上下文传递</td></tr>
+  <tr><td>消息板</td><td>MetaGPT、Swarm、MoltBook</td><td>解耦、可异步、支持涌现协作，但难追踪</td></tr>
+  <tr><td>标准协议</td><td>A2A</td><td>跨组织/跨厂商的标准化发现与消息</td></tr>
+</table>
+
+<h2>SGRT 工程桥：你的排查助手该用哪种通信</h2>
+<pre class="loop">【场景】主助手 + 三个专家（呼吸/机械/光学）
+
+❌ 不要用主对话线程（AutoGen 式）
+   原因：三个专家的原始数据（呼吸曲线、点云统计）会全部进共享上下文
+        → 主助手上下文爆炸，而且大部分内容它不需要
+
+✔ 用 Agent-as-Tool
+   主助手 ──"查呼吸信号，重点看呼气末识别时刻"──► 呼吸专家
+           ◄──"抖动 120ms，正常应 <50ms，怀疑基线漂移"──
+   主助手拿到结论，继续自己的推理
+   → 上下文只进两行结论，控制权始终在主助手
+   → 最终报告由主助手统一组织，口径一致
+
+✔ 什么时候用 Handoff
+   如果呼吸问题确实需要专家深挖 20 轮
+   → handoff 给呼吸专家，让它直接跟用户对话
+   → 但要在交接时把"当前已排除的假设"一起传过去
+   → 交接回来时要重新同步（否则主助手不知道发生了什么）
+
+⚠️ 医疗场景的额外要求
+   无论哪种通信，每次交互都要留痕：
+   谁问的、问了什么、答了什么、依据什么数据
+   → 这是合规要求，不是优化项</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>通信 vs 协调</strong>：一个管信息怎么交换，一个管工作怎么分工——修一个不能修另一个。<br>
+<strong>三种通道</strong>：主对话线程（共享但膨胀）／handoff 与工具调用（控制权明确）／消息板（解耦但难追踪）。<br>
+<strong>关键对比</strong>：handoff 转移控制权；agent-as-tool 保留控制权。<br>
+<strong>标准</strong>：A2A 管 agent↔agent，MCP 管 agent↔工具。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 通信和协调的区别是什么？各举一个"做得好但另一个没做"的后果。</p>
+  <details><summary>展开答案</summary><p>通信是 agent 之间怎么交换信息（谁收到什么、什么通道、什么格式）；协调是怎么管理互相依赖的工作（谁负责什么、什么必须先做、冲突怎么解决）。通信好但协调没做：信息都传到了但没人负责、重复劳动。协调好但通信没做：分工清楚但拿不到需要的数据。</p></details>
+  <p>Q2. Handoff 和 agent-as-tool 的最本质区别是什么？什么时候各用哪个？</p>
+  <details><summary>展开答案</summary><p>本质区别是控制权归属：handoff 把控制权转移给接收方，接收方变成活跃的并继续交互（相关历史跟着走）；agent-as-tool 保留控制权在调用方，只发有界请求和选定上下文，收到结果后调用方继续。要让专家直接与用户交互并负责后续用 handoff；要让一个 agent 整合专家贡献交付一致答复用 agent-as-tool。</p></details>
+  <p>Q3. 主对话线程（AutoGen）方式最大的代价是什么？</p>
+  <details><summary>展开答案</summary><p>上下文膨胀。所有 agent 共享同一个对话线程，每个 agent 都要看所有人说的话，随着轮次增加上下文迅速增长，导致成本上升、延迟增加、且关键信息被淹没。同时每个 agent 都被迫接收与它任务无关的内容。</p></details>
+  <p>Q4. A2A 和 MCP 分别标准化什么？它们冲突吗？</p>
+  <details><summary>展开答案</summary><p>MCP 标准化 agent 与工具/数据源之间的交互（工具调用、上下文提供）；A2A 标准化 agent 与 agent 之间的通信（能力发现 Agent Cards、消息传递、产物共享）。两者解决不同层次的标准化问题，不冲突，可以同时使用。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture08 · 段三 通信</span><br>
+  ← 上一课 <a href="lecture08-0056-orchestration-patterns.html">0064 · 编排模式</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture08-0058-coordination.html">0066 · 协调：任务账本、共享记忆、工作区隔离</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture08 课件《Multi-Agent Systems》· 源文件夹 week5-10.19 · p30-49；参考 AutoGen (arXiv:2308.08155)、MetaGPT、Google A2A Protocol<br>
+Lesson 65 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

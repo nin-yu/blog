@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0042 — 上下文管理：两条原则与五种模式</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture06 · Lesson 0042</span>
+  <h1>上下文管理：两条原则与五种模式</h1>
+  <div class="meta">第 0042 课（Lecture06 第 5 课）· 来源：lecture06.pdf p55-71 · 来源文件夹：week3-10.12 · 本课成果：掌握 Focus/Preserve 两原则、五种上下文模式的机制与成本排序，能为本项目排出落地优先级</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+两条原则（p59）：<br>
+<strong>① Focus the Context 聚焦上下文</strong><br>
+　只保留手头任务需要的内容；整个历史不必都在窗口里；多余信息就是 context-bloat<br>
+<strong>② Preserve Continuity 保持连续性</strong><br>
+　操纵上下文以保留需求、目标、约束、进度；<strong>实际上这也意味着保护 KV Cache</strong><br><br>
+五种模式（p61）：<br>
+<strong>持久事件日志 / 记忆卸载 / 压缩 / 观察遮蔽 / 上下文隔离</strong>
+</div>
+
+<h2>一、两条原则（p59）</h2>
+<h3>1.1 Focus the Context</h3>
+<pre class="loop">三条具体要求（p59 原文）：
+  · 只保留手头任务需要的东西
+  · 整个历史不必都在上下文窗口里
+  · 过多信息就是 context-bloat
+
+这句话背后的两重理由：
+  ① 物理成本（Lecture02 的 O(n²) 和 KV Cache）
+  ② 认知成本（Context Rot，越长越抓不住重点）
+</pre>
+<h3>1.2 Preserve Continuity</h3>
+<pre class="loop">要保留什么（p59 原文）：
+  需求、目标、约束、进度
+
+为什么"这也意味着保护 KV Cache"：
+  KV Cache 靠"前缀不变"复用（Lecture02 第 0013/0016 讲）
+  → 上下文结构稳定 = 缓存有效 = 便宜且快
+  → 频繁重排上下文 = 每轮重新 Prefill
+
+关键洞察：
+  "保持连续性"不只是"让模型记得目标"
+  也是"让基础设施能复用缓存"
+  → 语义需求和性能需求在这里重合了
+</pre>
+<h2>二、五种模式（p61）</h2>
+<table>
+  <tr><th>模式</th><th>做法</th><th>解决什么</th></tr>
+  <tr><td><strong>Persistent Event Log</strong> 持久事件日志</td><td>从系统事件重建上下文</td><td>历史完整保存但不必全进上下文</td></tr>
+  <tr><td><strong>Memory Offloading</strong> 记忆卸载</td><td>把知识存到记忆系统以便裁剪上下文</td><td>长期信息不必常驻</td></tr>
+  <tr><td><strong>Compaction</strong> 压缩</td><td>把之前的上下文总结成压缩描述</td><td>上下文过长</td></tr>
+  <tr><td><strong>Observation Masking</strong> 观察遮蔽</td><td>隐藏/截断旧的工具调用输出</td><td>工具返回是最大膨胀源</td></tr>
+  <tr><td><strong>Context Isolation</strong> 上下文隔离</td><td>用子 agent 做特定任务，只把需要的带回</td><td>任务本身信息量大</td></tr>
+</table>
+
+<h2>三、持久事件日志：OpenHands 的做法（p62-63）</h2>
+<blockquote>
+· 一切都按发生的样子精确保留，<strong>即使给 LLM 的输入必须被改动</strong><br>
+· 事件日志历史可以是不变的（<strong>只追加</strong>）<br>
+· 每次调用 LLM 时，输入从事件日志<strong>重建</strong><br>
+· 事件日志还能为外部观察者提供监控系统状态的钩子
+</blockquote>
+<pre class="loop">这个设计的精妙之处：
+
+  真相（事件日志，只追加，永不变）
+       ↓ 每步重建（可以有选择地裁剪）
+  输入（给 LLM 的上下文，可变）
+
+好处：
+  · 记录完整 → 可审计、可回放、可调试
+  · 输入可变 → 可以裁剪、压缩、遮蔽
+  · 两者分离 → 不需要在"完整"和"高效"之间妥协
+
+这是 Lecture05 讲 OpenHands 时提到的"事件重建"的详细版
+</pre>
+<h2>四、Compaction 压缩（p65）</h2>
+<blockquote>
+· 让 LLM 总结之前的推理、动作、观察实例<br>
+· 把历史压缩成更少的 token<br>
+· <strong>让压缩本身变成 agentic 的可能有用</strong>
+</blockquote>
+<pre class="loop">三个要点：
+
+① 总结什么
+   推理（Thought）+ 动作（Act）+ 观察（Obs）
+   → 不只是总结对话，要总结整个轨迹
+
+② 压缩什么
+  减少 token 数
+  但保留"完成任务所需的关键信息"
+  → Lecture02 第 0016 讲的两难在这里重现
+
+③ "agentic 压缩"
+   不是"一次总结成一段"
+   而是让 agent 自己决定：保留什么、丢弃什么、怎么组织
+   → 比固定模板更灵活
+</pre>
+<h2>五、观察遮蔽：不动 LLM 的省法（p66-68）</h2>
+<blockquote>
+· <strong>而不是让一个 LLM [去总结]…</strong>（p67 的开头，强调这是不做 LLM 调用的方案）
+</blockquote>
+<pre class="loop">核心思路：
+  工具返回的输出 → 隐藏或截断 → 只保留关键部分
+
+为什么有效：
+  · 工具返回是最大的膨胀源（Lecture02 第 0016 讲）
+  · 不需要额外调 LLM（省钱省时）
+  · 只保留"结论性"信息
+
+例：
+  查日志返回 5000 行
+  → 遮蔽成"共 5000 行，其中 ERROR 12 行（前 3 条：…）"
+  → 信息量足够判断，token 从 50k 降到 200
+
+【与 Compaction 的对比】
+  Compaction   需要一次 LLM 调用（贵但灵活）
+  Observation Masking  不需要 LLM（便宜但靠规则）
+  → 能用规则的地方优先用遮蔽
+</pre>
+<h2>六、上下文隔离（p69-70）</h2>
+<blockquote>
+· 用子 agent 做特定任务，只把"手头任务实际需要的东西"放进上下文
+</blockquote>
+<p>以及它的具体形式——<strong>渐进披露</strong>（p70）：</p>
+<blockquote>
+<strong>你不需要把所有的工具和上下文都放在初始 prompt 里，可以按需稍后披露</strong>（如 skill 文件）
+</blockquote>
+<pre class="loop">渐进披露的例子：
+  初始 prompt 里只写："有 8 类排查技能，需要时读对应文件"
+  → 模型判断需要哪类 → 读那个文件
+  → 而不是把 8 类技能全部写进 prompt
+
+收益：
+  · 初始 prompt 短（便宜、快）
+  · 只在需要时加载细节
+  → 这是"按需加载"的思路
+</pre>
+<h2>七、五种模式可以组合（p71、p75）</h2>
+<blockquote>
+<strong>注意：这些策略都是兼容的。</strong>你可以先卸载知识到[记忆]，再[压缩]，再[遮蔽]…
+</blockquote>
+<pre class="loop">典型组合（从便宜到贵，依次使用）：
+
+① 先 Masking（规则截断，零成本）
+   → 还不够？
+② 再 Offload 到记忆（存硬盘，从上下文移除）
+   → 还不够？
+③ 再 Compaction（LLM 总结，有成本）
+   → 还不够？
+④ 用 Isolation（拆子任务）
+
+→ 顺序原则：先用便宜的，再用贵的
+</pre>
+<h2>SGRT 工程桥：你的上下文管理方案</h2>
+<pre class="loop">【五模式逐一落地】
+
+① 持久事件日志 ✔ 必须做
+   每个排查步骤存成一个 JSON 事件
+   → 审计要求（谁知道 agent 做了什么）
+   → 调试要求（看它当时看到了什么）
+   → 每步给 LLM 的输入从事件重建
+
+② Observation Masking ✔ 优先做（零成本）
+   查日志工具不要返回原始日志
+   → 工具内部就做统计：
+     {"total": 5000, "error_count": 12, "sample": [...前3条], "time_range": "..."}
+   → 这是你最容易获得的高回报优化
+   → 不需要改模型，只改工具实现
+
+③ Memory Offloading ✔ 中期做
+   历史排查结论存到案例库
+   → 上下文里只放"检索到的 top-3 相似案例"
+   → 而不是全部历史
+
+④ Compaction ⚠️ 谨慎
+   排查通常不需要（步数有限，15 步内）
+   → 如果排查超过 30 步再考虑
+   → 且压缩会丢信息，风险大
+
+⑤ Context Isolation ⚠️ 特定场景
+   适合：需要读一份长文档做分析（如设备手册某一章）
+   → 用子 agent 读完，只带回结论
+   → 但子 agent 的结果要可核查（带回原文出处）
+
+【渐进披露 ✔ 推荐】
+  你的排查技能可以写成文件：
+    技能1-图像质量排查.md
+    技能2-呼吸信号排查.md
+    技能3-机械状态排查.md
+    技能4-罕见故障.md
+  → 系统 prompt 只写"有这 4 类技能，按需读取"
+  → 模型判断类型后读对应文件
+  → 省 token 且更聚焦
+
+【保护 KV Cache 的具体做法】
+  固定顺序：系统提示 → 设备配置 → 检索案例 → 当前问题
+  → 前两部分不变 → 缓存复用
+  → 只在末尾追加
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>两原则</strong>：Focus（只留需要的，多余即 bloat）／Preserve Continuity（保留目标约束进度，也保护 KV Cache）。<br>
+<strong>事件日志</strong>：真相只追加，输入每步重建——完整与高效可以兼得。<br>
+<strong>压缩</strong>：LLM 总结轨迹，可以是 agentic 的。<br>
+<strong>观察遮蔽</strong>：规则截断工具输出，不需要 LLM——最便宜。<br>
+<strong>隔离</strong>：子 agent + 渐进披露，按需加载。<br>
+<strong>组合顺序</strong>：先便宜（遮蔽）后贵（压缩、隔离）。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 上下文管理的两条原则是什么？为什么"保持连续性"也意味着保护 KV Cache？</p>
+  <details><summary>展开答案</summary><p>① Focus the Context——只保留手头任务需要的内容，整个历史不必都在窗口里，多余信息就是 context-bloat；② Preserve Continuity——操纵上下文以保留需求、目标、约束、进度。第二点也意味着保护 KV Cache，因为 KV Cache 靠"前缀不变"复用，上下文结构稳定则缓存有效（便宜且快），频繁重排上下文则每轮都要重新 Prefill。语义需求和性能需求在这里重合。</p></details>
+  <p>Q2. 持久事件日志为什么能同时做到"完整"和"高效"？</p>
+  <details><summary>展开答案</summary><p>因为它把"真相"和"输入"分离：事件日志只追加、永不变，精确保留发生的一切（即使给 LLM 的输入被改动）；而每次调 LLM 时输入是从事件日志重建的，可以有选择地裁剪、压缩、遮蔽。这样记录完整保证了可审计可回放可调试，输入可变保证了效率，无需在两者间妥协。事件日志还能为外部观察者提供监控钩子。</p></details>
+  <p>Q3. Observation Masking 和 Compaction 的关键差别是什么？该优先用哪个？</p>
+  <details><summary>展开答案</summary><p>Observation Masking 用规则隐藏/截断旧工具输出，不需要 LLM 调用（零成本），但依赖规则设计；Compaction 让 LLM 总结推理、动作、观察，更灵活但每次要一次 LLM 调用（有成本）。应优先用 Masking——能用规则截断的地方（如把 5000 行日志变成"共 5000 行，ERROR 12 行，前 3 条"）既省钱又稳定，只在规则无法处理时才用 Compaction。</p></details>
+  <p>Q4. 渐进披露是什么？你的排查助手该怎么用？</p>
+  <details><summary>展开答案</summary><p>渐进披露是不把全部工具和上下文放进初始 prompt，而是按需稍后披露（如 skill 文件）。你的用法：把排查技能写成 4 个文件（图像质量、呼吸信号、机械状态、罕见故障），系统 prompt 只写"有这 4 类技能，按需读取"，模型判断类型后读对应文件。收益是初始 prompt 短（便宜快）、只在需要时加载细节、且当前上下文只含相关技能更聚焦。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture06 · 段四 上下文管理</span><br>
+  ← 上一课 <a href="lecture06-0041-codeact-planning.html">0041 · CodeAct 与先规划再执行</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture06-0043-context-isolation.html">0043 · 上下文隔离与渐进披露</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture06 课件《Agent Design Patterns and Scaffolds》· 源文件夹 week3-10.12 · p55-71；Observation Masking (arXiv:2508.21433)、Context Engineering (LangChain)<br>
+Lesson 0042 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

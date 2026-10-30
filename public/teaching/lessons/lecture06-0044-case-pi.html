@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0044 — 案例：Pi 极简 harness 的收益与代价</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture06 · Lesson 0044</span>
+  <h1>案例：Pi 极简 harness 的收益与代价</h1>
+  <div class="meta">第 0044 课（Lecture06 第 7 课）· 来源：lecture06.pdf p76-83 · 来源文件夹：week3-10.12 · 本课成果：掌握 Pi 的四工具设计与刻意缺失的五项机制、它的三项上下文管理、以及无保护的安全状况，能判断哪些该学哪些绝不能学</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+Pi 的设计哲学（p78）：<br>
+<strong>「Pi 是一个最小 agent harness。把 Pi 适配到你的工作流，而不是反过来。」</strong><br><br>
+它<strong>刻意缺少</strong>五样东西（p78）：<br>
+<strong>没有子 agent / 没有权限检查 / 没有 plan mode / 没有 agent 待办清单 / 没有后台 bash</strong><br><br>
+而它的安全状况（p82）：<strong>Pi 以进程的权限运行，没有弹窗请求权限——把它当作始终开启 auto-mode、没有任何保护。</strong><br><br>
+这一课的要点不是「Pi 很好用」，而是<strong>看清极简的收益与代价如何配对</strong>。
+</div>
+
+<h2>一、Pi 是什么（p77-79）</h2>
+<pre class="loop">四个默认工具（p79）：
+  read  读文件
+  write 写文件
+  edit  编辑文件
+  bash  执行命令
+
+课件的三个判断：
+  · 极少的工具膨胀
+  · 所有其他工具都是 bash 的子集
+  · 系统提示不到 1000 token（Lecture05 第 0035 讲已提）
+
+p79 那句「All other tools are subsets of bash」是整个设计的支点：
+  grep 是 bash 的子集
+  ls 是 bash 的子集
+  cat 是 bash 的子集
+  → 一个 bash 顶十个工具
+  → 工具列表短了，schema 占的 token 少了
+  → 模型选择空间小了，选错的概率也低了
+</pre>
+
+<h2>二、刻意缺少的五样（p78）</h2>
+<table>
+  <tr><th>缺少的</th><th>它本来解决什么</th><th>Pi 怎么处理</th></tr>
+  <tr><td>子 agent</td><td>上下文隔离（0043 课）</td><td>不做隔离，都放主上下文</td></tr>
+  <tr><td>权限检查</td><td>防止危险操作</td><td><strong>完全没有</strong></td></tr>
+  <tr><td>plan mode</td><td>先规划再执行（0041 课）</td><td>只有 ReAct 循环</td></tr>
+  <tr><td>待办清单</td><td>长任务进度追踪</td><td>靠上下文自身</td></tr>
+  <tr><td>后台 bash</td><td>长时间命令</td><td>只能前台阻塞</td></tr>
+</table>
+<pre class="loop">这五项不是「还没做」，是「刻意不做」
+
+哲学依据（p78）：
+  "Adapt Pi to your workflows, not the other way around"
+  → harness 不该预设你的工作流
+  → 需要的话你自己加（p78：社区在上面建了很多扩展）
+
+代价也很清楚：
+  需要子 agent？自己写
+  需要权限控制？自己加
+  需要规划？自己在 prompt 里做
+</pre>
+<h2>三、Pi 的三项机制（p80-81）——这部分值得学</h2>
+
+<h3>3.1 ReAct 循环（p80）</h3>
+<blockquote>
+<strong>Pi 有一个 ReAct 风格的循环：在行动之前先推理，然后用 JSON 工具调用行动。</strong>
+</blockquote>
+<pre class="loop">就是 0040 课讲的 ReAct
+→ 没有新东西，只是确认「极简 harness 也用 ReAct」
+→ 说明 ReAct 是 agent 循环的最小共识
+</pre>
+<h3>3.2 上下文树（p80）</h3>
+<blockquote>
+<strong>上下文被构造成一棵树，你可以回到之前的分支继续一段不同的对话线程。</strong>
+</blockquote>
+<pre class="loop">这和 Lecture05 第 0035 讲提到的「Pi 的历史存成树」是同一件事
+
+价值：
+  走错方向时可以回到分叉点重来
+  → 不需要新开会话，也不需要"忘掉"错误历史
+  → 试错不污染主线
+
+代价：
+  UI 要支持树形浏览
+  并且要明确"当前在哪条分支"（否则模型会混乱）
+</pre>
+<h3>3.3 三项上下文管理（p81）</h3>
+<pre class="loop">Pi 的上下文管理三件套：
+  ① 事件日志 → LLM 输入的转换
+  ② 通过技能文件做渐进披露
+  ③ 压缩（Compaction）
+
+→ 正好是 0042 课五种模式里的三个
+→ 说明这些模式是「实践收敛的结果」，不是学者发明的
+</pre>
+<h2>四、安全：直白的自我描述（p82）</h2>
+<blockquote>
+<strong>Pi 以进程的权限运行，没有弹窗来请求权限，所以把它视为始终在 auto-mode、没有任何保护。</strong>
+</blockquote>
+<pre class="loop">这句话值得逐字读：
+
+  "runs at the same permissions as the process"
+  → 你用什么权限启动它，它就用什么权限
+  → 你在 sudo 下启动，它就有 root
+
+  "no popups to ask for permission"
+  → 没有任何确认环节
+
+  "consider it always on auto-mode with no protections"
+  → 厂商自己明确说了：不要指望它有保护
+
+【这不是缺陷，是交换】
+  换来的是：不会被打断的流畅体验
+  付出的是：一旦出错（或被注入攻击），后果无边界
+
+【判断标准很简单】
+  在个人机器上、在可回滚的目录里、做的事你能一眼看穿
+  → 可以用
+  在医疗设备、生产服务器、有患者数据的系统上
+  → 绝对不能用
+</pre>
+<h2>五、Recap（p83）</h2>
+<blockquote>
+· Pi 被设计成一个极简 harness<br>
+· 社区在上面建了很多扩展<br>
+· 默认工具是 bash、read、write、edit<br>
+· Pi 是 ReAct 风格的 agent<br>
+· 上下文通过事件日志、渐进披露、压缩来管理<br>
+· <strong>Pi 没有内建任何保护措施</strong>
+</blockquote>
+
+<h2>六、极简的真实代价（HarnessTax 的补充视角）</h2>
+<pre class="loop">Lecture05 第 0035 讲引过 Arena 的 HarnessTax：
+  同模型换 harness，成本可能翻倍而成功率不变
+
+Pi 的存在提供了另一面：
+  极简 harness 的成本低、延迟低、行为可预测
+  但「任务成功率」可能低于带完整机制的 harness
+  → 因为少了子 agent（上下文会爆）
+  → 少了 plan mode（复杂任务容易跑偏）
+  → 少了待办清单（长任务会忘记目标）
+
+所以「极简」不是免费的：
+  它在简单任务上赢（成本、延迟）
+  在复杂任务上可能输（成功率）
+  → 又是一次「取决于用例」
+</pre>
+<h2>SGRT 工程桥：从 Pi 学什么、绝不学什么</h2>
+<pre class="loop">【该学的三样】
+
+① 工具用「一个顶多个」的思路
+   Pi 用 bash 顶了 read/ls/grep/cat…
+   → 你可以考虑：把多个查询类工具合并成一个
+     query(device_id, what, params)
+     而不是 get_status / get_config / get_log / get_residual 四个
+   → 工具列表短，模型选错概率低
+   ⚠️ 但注意：合并后参数变复杂，schema 校验要更严
+
+② 上下文树（有条件）
+   试错分支不污染主线
+   → 对标定参数搜索特别有用：
+     试了参数组 A 不理想 → 回到分叉点试 B
+     两条分支的实验记录都保留（合规要求）
+   → 注意：分叉记录本身也要进事件日志
+
+③ 三项上下文管理
+   事件日志 + 渐进披露 + 压缩
+   → 就是 0042 课的推荐组合
+   → 直接照抄这个组合
+
+【绝不学的一样】
+
+✘ 没有权限检查
+   医疗设备软件里，写操作必须有闸门
+   → 这一条没有任何妥协空间
+   → 见 0045 课和 Lecture04 的 Policy 失败模式
+
+【你的配置建议（相对 Pi 的差异）】
+
+  Pi                     你的版本
+  ────────────────────────────────────────
+  read/write/edit/bash   5-6 个专用工具（不用 bash）
+  无权限检查             只读自动 / 写操作二次确认
+  无子 agent             保留子 agent（读长文档时用）
+  无 plan mode           保留"先规划"（排查流程可并行）
+  无待办清单             保留（长排查防丢目标）
+  树形上下文             保留（参数搜索分支）
+  三项上下文管理         照抄
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>哲学</strong>：最小 harness，把 Pi 适配到你的工作流，而不是反过来。<br>
+<strong>刻意缺少</strong>：子 agent／权限检查／plan mode／待办清单／后台 bash。<br>
+<strong>三项机制</strong>：ReAct 循环／树形上下文／事件日志+渐进披露+压缩。<br>
+<strong>安全</strong>：以进程权限运行、无弹窗——视为「始终 auto-mode、无任何保护」。<br>
+<strong>代价</strong>：极简在简单任务上赢成本延迟，在复杂任务上可能输成功率。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. Pi 默认有哪四个工具？「All other tools are subsets of bash」这句话为什么是整个设计的支点？</p>
+  <details><summary>展开答案</summary><p>四个工具：read、write、edit、bash。这句话是支点，因为 grep、ls、cat 这些常见工具都是 bash 的子集，一个 bash 就能顶十个工具——工具列表短了，schema 占的 token 少了，模型选择空间小了、选错概率也低了。这是「用组合能力换工具数量」的设计。</p></details>
+  <p>Q2. Pi 刻意缺少的五样东西是什么？各对应前面哪一课讲的机制？</p>
+  <details><summary>展开答案</summary><p>① 子 agent（对应 0043 课的上下文隔离）；② 权限检查（对应 Lecture04 的 Policy 失败防护）；③ plan mode（对应 0041 课的先规划再执行）；④ 待办清单（长任务进度追踪）；⑤ 后台 bash（长命令执行）。这五项不是没做，是刻意不做——哲学是 harness 不该预设你的工作流，需要的话自己加扩展。</p></details>
+  <p>Q3. Pi 的安全状况是什么？为什么说「这不是缺陷，是交换」？</p>
+  <details><summary>展开答案</summary><p>Pi 以启动进程的权限运行（sudo 启动就有 root 权限）、没有任何权限弹窗，厂商自己明确说「视为始终在 auto-mode、没有任何保护」。说是交换而非缺陷，因为换来的是不会被打断的流畅体验，付出的是出错（或被提示注入攻击）时后果无边界。判断标准：个人机器、可回滚目录、行为可一眼看穿时可以用；医疗设备、生产服务器、有患者数据的系统上绝对不能用。</p></details>
+  <p>Q4. 极简 harness 的代价是什么？你的版本相对 Pi 该加回哪些？</p>
+  <details><summary>展开答案</summary><p>代价：极简在简单任务上赢（成本低、延迟低、行为可预测），但在复杂任务上可能输——少了子 agent 上下文会爆、少了 plan mode 复杂任务易跑偏、少了待办清单长任务会忘目标。你的版本该加回：权限检查（只读自动、写操作二次确认，无妥协空间）、子 agent（读长文档时用）、先规划（排查可并行）、待办清单（长排查防丢目标）、树形上下文（参数搜索分支）；该学的是用专用工具替代 bash、以及事件日志+渐进披露+压缩三件套。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture06 · 段五 案例 · Pi</span><br>
+  ← 上一课 <a href="lecture06-0043-context-isolation.html">0043 · 上下文隔离</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture06-0045-lecture06-summary.html">0045 · Lecture06 总结（收官）</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture06 课件《Agent Design Patterns and Scaffolds》· 源文件夹 week3-10.12 · p76-83；Pi (pi.dev)<br>
+Lesson 0044 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

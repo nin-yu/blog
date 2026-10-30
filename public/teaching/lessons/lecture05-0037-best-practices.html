@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0037 — 四条工程铁律：简单、可观测、跑评估、懂底层</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture05 · Lesson 0037</span>
+  <h1>四条工程铁律：简单、可观测、跑评估、懂底层</h1>
+  <div class="meta">第 0037 课（Lecture05 第 6 课Lecture05 收官）· 来源：lecture05.pdf p123-132 · 来源文件夹：week3-10.7 · 本课成果：掌握四条铁律的具体要求与背后的取舍，理解 Build→Run→Evaluate→Improve 循环，能对本项目逐条自查（Lecture05 收官）</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+四条铁律（p124-129）：<br>
+<strong>① Keep it Simple</strong>——保持简单，你可能并不需要搭一个 agent<br>
+<strong>② Make Failures Observable and Recoverable</strong>——让失败可观测、可恢复<br>
+<strong>③ Run Evaluations</strong>——用评估驱动设计决策，而且要用<strong>你自己的领域 eval</strong><br>
+<strong>④ 懂底层</strong>（Challenges/Limitations）——抽象会让你离细节更远<br><br>
+总纲（p130）：<strong>Build → Run → Evaluate → Improve，这是一个循环。</strong>
+</div>
+
+<h2>铁律一：保持简单（p124）</h2>
+<blockquote>
+· 你并不总是需要搭一个 agent。有时候 workflow 才是这个任务的正确选择。<br>
+· 当你确实要搭 agent 时，仔细想清楚该包含哪些工具。<br>
+· 如果你有很多数据，甚至可以端到端优化一个模型。
+</blockquote>
+<pre class="loop">三个层次的"简单"：
+
+① 架构层：别默认上 agent
+   能 workflow 解决的，不要用 agent
+   → 呼应 Lecture05 第 0032 讲的控制流谱系
+
+② 工具层：想清楚要哪些工具
+   工具越多 → 上下文越满、选择越易错
+   → 呼应 Lecture02 的 context bloat
+
+③ 模型层：数据够的话端到端优化
+   不一定要"复杂编排"，直接微调可能更好
+   → 呼应 Lecture09 的权重优化
+</pre>
+<h2>铁律二：让失败可观测、可恢复（p125）</h2>
+<blockquote>
+· Trace 模型调用、工具调用、状态变化、错误<br>
+· 设置超时、重试上限、执行预算<br>
+· 记录输出并诊断失败<br>
+· 监控系统状态<br>
+· <strong>你可以把错误抛回给 agent 让它重试</strong>
+</blockquote>
+<pre class="loop">最后一句很重要，它揭示了一个 agent 特有的机会：
+
+传统软件：
+  出错 → 抛异常 → 终止或回滚
+
+agent：
+  出错 → 把错误信息作为 observation 交回模型
+       → 模型可能自己找到出路
+
+前提：
+  · 错误信息必须清晰（不能只返回 "error"）
+  · 要有重试上限（否则死循环，Lecture04 的 Recovery 失败）
+</pre>
+<h2>铁律三：跑评估（p127-128）</h2>
+<blockquote>
+· 做设计决策的最好方式是把它们建立在 eval 上<br>
+· 评估让优化成为可能<br>
+· <strong>建设一个恰当的 eval 是做一个 AI 系统最重要的步骤之一</strong><br>
+· 明智地选择指标（准确率、成本、延迟）<br>
+· 测有代表性的任务、边界情况和失败场景
+</blockquote>
+<p>然后是这一条最重要的限定（p128）：</p>
+<blockquote>
+<strong>除非你在做通用编码 agent harness 或测试通用 agent 系统改进，标准编码榜不是你该爬的榜——要用你自己的领域 eval！</strong>
+</blockquote>
+<pre class="loop">这个警告的具体含义：
+
+  ❌ 错：看"HumanEval 85 分"就以为自己的 agent 好
+  ✔ 对：建一个"30 个真实排查案例"的评测集
+        测"根因判断准确率"
+
+为什么必须用领域 eval：
+  · 通用基准测的是"通用能力"
+  · 你的系统要的是"在你这个领域的可用性"
+  · 两者不相关（一个模型 HumanEval 高分但不懂标定）
+</pre>
+<h2>铁律四：懂底层（p129 Challenges/Limitations）</h2>
+<blockquote>
+· 抽象把你抬得离底层系统细节更远，所以务必知道 under the hood 在发生什么<br>
+· 构建复杂 AI 系统时，很难定位失败来自哪里。务必去看 traces！<br>
+· 在框架之上构建会引入依赖，需要依赖外部库被持续维护
+</blockquote>
+<pre class="loop">三条都是"框架的代价"：
+
+① 抽象遮蔽细节
+   用 DSPy 不知道优化器怎么搜的
+   用 LangGraph 不知道状态怎么合并的
+   → 出问题时你无法判断是"我的代码错"还是"框架的隐含行为"
+
+② 失败定位难
+   多层抽象 + 模型不确定性 = 很难定位
+   → 唯一办法：看 trace（每层的输入输出）
+
+③ 依赖负担
+   框架停维护了怎么办？版本升级破坏了怎么办？
+   → 这就是为什么很多团队宁愿直接调 API
+</pre>
+<h2>总纲：工程是一个循环（p130）</h2>
+<blockquote>
+· <strong>Build → Run → Evaluate → Improve，工程过程是一个循环！</strong><br>
+· 从简单开始，为增加的复杂度找理由<br>
+· 为失败和恢复而设计<br>
+· 用证据和评估衡量质量、成本、延迟<br>
+· 完全理解你的系统如何工作
+</blockquote>
+
+<h2>四对张力的总结</h2>
+<table>
+  <tr><th>张力</th><th>一端</th><th>另一端</th><th>怎么选</th></tr>
+  <tr><td>简单 vs 复杂</td><td>workflow、少工具</td><td>agent、多工具</td><td>默认简单，复杂要能不证自明地带来收益</td></tr>
+  <tr><td>抽象 vs 掌控</td><td>用框架（快）</td><td>直接写（懂）</td><td>用了就要知道 under the hood</td></tr>
+  <tr><td>通用 eval vs 领域 eval</td><td>benchmark 分</td><td>自己的测试集</td><td><strong>必须是后者</strong></td></tr>
+  <tr><td>可靠性 vs 灵活性</td><td>固定流程</td><td>模型决策</td><td>安全路径固定，探索路径放开</td></tr>
+</table>
+
+<h2>SGRT 工程桥：四条铁律对你的具体含义</h2>
+<pre class="loop">【铁律一 · 保持简单】
+  ✔ 标定流程保持 workflow（不要改造成 agent）
+  ✔ 排查助手的工具控制在 5-6 个
+  ✘ 不要为了"用上 AI"而把确定性的步骤交给模型
+
+【铁律二 · 失败可观测可恢复】
+  这是你最该强化的：
+  → 每步 trace（模型调用/工具调用/状态变化/错误）
+  → 超时（单次工具 30s、整轮 5 分钟）
+  → 重试上限（相同动作 3 次即停）
+  → 错误抛回模型让它尝试换方法
+  ⚠️ 注意：错误抛回是"给它机会"，不是"让它无限试"
+
+【铁律三 · 用领域 eval】
+  ❌ "我们用的模型在 MMLU 上有 88 分"
+  ✔ "在 30 个历史排查案例上，根因判断准确率 73%，
+     Pass^3 = 41%"
+  → 后者的两个数字比任何通用基准都有说服力
+
+【铁律四 · 懂底层】
+  如果你引入 DSPy：
+    → 要知道优化器在搜什么
+  如果你引入 LangGraph：
+    → 要知道 state 怎么合并
+  → 否则出问题时你只能干瞪眼
+
+【最后一条 · 循环】
+  你的第一版不可能对
+  预期是：搭 → 跑 30 个案例 → 看哪里错 → 改 → 再跑
+  → 这个循环的周转速度决定了你的迭代效率
+  → 所以建评测集要早（它决定循环能转多快）
+</pre>
+
+<h2>Lecture05 全讲总结</h2>
+<pre class="loop">一、什么叫工程化（p4-18）：三支柱 Data/System/Eval + 控制流谱系
+二、Workflow 框架（p19-77）：
+     DSPy   —— 签名(What) / 模块(How) / 优化器(变好)
+     LangGraph —— State / Node / Edge；固定边=workflow，条件边回环=agent
+三、Agent Harness（p78-89）：四类设计选择 + 四个尖点
+     Mini SWE-Agent（极简）／OpenHands（事件+自愈）／Pi（四工具+树历史）／OpenClaw（常驻+自整理）
+四、编排与遥测（p90-122）：Temporal（Activity/Workflow/持久历史）+ MLflow/LangSmith/LangFuse
+五、四条铁律（p123-130）：简单 / 可观测可恢复 / 跑领域 eval / 懂底层
+</pre>
+<h2>本课小结</h2>
+<blockquote>
+<strong>铁律一</strong>：保持简单——可能不需要 agent。<br>
+<strong>铁律二</strong>：失败可观测可恢复——trace、超时、预算、把错误抛回给模型。<br>
+<strong>铁律三</strong>：跑领域 eval——通用榜单不是你要爬的榜。<br>
+<strong>铁律四</strong>：懂底层——抽象遮蔽细节，必须看 trace。<br>
+<strong>总纲</strong>：Build → Run → Evaluate → Improve 的循环。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 四条铁律是什么？</p>
+  <details><summary>展开答案</summary><p>① Keep it Simple 保持简单——你可能并不需要搭 agent，有时 workflow 才是正确选择，也要想清楚该包含哪些工具；② Make Failures Observable and Recoverable——trace 模型/工具调用、状态变化、错误，设置超时/重试上限/执行预算，记录输出、监控状态；③ Run Evaluations——用评估驱动设计决策，且必须用自己领域的 eval；④ 懂底层——抽象会让你离细节更远，必须知道 under the hood 在发生什么，务必看 traces。</p></details>
+  <p>Q2. "把错误抛回给 agent 让它重试"有什么好处和风险？</p>
+  <details><summary>展开答案</summary><p>好处：这是 agent 特有的机会——传统软件出错只能终止或回滚，而 agent 收到错误信息作为 observation 后可能自己找到出路（换工具、换参数、换方法）。风险：如果错误信息不清晰（只返回 "error"）模型无从下手；如果没有重试上限会陷入死循环（Lecture04 的 Recovery 失败模式——反复重试同一个调用）。所以必须给清晰的错误信息 + 设重试上限。</p></details>
+  <p>Q3. 为什么"标准编码榜不是你要爬的榜"？</p>
+  <details><summary>展开答案</summary><p>因为通用基准测的是通用能力，而你的系统要的是在你特定领域的可用性——两者不相关。一个模型 HumanEval 85 分不代表它懂标定、懂呼吸门控、懂医疗合规。用领域 eval（如"30 个真实排查案例的根因判断准确率"）才能反映系统在真实场景的可用性，也才能真正驱动设计决策。除非你做的就是通用编码 harness，否则通用榜单只是参考。</p></details>
+  <p>Q4. 框架的三项代价是什么？该怎么应对？</p>
+  <details><summary>展开答案</summary><p>① 抽象遮蔽细节——用 DSPy 不知道优化器怎么搜的、用 LangGraph 不知道状态怎么合并的，出问题无法判断是代码错还是框架隐含行为；② 失败定位难——多层抽象加模型不确定性，唯一办法是看 trace（每层的输入输出）；③ 依赖负担——框架停维护或版本升级破坏。应对：用了就要知道 under the hood（读源码或至少读文档的实现说明），保留 trace，并且不要为了"用上框架"而引入；简单场景直接调 API。</p></details>
+</div>
+
+<h2>综合结业考试题</h2>
+<div class="takeaway">
+<strong>Lecture05 结业考试</strong>（把本讲当一个整体来考）：给一个要工程化的 agent 系统，要求你判断控制流位置、选框架或不选框架、设计 harness 的四类选择、设计编排与可观测方案，并按四条铁律自查。<br>
+<strong>→ 领取结业考试题</strong>：<a href="../综合题/Lecture05/结业考试-Lecture05-工程化.html">结业考试-Lecture05-工程化.md</a>（Markdown 作答制，作答区就在题目下方；答完对我说"评卷"）。
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture05 · 段五 最佳实践 · Lecture05 收官</span><br>
+  ← 上一课 <a href="lecture05-0036-orchestration-telemetry.html">0036 · 编排与遥测</a> · <a href="../index.html">课程大纲</a> · 回顾 <a href="lecture05-0032-what-is-engineering.html">0032 · 什么叫工程化</a><br>Lecture05 完结 → 回到 <a href="../index.html">课程大纲</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture05 课件《Frameworks & Orchestration》· 源文件夹 week3-10.7 · p123-132<br>
+Lesson 0037 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0012 — 训练三阶段：预训练、中训练、后训练</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture02 · Lesson 0012</span>
+  <h1>训练三阶段：预训练、中训练、后训练</h1>
+  <div class="meta">第 0012 课（Lecture02 第 4 课）· 来源：lecture02.pdf p92-118 · 来源文件夹：week2-9.28 · 本课成果：掌握训练三阶段（预训练/中训练/后训练）各自做什么，理解 RLHF 的局限与 RLVR 的出现，以及 agent 专用训练数据的来源</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+课件把训练分成三段（p102-118）：<br><br>
+<strong>① 预训练 Pretraining</strong>——海量网页文本，学语言的统计规律<br>
+<strong>② 中训练 Midtraining</strong>——调整数据配比，往目标领域倾斜<br>
+<strong>③ 后训练 Posttraining</strong>——指令微调 + 偏好对齐 + 可验证奖励<br><br>
+其中最需要理解的一条线是后训练的演进：<br>
+<strong>SFT → RLHF（人类偏好）→ RLVR（可验证奖励）→ Agent 专用训练</strong>
+</div>
+
+<h2>一、预训练：数据工程占大头（p102-107）</h2>
+<pre class="loop">流程（p102）：
+  HTML → 文本提取 → 去重 → 语言识别 → 规则过滤 → 质量过滤
+       → 最终训练数据
+
+关键认知：
+  · 这一步的工程量主要在数据，不在模型
+  · 去重、质量过滤直接决定模型好坏
+  · 数据配比（data mixing）是关键超参（p107）
+</pre>
+<p>课件给了几个数据集来源（p103-106）：DataComp-LM、Nemotron-CC-Math、The Pile。</p>
+<p>还有一个细节很有意思（p105）：<strong>连"2013 年动漫论坛上某人发的帖子"都会被收进训练集</strong>——说明预训练数据的规模和粗糙度。</p>
+
+<h2>二、中训练：把数据配比往目标领域倾斜（p109-111）</h2>
+<blockquote>
+<strong>改变数据配比，让它更聚焦你的目标领域（数学、代码等）</strong>
+</blockquote>
+<pre class="loop">中训练 = 在预训练和后训练之间的一个阶段
+
+  预训练：通用网页文本，什么都有
+  中训练：加入更多目标领域的高质量数据
+         （数学推理、代码、长文档…）
+  后训练：教它怎么按指令行事
+
+为什么需要这一段：
+  · 预训练数据里，高质量数学/代码占比很低
+  · 直接后训练，模型在这两个领域基础不够
+  · 中训练先"补基础"，再后训练"教格式"
+</pre>
+<p>课件还引了两篇相关的论文标题（p110-111），一个指出"用微调数据去预训练"的误区，一个讲"中训练如何桥接预训练和后训练的数据分布"。</p>
+
+<h2>三、后训练的三次演进</h2>
+
+<h3>3.1 Instruction Finetuning（p113）</h3>
+<pre class="loop">在「指令 + 输入」上训练模型产出「期望输出」
+（FLAN 等工作）
+
+作用：
+  · 让模型知道"被问了要回答"
+  · 学会各种任务的格式
+  · 但学不到"什么是更好的回答"
+</pre>
+
+<h3>3.2 RLHF：从人类偏好学习（p114）</h3>
+<pre class="loop">做法：
+  · 让模型生成多个回答
+  · 人类标注哪个更好
+  · 训练一个奖励模型学人类的偏好
+  · 用 RL 优化模型去拿高奖励
+
+作用：让回答更符合人类喜好（更有用、更无害）
+</pre>
+
+<h3>3.3 人类反馈的三个问题（p115）</h3>
+<blockquote>
+· 人类标注员可能不可靠<br>
+· 每个人的[偏好]不同
+</blockquote>
+<pre class="loop">问题展开：
+  ① 标注员不可靠
+     不同标注员对"好回答"的理解不一致
+     甚至同一人不同时间判断也不同
+
+  ② 偏好主观且因人而异
+     "简洁"vs"详尽"、"保守"vs"大胆"
+     没有唯一正确答案
+
+  ③ 更隐蔽的问题（课件隐含）：
+     模型会学会"讨好标注员"而不是"说真话"
+     → 这就是谄媚（sycophancy）的来源
+</pre>
+
+<h3>3.4 RLVR：把奖励变成可验证的（p116）</h3>
+<blockquote>
+<strong>让奖励可验证。对数学和代码特别有效！</strong>
+</blockquote>
+<pre class="loop">RLVR = RL with Verifiable Rewards
+
+核心改变：
+  不再让人类判断"这个回答好不好"
+  而是用程序判断"这个答案对不对"
+
+  数学：答案是否等于标准答案
+  代码：测试是否通过
+  → 奖励是客观的、可重复的、不会被讨好的
+
+为什么这是突破：
+  DeepSeek-R1 证明，纯 RLVR 就能让模型涌现出推理能力
+  → 不需要海量人类偏好标注
+  → 前提是任务必须有客观正确答案
+</pre>
+
+<h3>3.5 Agent 专用训练（p117-118）</h3>
+<pre class="loop">SWE-Smith 等工作的做法：
+  · 合成软件工程任务（不只是真实 issue）
+  · 让 agent 在这些任务上训练
+  · 关键：任务要可验证（有测试）
+
+为什么 agent 需要专门的数据：
+  · 通用指令数据里没有"多步工具调用"的轨迹
+  · agent 任务的成功标准是"任务完成"，不是"回答好听"
+  → 需要用可验证的 agent 任务来训练
+</pre>
+
+<h2>三阶段的关系</h2>
+<table>
+  <tr><th>阶段</th><th>数据</th><th>学到什么</th><th>典型规模</th></tr>
+  <tr><td><strong>预训练</strong></td><td>海量网页文本</td><td>语言的统计规律、世界知识</td><td>万亿 token</td></tr>
+  <tr><td><strong>中训练</strong></td><td>目标领域高质量数据</td><td>领域基础（数学/代码/长文）</td><td>千亿 token</td></tr>
+  <tr><td><strong>后训练</strong></td><td>指令、偏好、可验证任务</td><td>按指令行事、对齐、推理</td><td>百万级样本</td></tr>
+</table>
+<p>规模差了几个数量级，但<strong>后训练对最终体验的影响往往最大</strong>——这就是为什么"同一个基座模型能做出差异巨大的产品"。</p>
+
+<h2>SGRT 工程桥：这些跟你有什么关系</h2>
+<pre class="loop">【你不训基座模型，但需要理解两件事】
+
+① 为什么"同一个模型"在不同产品里表现差很多？
+   → 后训练不同（指令数据、偏好对齐、RLVR 的领域）
+   → 所以不能只看基座模型名字判断能力
+
+② 为什么有些模型"数学好但闲聊差"？
+   → 中训练和后训练的数据配比不同
+   → 往数学倾斜的模型，在这个领域更强
+
+【如果你要给 agent 做微调】
+  最有价值的不是"预训练",而是:
+  · 后训练阶段的 SFT（用教师轨迹）
+  · 以及可验证奖励的 RL（如果你的任务可验证）
+  → 参数搜索类任务（残差最小）天然适合 RLVR
+  → 诊断类任务（判断对错）适合 SFT + 历史结论当标签
+
+【一个关键判断】
+  如果你的任务"有唯一正确答案"
+  → 优先考虑可验证奖励的思路（造测试集）
+  → 这比堆人类偏好标注便宜几个数量级
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>预训练</strong>：海量网页，工程量在数据清洗与配比。<br>
+<strong>中训练</strong>：调整配比往目标领域倾斜，补领域基础。<br>
+<strong>后训练演进</strong>：SFT（学格式）→ RLHF（学偏好，但标注不可靠、主观、导致谄媚）→ RLVR（可验证奖励，数学代码有效）→ agent 专用训练。<br>
+<strong>关键</strong>：后训练样本规模小但影响最大。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 训练的三个阶段各做什么？为什么需要中训练这一段？</p>
+  <details><summary>展开答案</summary><p>① 预训练：用海量网页文本学语言的统计规律和世界知识；② 中训练：调整数据配比往目标领域（数学、代码）倾斜，补领域基础；③ 后训练：指令微调 + 偏好对齐 + 可验证奖励，教模型按指令行事。需要中训练是因为预训练数据里高质量数学/代码占比很低，直接后训练时模型在这些领域基础不够——中训练先补基础，后训练再教格式。</p></details>
+  <p>Q2. RLHF 有哪三个问题？其中哪个最隐蔽？</p>
+  <details><summary>展开答案</summary><p>① 标注员不可靠——不同人对好回答的理解不一致，同一人不同时间判断也不同；② 偏好主观且因人而异——简洁 vs 详尽没有唯一答案；③ 最隐蔽的是模型会学会"讨好标注员"而不是"说真话"，这就是谄媚（sycophancy）的来源。前两个是数据质量问题，第三个是目标错位问题。</p></details>
+  <p>Q3. RLVR 相比 RLHF 的根本改变是什么？为什么对数学和代码特别有效？</p>
+  <details><summary>展开答案</summary><p>根本改变是把奖励从"人类判断好不好"换成"程序判断对不对"——奖励变成客观、可重复、无法被讨好的。数学和代码之所以特别有效，是因为这两个领域天然有客观正确答案：数学有标准答案、代码有测试用例。DeepSeek-R1 证明纯 RLVR 就能让模型涌现出推理能力，不需要海量人类偏好标注。</p></details>
+  <p>Q4. 如果你的 agent 任务"有唯一正确答案"，该优先考虑什么训练思路？为什么说这比人类标注便宜？</p>
+  <details><summary>展开答案</summary><p>优先考虑可验证奖励的思路——先造测试集（把"正确答案"写成可自动检查的形式），再考虑 SFT 或 RL。比人类标注便宜几个数量级，因为：① 不需要雇标注员；② 客观检查可无限重复不会漂移；③ 数据规模可以扩大很多倍；④ 不会被标注员的偏差污染。参数搜索类任务（如残差最小）天然适合 RLVR。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture02 · 段三 训练</span><br>
+  ← 上一课 <a href="lecture02-0011-linear-attention.html">0011 · 线性注意力</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture02-0013-prefill-decode.html">0013 · 推理：Prefill、Decode 与 KV Cache</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture02 课件《LLMs for Builders》· 源文件夹 week2-9.28 · p92-118；InstructGPT / RLHF、SWE-smith (arXiv:2504.21798)、DeepSeek-R1 (arXiv:2501.12948)<br>
+Lesson 0012 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0019 — 分块与索引：检索的基本单位</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture03 · Lesson 0019</span>
+  <h1>分块与索引：检索的基本单位</h1>
+  <div class="meta">第 0019 课（Lecture03 第 2 课）· 来源：lecture03.pdf p22-38 · 来源文件夹：week2-9.30 · 本课成果：掌握四种分块策略的取舍、重叠的作用，以及 HNSW 等 ANN 加速的原理</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+检索的基本单位是 <strong>chunk（块）</strong>。分块的取舍（p24）：<br><br>
+<strong>太小</strong> → 向量没有上下文（"收入增长 3%" 不知道是谁的）<br>
+<strong>太大</strong> → 一个向量把多个主题平均掉（语义被稀释）<br><br>
+四种分块策略（p24）：固定大小 / 语义边界 / 上下文增强 / LLM 动态检测。<br>
+重叠（overlap）通常取 <strong>10-20%</strong>，保证边界处不丢句子。
+</div>
+
+<h2>一、好的检索器需要什么（p23）</h2>
+<pre class="loop">检索需要两样东西：
+  ① 每个 chunk 一个固定维度的向量
+  ② 一个相似度度量（cosine 或内积）
+
+五种 embedding（p23）：
+  静态词向量  word2vec, GloVe   → 一个词一个向量（不管上下文）
+  上下文       BERT, RoBERTa    → 一个 token 在上下文里的向量
+  段落级       Sentence-BERT, DPR, E5 → 一个 chunk 一个向量
+  多模态       CLIP             → 文本或图像，共享空间
+  图           node2vec, GNN    → 一个节点或关系
+</pre>
+<p>RAG 用的是<strong>段落级</strong>——一个 chunk 一个向量。</p>
+
+<h2>二、四种分块策略（p24）</h2>
+<table>
+  <tr><th>策略</th><th>做法</th><th>优缺点</th></tr>
+  <tr><td><strong>固定大小</strong></td><td>按 token 数切（100-500）</td><td>简单；但会切断语义</td></tr>
+  <tr><td><strong>语义分块</strong></td><td>按句子/章节等逻辑边界切</td><td>语义完整；但块大小不均</td></tr>
+  <tr><td><strong>上下文增强</strong></td><td>每块附带元数据或摘要</td><td>缓解"缺上下文"；增加存储</td></tr>
+  <tr><td><strong>AI 动态分块</strong></td><td>用 LLM 检测自然断点</td><td>最贴合语义；成本最高</td></tr>
+</table>
+<pre class="loop">固定大小的两个坑（p24 原文）：
+  · 太小：向量没有上下文
+  · 太大：一个向量把多个主题平均掉
+
+重叠 overlap：10-20%
+  作用：保证块边界处的句子不被切断
+  例："……收入增长" | "3%。" ← 不重叠时这句被切两半
+</pre>
+<h2>三、为什么需要上下文增强（p26）</h2>
+<pre class="loop">问题块：
+  "公司收入比上季度增长了 3%"
+  → 谁的公司？哪个季度？检索时匹配不上"ACME 2023 Q2"
+
+增强后：
+  "来自 ACME 公司 2023 年 Q2 的 SEC 文件；2023 Q1 收入 3.14 亿。
+   公司收入比上季度增长了 3%"
+  → 现在查询"ACME 2023 Q2 收入增长"能匹配上
+
+→ 这就是 0020 课要讲的 Contextual Retrieval
+</pre>
+<h2>四、向量搜索的加速（p36-38）</h2>
+<pre class="loop">任务：给定查询向量，从 N 个 chunk 向量里返回 top-k
+
+精确搜索：暴力扫描，每查询 O(N·d)
+  → 100 万 chunk × 768 维 = 每次 7.7 亿次运算
+  → 太慢
+
+近似最近邻（ANN）：用一点召回率换大幅提速
+  · IVF：先聚类，只在最近的几个簇里搜
+  · PQ：把向量压成短码
+  · HNSW：多层邻近图，从粗到细贪心下降
+
+HNSW（p37-38）：
+  层：所有向量在最底层，上面是稀疏采样
+  搜索：从顶层开始，朝查询点贪心跳，走不动就下降一层
+  效果：约 log N 跳，召回率高
+</pre>
+<h2>SGRT 工程桥：你的文档该怎么切</h2>
+<pre class="loop">【文档类型 → 分块策略】
+
+标定规范（结构化）：
+  → 按章节切（语义分块）
+  → 每块带元数据：{"章节": "4.2", "文档": "Trio-Track标定规范v2.3"}
+  → 因为查询常是"4.2 节说什么"
+
+排查案例（非结构化）：
+  → 按"一个案例一块"切
+  → 每块格式：现象 / 排查过程 / 根因 / 处理
+  → 因为查询是"残差升高怎么排查"
+
+设备日志（时序）：
+  → 不切块，用结构化查询（时间范围 + 设备 ID）
+  → 因为这类查询需要精确过滤，不是语义相似
+
+【最容易犯的错】
+  把设备手册按 500 token 硬切
+  → "阈值应设为 1.5mm" 那块不知道是哪个参数
+  → 检索出来无法判断适用性
+  ✔ 每块必须带上"章节号 + 参数名 + 适用设备型号"
+</pre>
+<h2>本课小结</h2>
+<blockquote>
+<strong>基本单位</strong>：chunk。太小缺上下文，太大稀释语义。<br>
+<strong>四策略</strong>：固定大小／语义边界／上下文增强／LLM 动态。<br>
+<strong>重叠</strong>：10-20%，防边界切词。<br>
+<strong>加速</strong>：ANN（IVF/PQ/HNSW），HNSW 用多层图做到约 log N 跳。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 分块太小和太大各有什么问题？</p>
+  <details><summary>展开答案</summary><p>太小：向量没有上下文——"收入增长 3%"这个块不知道是谁的、哪个季度，检索时匹配不上真实查询。太大：一个向量把多个主题平均掉，语义被稀释——块里混了五个话题，向量变得"哪个都不像"。所以要取折中（100-500 token），并加 10-20% 重叠防止边界切断句子。</p></details>
+  <p>Q2. 四种分块策略是什么？各适合什么场景？</p>
+  <details><summary>展开答案</summary><p>① 固定大小（按 token 数切，100-500）——简单，适合格式规整的文本；② 语义分块（按句子/章节等逻辑边界）——适合结构化文档如规范手册；③ 上下文增强（每块附带元数据或摘要）——适合块本身缺上下文的情况；④ AI 动态分块（LLM 检测自然断点）——最贴合语义但成本最高，适合高价值文档。</p></details>
+  <p>Q3. 为什么块边界需要 10-20% 重叠？</p>
+  <details><summary>展开答案</summary><p>防止边界处的句子被切断。比如"……公司收入增长"在一块的末尾，"3%。"在下一块开头，不重叠时这句话被切两半，两个块单独看都不完整，检索时都可能匹配不上。重叠 10-20% 保证跨边界的句子至少在其中一个块里是完整的。</p></details>
+  <p>Q4. 你的设备手册按 500 token 硬切会出什么问题？该怎么改？</p>
+  <details><summary>展开答案</summary><p>会切出"阈值应设为 1.5mm"这样的块却没有说明这是哪个参数、适用哪个设备型号——检索出来后无法判断是否适用，可能把旧型号的参数用到新型号上。改法：按章节切（语义分块），并给每块加元数据 {章节号, 参数名, 适用设备型号, 文档版本}，这样检索结果自带适用性判断依据。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture03 · 段二 索引</span><br>
+  ← 上一课 <a href="lecture03-0018-why-rag.html">0018 · 为什么需要检索</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture03-0020-contextual-retrieval.html">0020 · 上下文检索与 RAPTOR</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture03 课件《RAG + Agents》· 源文件夹 week2-9.30 · p22-38；Sentence-BERT、DPR、HNSW<br>
+Lesson 0019 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0066 — 权重优化三：On-Policy 蒸馏——在你自己走错的地方纠正你</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture09 · Lesson 0066</span>
+  <h1>权重优化三：On-Policy 蒸馏——在你自己走错的地方纠正你</h1>
+  <div class="meta">第 0066 课（Lecture09 第 6 课）· 来源：lecture09.pdf p96-104 · 来源文件夹：week5-10.21 · 本课成果：理解 on-policy 蒸馏为什么比 SFT 更有效（国际象棋教练的比喻），掌握 SFT / RL / 蒸馏三者的定位差异</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+Weight Optimization 的第三条线：<strong>On-Policy Distillation</strong>。<br><br>
+课件的比喻（p97）：<strong>「在你真正下过的那盘棋上获得教练指导，比在你只是旁观过的棋局上获得指导，要方便得多。」</strong><br><br>
+核心差别：<br>
+<strong>SFT / 离线蒸馏</strong>——在教师走过的路径上学习（你没亲自走过）<br>
+<strong>On-Policy 蒸馏</strong>——学生自己走，走错了，教师在这一步告诉你该怎么做
+</div>
+
+<h2>一、那个比喻为什么精准（p97）</h2>
+<pre class="loop">【离线（SFT）】
+  你看了 100 盘大师的对局录像
+  → 每步都是大师走的，你从没在那个局面下挣扎过
+  → 你学到了"大师在这个局面走这一步"
+  → 但你自己下棋走到别的局面时，不知道怎么办
+
+【On-Policy】
+  你自己下一盘，走到某个局面卡住了、走错了
+  → 教练看着你这盘棋说："这里应该走马，因为你忽略了斜线"
+  → 你学到的是"我在这种局面容易犯的错，以及怎么纠正"
+  → 直接针对你的弱点</pre>
+<p>关键洞察：<strong>学生犯错的分布，和学生自己的策略有关</strong>。离线数据里没有这些"学生特有的错误"。</p>
+
+<h2>二、三种方法的位置（p98-99）</h2>
+<p>课件把 SFT、RL、On-Policy 蒸馏放在一起对比：</p>
+<table>
+  <tr><th></th><th>SFT</th><th>RL</th><th>On-Policy 蒸馏</th></tr>
+  <tr><td>数据从哪来</td><td>教师的轨迹</td><td>学生自己的 rollout</td><td><strong>学生自己的 rollout</strong></td></tr>
+  <tr><td>学习信号</td><td>模仿动作</td><td>奖励（结果好坏）</td><td><strong>教师在每一步给出的目标</strong></td></tr>
+  <tr><td>信号密度</td><td>每步都有</td><td><strong>很稀疏</strong>（往往只有最终奖励）</td><td><strong>每步都有</strong></td></tr>
+  <tr><td>信号来源</td><td>教师</td><td>环境/验证器</td><td>教师</td></tr>
+</table>
+<p>这张表抓住了 on-policy 蒸馏的独特定位：</p>
+<pre class="loop">它同时具备：
+  ✔ 学生自己的分布（像 RL——针对学生真实会遇到的局面）
+  ✔ 每步都有密集信号（像 SFT——不需要等最终结果）
+
+→ 填补了"SFT 分布不匹配"和"RL 信号稀疏"之间的空档</pre>
+
+<h2>三、损失函数长什么样（p100）</h2>
+<pre class="loop">On-Policy Distillation Loss 的构成：
+
+  1. 学生在状态 s 上采样出一个动作（或一段 token）
+  2. 教师在这个状态 s 上给出它的分布
+  3. 最小化两者分布的距离（类似 KL 散度）
+
+  L = Σ_s  D(学生分布(s) || 教师分布(s))
+         其中 s 来自学生自己的 rollout
+
+对比 SFT 的交叉熵：
+  SFT:    L = -Σ log P学生(教师选的动作 | s_教师)
+                             ↑ s 来自教师轨迹
+  蒸馏:   L = Σ D(P学生(·|s_学生) || P教师(·|s_学生))
+                             ↑ s 来自学生自己的轨迹</pre>
+<p>差别就在 <strong>s 从哪来</strong>：SFT 用教师的状态分布，蒸馏用学生的。这一个改动解决了很多问题。</p>
+
+<h2>四、实验结果（p101-103）</h2>
+<p>课件引用 Thinking Machines 的博客与实验图（p101-103），展示了：</p>
+<ul>
+  <li>p101：On Policy Distillation 的例子</li>
+  <li>p102：真实模型示例</li>
+  <li>p103：<strong>On Policy Distillation Results</strong>——与 SFT / RL 的对比</li>
+</ul>
+<p>课件没有给出具体数字（都在图里），但结论方向明确：<strong>on-policy 蒸馏通常优于纯 SFT，且样本效率高于 RL</strong>。</p>
+
+<h2>五、Weight Optimization 总结（p104）</h2>
+<pre class="loop">三条路，按"信号来自哪里"记：
+
+  SFT              → 信号来自教师的动作（在教师的分布上）
+  RL               → 信号来自结果（稀疏、需可验证）
+  On-Policy 蒸馏   → 信号来自教师的动作（在学生的分布上）
+
+  ← 前两者是经典；
+    第三个是新出现的、兼具两者优点的方案
+</pre>
+
+<h2>SGRT 工程桥：你最该关注哪一种</h2>
+<pre class="loop">【如果要做本地模型，on-policy 蒸馏可能是最优起点】
+
+理由：
+  ① 你有强模型当教师（API 可用）
+  ② 你有可验证任务（参数搜索、数值判断）
+  ③ 你不需要 RL 那么大的采样量（每步都有教师信号）
+
+【具体做法】
+  第 1 轮：
+    · 让本地小模型自己跑 200 个历史排查任务
+    · 记录它在哪些状态下做了错误动作
+    · 在这些状态上，让大模型给出"正确动作"
+    · 用这些 (状态, 教师动作) 对做训练
+
+  → 关键收益：训练数据全部集中在"小模型真的会犯错的地方"
+  → 而不是"大模型走过的、小模型根本不会遇到的路径"
+
+【为什么这对你特别重要】
+  你的排查任务有很强的模式（"先看图 → 再查呼吸 → ..."）
+  小模型容易在某几个特定环节错（比如"该看呼吸时去看了机械"）
+  离线 SFT 里没有这些错误样本，因为大模型不会犯
+  → on-policy 蒸馏正好补上这个缺口
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>核心洞察</strong>：在"学生真下过的棋"上给指导，比在"旁观过的棋局"上给指导更有效。<br>
+<strong>三种方法定位</strong>：SFT（教师分布 + 密集信号）／RL（学生分布 + 稀疏信号）／on-policy 蒸馏（学生分布 + 密集信号）。<br>
+<strong>损失差别</strong>：只在于状态 s 从哪来——教师轨迹还是学生轨迹。<br>
+<strong>价值</strong>：填补 SFT 分布不匹配与 RL 信号稀疏之间的空档。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. "在你自己下过的棋上获得教练指导"这个比喻，说明了 on-policy 蒸馏的什么优势？</p>
+  <details><summary>展开答案</summary><p>说明它针对学生真实会遇到的局面给指导。离线 SFT 是在教师走过的路径上学习，学生从没在那个局面下挣扎过，学到的只是"大师在这个局面走这一步"，但自己走到别的局面时就不知道怎么办。On-policy 蒸馏中学生自己下、自己犯错，教师在你真正卡住的地方指出"这里应该怎么走、为什么"，直接针对学生特有的弱点。</p></details>
+  <p>Q2. SFT、RL、On-Policy 蒸馏三者在"数据来源"和"信号密度"上分别是什么？</p>
+  <details><summary>展开答案</summary><p>SFT：数据来自教师轨迹，信号密度高（每步都有，模仿动作）；RL：数据来自学生自己的 rollout，信号很稀疏（往往只有最终奖励）；On-Policy 蒸馏：数据来自学生自己的 rollout，信号密度高（教师在每一步给出目标分布）。on-policy 蒸馏的独特之处就是同时具备"学生分布"和"密集信号"。</p></details>
+  <p>Q3. On-Policy 蒸馏的损失函数与 SFT 的交叉熵，唯一的实质差别是什么？</p>
+  <details><summary>展开答案</summary><p>只在于状态 s 从哪来。SFT 用教师的状态分布计算损失（-Σ log P学生(教师动作|s教师)）；on-policy 蒸馏用学生自己的状态分布（Σ D(P学生(·|s学生) || P教师(·|s学生))）。这一个改动让学生在自己会遇到的局面上学习，解决了分布不匹配问题。</p></details>
+  <p>Q4. 在你的场景里，为什么 on-policy 蒸馏比离线 SFT 更有效？</p>
+  <details><summary>展开答案</summary><p>因为你的排查任务模式很强，小模型容易在特定环节犯错（比如该查呼吸时去查了机械）。这些错误样本在离线 SFT 数据里没有——因为大模型不会犯这些错，所以学生学不到"我在这里会错、正确的做法是什么"。On-policy 蒸馏让学生自己跑、记录真实犯错的状态，再由教师在这些状态上给出正确动作，训练数据全部集中在学生真正的弱点上。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture09 · 段三 权重优化 · 蒸馏（收官）</span><br>
+  ← 上一课 <a href="lecture09-0065-rl-grpo.html">0073 · RL 与 GRPO</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture09-0067-agents-as-optimizers.html">0075 · 让 agent 自己优化</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture09 课件《Optimization》· 源文件夹 week5-10.21 · p96-104；参考 Thinking Machines《On-Policy Distillation》<br>
+Lesson 74 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

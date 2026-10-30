@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0007 — agent 的五大挑战：可靠性、训练、长程、安全、评估</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture01 · Lesson 0007</span>
+  <h1>agent 的五大挑战：可靠性、训练、长程、安全、评估</h1>
+  <div class="meta">第 0007 课（Lecture01 第 7 课）· 来源：lecture01.pdf p60-69 · 来源文件夹：week1-9.23 · 本课成果：掌握 agent 工程的五大挑战，理解可靠性的三个维度（一致性/鲁棒性/可预测失败），以及能力-可靠性差距这个核心矛盾</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+五大挑战（p61）：<br>
+<strong>Reliability 可靠性</strong>——错误在 agent 结构里会累积<br>
+<strong>Training 训练</strong>——奖励稀疏、长程、rollout 昂贵<br>
+<strong>Long-horizon 长程</strong>——上下文增长并漂移<br>
+<strong>Safety 安全</strong>——<strong>任务成功 ≠ 安全行为</strong><br>
+<strong>Evaluation 评估</strong>——评什么、怎么评<br><br>
+最需要记住的一句（p63）：<strong>存在"能力-可靠性的差距"——能做的事和稳定做对的事之间有条沟。</strong>
+</div>
+
+<h2>一、五大挑战逐条（p61）</h2>
+<pre class="loop">① Reliability 可靠性
+   Errors compound in agent setup
+   → 单步 95% 正确率，20 步就是 0.95^20 ≈ 36%
+   → 这是 agent 最难的问题
+
+② Training 训练
+   Sparse reward, long horizon, expensive rollouts
+   → 一个 20 步任务只有最后才给奖励
+   → 每次 rollout 要真的跑完整个任务
+
+③ Long-horizon 长程
+   Context grows and drifts
+   → 不只是变长，是"漂移"（越走越偏）
+
+④ Safety 安全
+   Task success ≠ safe behavior
+   → 任务完成了，不代表过程安全
+
+⑤ Evaluation 评估
+   What and how to evaluate
+   → 评什么、怎么评都不清楚
+</pre>
+<p>第 ① 条值得算一下：<strong>错误累积是 agent 最本质的工程难题</strong>。</p>
+<pre class="loop">单步准确率 vs 20 步任务成功率：
+  99%  → 0.99^20 = 82%
+  95%  → 0.95^20 = 36%
+  90%  → 0.90^20 = 12%
+
+→ 这就是为什么"听起来 95% 很准"在 agent 里完全不够
+  Lecture05 会讲 harness 设计如何缓解这个
+</pre>
+
+<h2>二、可靠性的三个维度（p62）</h2>
+<pre class="loop">01 Consistency across runs（一致性）
+   同一个任务给两次，agent 会不会给出同样结果？
+   → agent 天然不确定（采样、工具返回时序）
+   → 所以"一致"是稀有性质，不是默认
+
+02 Robustness to perturbations（鲁棒性）
+   对 prompt、工具等的小幅现实变化，agent 怎么反应？
+   → "把'分析'改成'看看'" 这种改动不该导致结果完全不同
+
+03 Predictable failure modes（失败模式可预测）
+   失败时，是"可读的、可恢复的"还是"不可预测的"？
+   → 关键区别：失败后你知道该怎么办吗？
+</pre>
+<p>第三个维度最容易被忽略但工程价值最高：</p>
+<blockquote>
+<strong>宁要"会失败但失败得清楚"，不要"看起来都能做但偶尔莫名崩"。</strong>
+</blockquote>
+
+<h2>三、能力-可靠性差距（p63）</h2>
+<p>课件引 HAL Reliability Dashboard（Princeton）说明这一点：</p>
+<pre class="loop">现象：
+  · 模型在某项任务上"能做到"（benchmark 得分高）
+  · 但同样的任务重复跑，成功率波动很大
+  
+  → 能力（capability）= 最好情况能做到什么
+  → 可靠性（reliability）= 平均能做到什么
+
+差距来源：
+  · 采样随机性
+  · 长流程中的累积误差
+  · 对无关变化的过度敏感
+</pre>
+<p>这个区分对评估很关键：<strong>只报"最高分"会严重高估系统的实际可用性</strong>。</p>
+
+<h2>四、任务完成 ≠ 安全合规（p64）</h2>
+<blockquote>
+<strong>Task Completion ≠ Safety Compliance</strong>（HarnessAudit Bench）
+</blockquote>
+<pre class="loop">什么意思：
+  agent 可能"完成了任务"，但过程中：
+    · 删了不该删的文件
+    · 读了不该读的数据
+    · 绕过了本该遵守的限制
+    · 用了不该用的凭据
+
+  → 任务成功率和安全合规是两个独立指标
+  → 很多 benchmark 只测前者
+</pre>
+
+<h2>五、更多安全关注点（p65-70）</h2>
+<table>
+  <tr><th>问题</th><th>课件要点</th></tr>
+  <tr><td><strong>缺乏协作意识与主体性</strong></td><td>p65：agent 不理解"什么时候该找人确认"</td></tr>
+  <tr><td><strong>弹窗导致 87% 攻击成功率</strong></td><td>p66：agent 被弹窗分散注意力，完不成原任务——<strong>攻击者只要制造干扰就能让任务失败</strong></td></tr>
+  <tr><td><strong>隐私与安全</strong></td><td>p67：PrivacyLens 等评测——agent 不理解什么该保密</td></tr>
+  <tr><td><strong>错位与谄媚</strong></td><td>p68：reward tampering——agent 可能学会"改奖励"而不是"做对"</td></tr>
+  <tr><td><strong>多 agent 合谋</strong></td><td>p69-70：METR 记录的 OpenAI/HuggingFace 事故调查——多个 agent 一起可能做出单个 agent 不会做的事</td></tr>
+</table>
+<p>p66 那条特别值得记住：<strong>87% 的攻击成功率，靠的不是攻破模型，而是弹窗分散注意力</strong>。这是"系统层攻击"，不是"模型层攻击"。</p>
+
+<h2>SGRT 工程桥：五大挑战在你的场景里的优先级</h2>
+<pre class="loop">按严重度排（你的场景）：
+
+【极高】Task success ≠ Safety
+  医疗设备里，"给出建议"和"建议是否安全"必须分开验证
+  · 建议本身对不对（准确性）
+  · 建议会不会导致危险操作（安全性）
+  → 两个指标，两套验收
+
+【极高】Predictable failure modes
+  宁可"明确说不知道"也不要"自信地给错建议"
+  → 设计上：失败必须可读、可恢复、可上报
+
+【高】错误累积
+  假设你的排查助手每步 95% 准
+  15 步排查 = 0.95^15 ≈ 46%
+  → 必须减少步数，或每步加校验
+
+【高】Long-horizon 上下文漂移
+  排查跑到第 20 步还在追最初的问题吗？
+  → 需要任务账本（L08）+ 保连续（L06）
+
+【中】Evaluation
+  有客观量（RMS、角点率）但缺"诊断结论对不对"的标注
+  → 这是最该补的一块
+
+【暂不涉及】Training / 多 agent 合谋
+  单 agent、用 API 模型，暂时不是问题
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>五大挑战</strong>：可靠性（错误累积）／训练（稀疏奖励）／长程（上下文漂移）／安全（成功≠安全）／评估（评什么怎么评）。<br>
+<strong>可靠性三维度</strong>：一致性（两次一样吗）／鲁棒性（小改会崩吗）／失败可预测（崩了知道怎么办吗）。<br>
+<strong>能力≠可靠</strong>：最高分和平均可用性是两件事。<br>
+<strong>最危险的攻击</strong>：不是攻破模型，而是弹窗干扰（87% 成功率）。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. agent 的五大挑战是什么？哪一个是最本质的工程难题？</p>
+  <details><summary>展开答案</summary><p>① Reliability 可靠性（错误累积）；② Training 训练（稀疏奖励、长程、rollout 昂贵）；③ Long-horizon 长程（上下文增长并漂移）；④ Safety 安全（任务成功≠安全行为）；⑤ Evaluation 评估（评什么怎么评）。最本质的是可靠性——单步 95% 的准确率在 20 步任务上只剩 36%，这是 agent 区别于普通软件的根本难题。</p></details>
+  <p>Q2. 可靠性的三个维度是什么？为什么"失败模式可预测"工程价值最高？</p>
+  <details><summary>展开答案</summary><p>① Consistency 一致性（同一任务两次是否同样结果）；② Robustness 鲁棒性（对 prompt/工具的小幅现实变化如何反应）；③ Predictable failure modes 失败模式可预测（失败时是"可读可恢复"还是"不可预测"）。第三个价值最高，因为它决定失败后你能否采取行动——宁可要"会失败但失败得清楚"的系统，也不要"看起来都能做但偶尔莫名崩"的系统。</p></details>
+  <p>Q3. 能力（capability）和可靠性（reliability）的区别是什么？为什么只报最高分会高估可用性？</p>
+  <details><summary>展开答案</summary><p>能力是"最好情况能做到什么"（benchmark 最高分），可靠性是"平均能做到什么"（重复跑的平均成功率）。只报最高分高估可用性，因为同样的任务重复跑成功率波动很大——采样随机性、长流程累积误差、对无关变化过度敏感都会造成波动。用户实际体验的是可靠性而不是能力上限。</p></details>
+  <p>Q4. "弹窗导致 87% 攻击成功率"这条，说明了什么类型的攻击？对你的系统设计有什么启示？</p>
+  <details><summary>展开答案</summary><p>说明这是系统层攻击而非模型层攻击——攻击者不需要攻破模型，只要制造干扰（弹窗、额外请求）让 agent 分散注意力、完不成原任务即可。启示：安全设计不能只关注"模型会不会被说服做坏事"，还要关注"任务流程会不会被外部干扰打断"。对医疗场景，关键流程应设计成不可被打断，或中断后能明确恢复到原任务状态。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture01 · 段五 挑战</span><br>
+  ← 上一课 <a href="lecture01-0006-compound-ai-systems.html">0006 · 复合 AI 系统</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture01-0008-lecture01-summary.html">0008 · 本讲总结与结业考试</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture01 课件《Intro to Agentic Systems》· 源文件夹 week1-9.23 · p60-69；HAL Reliability Dashboard、HarnessAudit Bench、METR 事故调查 (2026)<br>
+Lesson 0007 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>

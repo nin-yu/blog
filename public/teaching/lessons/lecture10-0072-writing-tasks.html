@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0072 — 怎么写任务：指令与环境</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="course">
+  <span class="badge">CS329Z 教学空间 · Lecture10 · Lesson 0072</span>
+  <h1>怎么写任务：指令与环境</h1>
+  <div class="meta">第 0072 课（Lecture10 第 4 课）· 来源：lecture10.pdf p44-48 · 来源文件夹：week6-10.26 · 本课成果：掌握好 task 的五个性质、五件套目录结构、指令三风格与环境四要求，能为本项目写出第一个可评测的 task</div>
+</header>
+
+
+<h2>先给结论</h2>
+<div class="takeaway">
+一个 task 的四个设计目标（p43）：<br>
+<strong>agent 无关（agent agnostic）/ 易定义 / 可移植 / 有表现力</strong><br>
+而且 task 要<strong>独立（independent）</strong>。<br><br>
+目录结构（p43）：<br>
+<code>my-task/</code> 下有 <code>instruction.md</code>、<code>task.toml</code>、<code>environment/Dockerfile</code>、<code>solution/solve.sh</code>、<code>tests/test.sh</code><br><br>
+写任务要回答两个问题（p44）：<strong>你在衡量什么？你衡量得对吗？</strong>
+</div>
+
+<h2>一、一个好 task 的四个性质（p43）</h2>
+<pre class="loop">① AGENT AGNOSTIC（agent 无关）
+   不依赖某个特定 agent 实现
+   → 换模型、换 harness 都能跑
+   → 否则测的是"这个 harness"而不是"这个能力"
+
+② EASY TO DEFINE（易定义）
+   写一个 task 的成本要低
+   → 否则没人愿意贡献任务
+
+③ PORTABLE（可移植）
+   在本地和云端都能跑
+   → 否则复现不了
+
+④ EXPRESSIVE（有表现力）
+   能表达足够复杂的任务
+   → 否则测不出真实能力
+
+⑤ INDEPENDENT（独立）
+   task 之间不互相依赖
+   → 否则无法单独判断哪个失败
+</pre>
+<h2>二、标准目录结构（p43）</h2>
+<pre class="loop">my-task/
+├── instruction.md        ← 给 agent 的指令（唯一输入）
+├── task.toml             ← 元数据（资源、超时等）
+├── environment/
+│   └── Dockerfile        ← 运行环境（可复现）
+├── solution/
+│   └── solve.sh          ← 参考解（关键！）
+└── tests/
+    └── test.sh           ← 验证器
+
+为什么这个结构重要：
+  · instruction 和 test 分离 → 说明"要什么"和"怎么判"独立定义
+  · Dockerfile → 环境可复现（不是"在我机器上能跑"）
+  · solve.sh → 有参考解，能验证 test 本身是否正确
+</pre>
+<h2>三、写任务的三个关切（p44）</h2>
+<blockquote>
+<strong>你在衡量什么？你衡量得对吗？</strong><br>
+· 让指令和验证器对齐（ALIGNING INSTRUCTION AND VERIFIER）<br>
+· 防止奖励黑客（PREVENTING REWARD HACKING）<br>
+· 真实、公平、有趣（REALISTIC AND FAIR AND INTERESTING）
+</blockquote>
+<pre class="loop">第一条是最常见的错误来源：
+
+  指令说："优化这个函数让它更快"
+  验证器检查："运行时间 < 100ms"
+  → 对齐了吗？没有！
+  → agent 可以写一个 return 0 的函数，瞬间完成
+  → 指令的意图（保持功能正确）没被验证
+
+  正确做法：
+  验证器必须同时检查
+    · 功能正确（跑原有测试）
+    · 性能达标（运行时间）
+  → 这才"衡量得对"
+</pre>
+<h2>四、指令（instruction）的三种风格（p45）</h2>
+<blockquote>
+[取决于你的目标，你可能想在不同情况下衡量]<br>
+· <strong>完整指定（FULLY SPECIFIED）</strong><br>
+· <strong>尽可能简洁（AS CONCISE AS POSSIBLE）</strong><br>
+· <strong>尽可能自然（AS NATURAL AS POSSIBLE）</strong>
+</blockquote>
+<pre class="loop">三种风格各测不同的东西：
+
+完整指定
+  把每一步都说清楚
+  → 测"能不能照做"
+  → 简单，但不测判断力
+
+尽可能简洁
+  只给必要信息
+  → 测"能不能推断意图"
+  → 更接近真实使用
+
+尽可能自然
+  像人对人说话一样
+  → 测"能不能理解不精确的表达"
+  → 最真实，但最难评（因为意图模糊）
+
+→ 选哪种取决于你想衡量什么
+→ 不要混着用（否则分数无法解释）
+</pre>
+<h2>五、环境（environment）的四条要求（p47）</h2>
+<blockquote>
+[agent 行动的地方，尽可能模拟生产分布]<br>
+· <strong>额外输入</strong>（文档、代码、状态）<br>
+· <strong>真实软件/服务 &gt; 模拟（多容器）</strong><br>
+· <strong>尽可能开放的世界</strong>（互联网有它的取舍）<br>
+· <strong>适当把网络依赖烘进去以降低不稳定性</strong>
+</blockquote>
+<pre class="loop">逐条理解：
+
+① 额外输入
+   真实任务不是"只有一个问题描述"
+   还有一堆上下文（文档、现有代码、当前状态）
+   → 环境要包含这些
+
+② 真软件 > 模拟
+   mock 的行为和真软件总有差异
+   → agent 可能学会"对付 mock"而不是"对付真软件"
+   → 多容器能跑真服务就用真的
+
+③ 尽可能开放
+   开放世界更真实（agent 可以上网查）
+   但有代价：不可复现、可能被滥用
+   → 取舍看目标
+
+④ 烘进网络依赖
+   如果在评测时下载依赖，网络抖动会造成 flaky
+   → 提前把依赖打包进镜像
+   → 这直接决定评测的可复现性（0074 课）
+</pre>
+<h2>SGRT 工程桥：为你写一个 task 模板</h2>
+<pre class="loop">【任务：呼吸基线漂移导致残差升高】
+
+instruction.md（自然风格，接近真实工程师提问）
+  「
+   昨夜 2 点后这台设备开始频繁报残差超标，
+   白天都正常。帮我查一下是什么原因，
+   并说明依据。
+   
+   设备：Trio-Track v2，序列号 TX-204
+   时间范围：2026-10-29 22:00 至 2026-10-30 08:00
+  」
+
+【这个指令的技巧】
+  · 给了关键线索（「夜里」「白天正常」）——这就是人类会说的
+  · 没直接点出「呼吸」——让模型自己推断（夜里=睡眠呼吸模式变化）
+  · 给了具体时间范围——可查
+
+task.toml（元数据）
+  超时: 300s
+  最大轮数: 15
+  工具集: [query_logs, get_device_status, get_calibration,
+          query_cases, compute_residual]
+
+environment/
+  → 挂载该设备的日志片段、标定记录、历史案例库
+  → 不含真实患者数据（脱敏）
+
+solution/solve.sh（参考解 —— 这一步绝不能省）
+  echo "1. 查 22:00-08:00 的残差曲线 → 发现凌晨 2 点后升高"
+  echo "2. 查呼吸信号 → 呼吸频率从 14 降到 9（深睡）"
+  echo "3. 查呼吸基线 → 21:47 有一次基线重设"
+  echo "4. 结论：基线在深睡前重设，深睡时呼吸幅度增大超出补偿范围"
+
+tests/test.sh（验证器 —— 程序化，两级）
+  一级：结论字段是否命中
+    expected: "respiratory_baseline_drift"
+    actual:   从 JSON 里读 root_cause
+  二级：证据是否包含关键项
+    必须包含 "基线重设" 和 "呼吸频率下降" 两个证据
+  → 都检查 → 防止「猜对结论但没推理」
+
+【四个性质自查】
+  agent agnostic ✔ 只依赖工具接口，不依赖哪个模型
+  易定义       ✔ 主要是写指令 + 复制日志
+  可移植       ✔ 日志和配置打包，不依赖网络
+  有表现力     ✔ 有真实线索、需要推理、不能靠关键词匹配
+</pre>
+
+<h2>本课小结</h2>
+<blockquote>
+<strong>四个性质</strong>：agent 无关／易定义／可移植／有表现力（+ 独立）。<br>
+<strong>目录结构</strong>：instruction / task.toml / environment / solution / tests 五件套。<br>
+<strong>两个问题</strong>：你在衡量什么？你衡量得对吗？<br>
+<strong>指令三风格</strong>：完整指定（测照做）／简洁（测推断）／自然（测理解模糊表达）。<br>
+<strong>环境四要求</strong>：额外输入／真软件优于 mock／尽量开放／烘进网络依赖降 flaky。
+</blockquote>
+
+<h2>自测（先答再展开）</h2>
+<div class="quiz">
+  <p>Q1. 一个好 task 的四个（加一个）性质是什么？为什么必须「agent 无关」？</p>
+  <details><summary>展开答案</summary><p>① AGENT AGNOSTIC agent 无关；② EASY TO DEFINE 易定义；③ PORTABLE 可移植；④ EXPRESSIVE 有表现力；⑤ INDEPENDENT 独立（任务之间不互相依赖）。必须 agent 无关，因为否则测的是「某个特定 harness 的表现」而不是「模型的能力」——换工具就失效，结论不可迁移，也无法做公平对比。</p></details>
+  <p>Q2. 一个 task 目录有哪五个部分？solution 这一步为什么不能省？</p>
+  <details><summary>展开答案</summary><p>① instruction.md（给 agent 的指令）；② task.toml（元数据：资源、超时）；③ environment/Dockerfile（可复现的运行环境）；④ solution/solve.sh（参考解）；⑤ tests/test.sh（验证器）。solution 不能省，因为它是验证「验证器本身是否正确」的唯一手段——如果你写出参考解却过不了自己的 test，说明 test 有问题（过严、与指令不对齐、或有 bug）。没有参考解，你无法区分「agent 失败」和「test 坏了」。</p></details>
+  <p>Q3. 「对齐指令与验证器」最常见的错误是什么？举个例子。</p>
+  <details><summary>展开答案</summary><p>最常见错误是验证器只检查指令的字面要求，漏掉隐含要求。例：指令说「优化这个函数让它更快」，验证器只检查「运行时间 < 100ms」——agent 可以写一个 return 0 的函数瞬间完成，功能完全错了却通过。正确做法是验证器同时检查功能正确（跑原有测试）和性能达标（运行时间），这样才「衡量得对」。</p></details>
+  <p>Q4. 指令的三种风格各测什么？为什么不能混着用？</p>
+  <details><summary>展开答案</summary><p>① 完整指定（把每步说清）测「能不能照做」，简单但不测判断力；② 尽可能简洁（只给必要信息）测「能不能推断意图」，更接近真实使用；③ 尽可能自然（像人对人说话）测「能不能理解不精确表达」，最真实但最难评。不能混着用，因为分数无法解释——如果一半任务是完整指定、一半是自然表达，那 70% 的通过率到底代表什么能力就不清楚了。</p></details>
+</div>
+
+<div class="footnav">
+  <span class="stage">Lecture10 · 段三 写任务</span><br>
+  ← 上一课 <a href="lecture10-0071-eval-vocabulary.html">0071 · 评测词汇</a> · <a href="../index.html">课程大纲</a> · 下一课 <a href="lecture10-0073-writing-verifiers.html">0073 · 怎么写验证器</a>
+</div>
+
+<p class="foot">一手来源：CS329Z lecture10 课件《Evaluating Agents: Terminal-Bench and Harbor》· 源文件夹 week6-10.26 · p44-48；Terminal-Bench task 格式<br>
+Lesson 0072 · 教学空间 /mnt/c/Users/nin/Desktop/hermes/agent/teaching/</p>
+
+</div>
+</body>
+</html>
